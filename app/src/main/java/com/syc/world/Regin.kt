@@ -1,6 +1,11 @@
 package com.syc.world
 
 import android.app.Dialog
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -50,6 +56,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -92,6 +99,7 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
     var loginqq by remember { mutableLongStateOf(0L) }
     val client = OkHttpClient()
     val context = LocalContext.current
+
     Scaffold(topBar = {
         TopAppBar(
             title = "注册/登录",
@@ -250,6 +258,8 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                                     }
                                 }
 
+                                Global.username = name.value
+                                Global.setIsLogin(true)
 
                                 navController.navigate("Main") {
                                     popUpTo("Regin") {
@@ -326,6 +336,8 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                                     }
                                 }
 
+                                Global.username = name.value
+                                Global.setIsLogin(true)
 
                                 navController.navigate("Main") {
                                     popUpTo("Regin") {

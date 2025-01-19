@@ -1,7 +1,15 @@
 package com.syc.world
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.os.PowerManager
+import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -25,12 +33,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,9 +56,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import androidx.core.app.NotificationManagerCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -65,6 +78,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -90,7 +104,6 @@ import top.yukonga.miuix.kmp.utils.getWindowSize
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
-import java.io.FileWriter
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
@@ -98,8 +111,14 @@ import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.system.exitProcess
 
 object Global {
+
+    var username = ""
+
+    var isGiveNotificationPermissions = false
+    var isGiveManageFilePermissions = false
 
     private val _isShowEditPassword = MutableStateFlow(false)
     val isShowEditPassword: StateFlow<Boolean>
@@ -125,6 +144,14 @@ object Global {
         _isShowAskExit.value = value
     }
 
+    private val _isLogin = MutableStateFlow(false)
+    val isLogin: StateFlow<Boolean>
+        get() = _isLogin
+
+    fun setIsLogin(value: Boolean) {
+        _isLogin.value = value
+    }
+
 }
 
 class MainActivity : ComponentActivity() {
@@ -133,10 +160,98 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         window.isNavigationBarContrastEnforced = false
         setContent {
+
+            // 前台服务，启动！！！
+            val serviceIntent = Intent(this, ForegroundService::class.java)
+            startForegroundService(serviceIntent)
+
+            var showNotificationPermissionDialog by remember { mutableStateOf(false) }
+            var showManageFilePermissionDialog by remember { mutableStateOf(false) }
+
+            val context = LocalContext.current
+
+            //在 Composable 中根据需要显示弹窗
+            if (showNotificationPermissionDialog) {
+                NotificationPermissionDialog(
+                    onSettingsClick = {
+                        //用户点击“设置”按钮时，跳转到通知权限设置页面
+                        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        intent.putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        context.startActivity(intent)
+                    },
+                    onCancelClick = {
+                        exitProcess(0)
+                    }
+                )
+            }
+
+
+            //在 Composable 中根据需要显示弹窗
+            if (showManageFilePermissionDialog) {
+                RequestAllFilesAccessPermission(
+                    onSettingsClick = {
+                        val intent =
+                            Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                        intent.data = Uri.parse("package:${context.packageName}")
+                        context.startActivity(intent)
+                    },
+                    onCancelClick = {
+                        exitProcess(0)
+                    }
+                )
+            }
+
+            LaunchedEffect(Unit) {
+                while (!Global.isGiveNotificationPermissions) {
+                    val notificationsEnabled = NotificationManagerCompat.from(context)
+                        .areNotificationsEnabled()
+                    showNotificationPermissionDialog = !notificationsEnabled
+                    Global.isGiveNotificationPermissions = notificationsEnabled
+                    delay(500)
+                    if (showNotificationPermissionDialog != !notificationsEnabled) break
+                }
+            }
+
+
+            LaunchedEffect(Unit) {
+                while (!Global.isGiveManageFilePermissions) {
+                    if (!Environment.isExternalStorageManager()) {
+                        showManageFilePermissionDialog = true
+                    } else {
+                        Global.isGiveManageFilePermissions = false
+                        showManageFilePermissionDialog = false
+                    }
+                    delay(500)
+                }
+            }
+
+            // 申请电池白名单
+            requestIgnoreBatteryOptimizations(context)
+
+            val isLogin = Global.isLogin.collectAsState()
+
+            // 10s刷新一次在线状态
+            LaunchedEffect(isLogin.value) {
+                Log.d("在线状态", "isLogin.value发生变化")
+                if (isLogin.value) {
+                    Log.d("在线状态", "isLogin.value为true")
+                    while (true) {
+                        withContext(Dispatchers.IO) {
+                            Log.d("在线状态", "开始循环,username: ${Global.username}")
+                            if (Global.username.trim().isNotEmpty()) {
+                                checkUserOnline(username = Global.username)
+                                Log.d("在线状态", "已访问")
+                            }
+                            delay(10000)
+                        }
+                    }
+                }
+            }
+
+
             val colorMode = remember { mutableIntStateOf(0) }
             val darkMode =
                 colorMode.intValue == 2 || (isSystemInDarkTheme() && colorMode.intValue == 0)
-            val context = LocalContext.current
             LaunchedEffect(Unit) {
                 getColorMode(context).collect { savedIndex ->
                     colorMode.intValue = savedIndex
@@ -168,6 +283,163 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+
+fun checkUserOnline(username: String): String {
+    val url = "https://syc666.gdata.fun/syc/keepAlive.php"
+
+    val client = OkHttpClient()
+
+    val formBody = FormBody.Builder()
+        .add("username", "酸奶")
+        .build()
+
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("在线状态", responseBody)
+            responseBody
+        } else {
+            "Error"
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        "Error"
+    }
+}
+
+//电池优化
+@SuppressLint("BatteryLife")
+fun requestIgnoreBatteryOptimizations(context: Context) {
+    val packageName = context.packageName
+    val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+
+    //检查应用是否已经在电池优化白名单中
+    if (powerManager.isIgnoringBatteryOptimizations(packageName)) {
+        //无需询问
+    } else {
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:$packageName")
+        }
+
+        //检查设备是否支持忽略电池优化设置
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+        } else {
+            Toast.makeText(context, "此设备不支持忽略电池优化设置", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+
+@Composable
+fun NotificationPermissionDialog(
+    onSettingsClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancelClick,
+        title = {
+            androidx.compose.material3.Text(
+                text = "申请通知权限",
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            androidx.compose.material3.Text(
+                text = "应用需要通知权限才能正常工作，请点击下方“设置”按钮进行设置。",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onSettingsClick
+            ) {
+                androidx.compose.material3.Text(
+                    text = "设置",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = onCancelClick
+            ) {
+                androidx.compose.material3.Text(
+                    text = "取消",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+        },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    )
+}
+
+@Composable
+fun RequestAllFilesAccessPermission(
+    onSettingsClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        AlertDialog(
+            onDismissRequest = onSettingsClick,
+            title = {
+                androidx.compose.material3.Text(
+                    text = "申请访问所有目录权限",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                androidx.compose.material3.Text(
+                    text = "应用需要目录权限才能正常工作，请点击下方“设置”按钮进行设置。",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val intent =
+                            Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                        intent.data = Uri.parse("package:${context.packageName}")
+                        context.startActivity(intent)
+                    }
+                ) {
+                    androidx.compose.material3.Text(
+                        text = "设置",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = onCancelClick
+                ) {
+                    androidx.compose.material3.Text(
+                        text = "取消",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = false
+            )
+        )
     }
 }
 
@@ -510,6 +782,8 @@ fun AllHome(
             if (result != "") {
                 val jsonObject = JSONObject(result)
                 if (jsonObject.getString("status") == "success") {
+                    Global.username = name.value
+                    Global.setIsLogin(true)
                     navController.navigate("Main") {
                         popUpTo("loading") {
                             inclusive = true
@@ -562,7 +836,15 @@ fun AllHome(
             }
         ) {
             composable("loading") { loading() }
-            composable("Main") { Main(modifier = modifier, navController, colorMode = colorMode, hazeState, hazeStyle) }
+            composable("Main") {
+                Main(
+                    modifier = modifier,
+                    navController,
+                    colorMode = colorMode,
+                    hazeState,
+                    hazeStyle
+                )
+            }
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
         }
     }
@@ -658,22 +940,30 @@ fun Main(
                 }
             )
         }, topBar = {
-            TopAppBar(scrollBehavior = currentScrollBehavior,color = Color.Transparent,title = when (pagerState.currentPage) {
-                0 -> "首页"
-                1 -> "消息"
-                2 -> "动态"
-                else -> "我的"
-            }, modifier = Modifier.hazeEffect(
-                state = hazeState,
-                style = hazeStyle, block = fun HazeEffectScope.() {
-                    progressive =
-                        HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f)
-                }), navigationIcon = {
-                Image(painter = painterResource(id = R.drawable.ic_launcher_foreground), contentDescription = null,
-                    modifier = Modifier.size(50.dp))
-            })
+            TopAppBar(scrollBehavior = currentScrollBehavior,
+                color = Color.Transparent,
+                title = when (pagerState.currentPage) {
+                    0 -> "首页"
+                    1 -> "消息"
+                    2 -> "动态"
+                    else -> "我的"
+                },
+                modifier = Modifier.hazeEffect(
+                    state = hazeState,
+                    style = hazeStyle, block = fun HazeEffectScope.() {
+                        progressive =
+                            HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f)
+                    }),
+                navigationIcon = {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        contentDescription = null,
+                        modifier = Modifier.size(50.dp)
+                    )
+                })
         }) { padding ->
-        Box(modifier = Modifier.hazeSource(state = hazeState)
+        Box(
+            modifier = Modifier.hazeSource(state = hazeState)
         ) {
             AppHorizontalPager(
                 modifier = Modifier.imePadding(),
@@ -713,11 +1003,13 @@ fun AppHorizontalPager(
                     padding = padding,
                     navController = navController
                 )
+
                 2 -> Moments(
                     topAppBarScrollBehavior = topAppBarScrollBehaviorList[2],
                     padding = padding,
                     navController = navController
                 )
+
                 else -> Person(
                     topAppBarScrollBehavior = topAppBarScrollBehaviorList[3],
                     padding = padding,

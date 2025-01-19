@@ -213,7 +213,7 @@ fun Person(
                                         }
                                     },
                                     label = {
-                                        Text("密码")
+                                        Text("旧密码")
                                     },
                                     visualTransformation = if (passwordHidden) PasswordVisualTransformation() else VisualTransformation.None
                                 )
@@ -246,7 +246,7 @@ fun Person(
                                         }
                                     },
                                     label = {
-                                        Text("密码")
+                                        Text("新密码")
                                     },
                                     visualTransformation = if (passwordHidden) PasswordVisualTransformation() else VisualTransformation.None
                                 )
@@ -359,21 +359,8 @@ fun Person(
                                             textNew = it
                                         }
                                     },
-                                    trailingIcon = {
-                                        IconButton(
-                                            onClick = {
-                                                passwordHidden = !passwordHidden
-                                            }
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.visible),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
-                                    },
                                     label = {
-                                        Text("密码")
+                                        Text("QQ")
                                     },
                                     visualTransformation = VisualTransformation.None,
                                     keyboardOptions = KeyboardOptions.Default.copy(
