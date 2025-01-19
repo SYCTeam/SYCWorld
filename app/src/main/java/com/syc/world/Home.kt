@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -99,7 +102,7 @@ fun HeadlineInLargePrint(headline: String) {
             text = headline,
             modifier = Modifier,
             textAlign = TextAlign.Center,
-            fontSize = 30.sp,
+            fontSize = 19.sp,
             color = MaterialTheme.colorScheme.onBackground,
             style = TextStyle(fontWeight = FontWeight.Bold)
         )
@@ -352,6 +355,57 @@ fun LatestContentShow() {
                         )
                     }
                 }
+            }
+            HeadlineInLargePrint(headline = "步数排行")
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 30.dp)
+                        .padding(bottom = 6.dp, top = 15.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
+                    ) {
+                        Image(painterResource(R.drawable.my), contentDescription = null, modifier = Modifier.size(45.dp))
+                        Image(painterResource(R.drawable.silver), contentDescription = null, modifier = Modifier.size(30.dp).offset(y = (-15).dp))
+                        Text(text = "酸奶", fontSize = 13.sp, color = Color.Black,modifier = Modifier.offset(y = (-15).dp))
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(text = "6000", fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
+                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                        }
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
+                    ) {
+                        Image(painterResource(R.drawable.my), contentDescription = null, modifier = Modifier.size(55.dp))
+                        Image(painterResource(R.drawable.gold), contentDescription = null, modifier = Modifier.size(35.dp).offset(y = (-20).dp))
+                        Text(text = "沉默", fontSize = 13.sp, color = Color.Black,modifier = Modifier.offset(y = (-15).dp))
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(text = "10000", fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
+                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                        }
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
+                    ) {
+                        Image(painterResource(R.drawable.my), contentDescription = null, modifier = Modifier.size(45.dp))
+                        Image(painterResource(R.drawable.copper), contentDescription = null, modifier = Modifier.size(30.dp).offset(y = (-15).dp))
+                        Text(text = "小夜", fontSize = 13.sp, color = Color.Black,modifier = Modifier.offset(y = (-15).dp))
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(text = "3000", fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
+                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                        }
+                    }
+                }
+
             }
         }
     }
