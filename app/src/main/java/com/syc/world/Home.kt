@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -58,6 +59,7 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import kotlin.random.Random
 
 @Composable
 fun Home(
@@ -481,8 +483,49 @@ fun LatestContentShow() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Bottom
                 ) {
+                    var step by remember { mutableStateOf(0f) }
+                    var step2 by remember { mutableStateOf(0f) }
+                    var step3 by remember { mutableStateOf(0f) }
+                    LaunchedEffect(Unit) {
+                        step = 10000f
+                        step2 = 6000f
+                        step3 = 3000f
+                    }
+                    LaunchedEffect(Unit) {
+                        delay(600)
+                        val randomChange = Random.nextFloat() * 100f
+                        step += randomChange  // 增加随机值
+                        delay(600)
+                        step -= randomChange
+                    }
+                    LaunchedEffect(Unit) {
+                        delay(600)
+                        val randomChange = Random.nextFloat() * 100f
+                        step2 += randomChange  // 增加随机值
+                        delay(600)
+                        step2 -= randomChange
+                    }
+                    LaunchedEffect(Unit) {
+                        delay(600)
+                        val randomChange = Random.nextFloat() * 100f
+                        step3 += randomChange  // 增加随机值
+                        delay(600)
+                        step3 -= randomChange
+                    }
+                    val animatedValue = animateFloatAsState(
+                        targetValue = step,
+                        animationSpec = tween(durationMillis = 600)
+                    )
+                    val animatedValue2 = animateFloatAsState(
+                        targetValue = step2,
+                        animationSpec = tween(durationMillis = 600)
+                    )
+                    val animatedValue3 = animateFloatAsState(
+                        targetValue = step3,
+                        animationSpec = tween(durationMillis = 600)
+                    )
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Image(
                             painterResource(R.drawable.my),
@@ -503,20 +546,8 @@ fun LatestContentShow() {
                             modifier = Modifier.offset(y = (-15).dp)
                         )
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "6000",
-                                fontSize = 18.sp,
-                                color = Color.Black,
-                                fontWeight = FontWeight.Light,
-                                modifier = Modifier.offset(y = (-15).dp)
-                            )
-                            Text(
-                                text = " 步",
-                                fontSize = 13.sp,
-                                color = Color.Black,
-                                fontWeight = FontWeight.Light,
-                                modifier = Modifier.offset(y = (-17).dp)
-                            )
+                            Text(text = animatedValue2.value.toInt().toString(), fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
+                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
                         }
                     }
 
@@ -542,59 +573,20 @@ fun LatestContentShow() {
                             modifier = Modifier.offset(y = (-15).dp)
                         )
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "10000",
-                                fontSize = 18.sp,
-                                color = Color.Black,
-                                fontWeight = FontWeight.Light,
-                                modifier = Modifier.offset(y = (-15).dp)
-                            )
-                            Text(
-                                text = " 步",
-                                fontSize = 13.sp,
-                                color = Color.Black,
-                                fontWeight = FontWeight.Light,
-                                modifier = Modifier.offset(y = (-17).dp)
-                            )
+                            Text(text = animatedValue.value.toInt().toString(), fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
+                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
                         }
                     }
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                     ) {
-                        Image(
-                            painterResource(R.drawable.my),
-                            contentDescription = null,
-                            modifier = Modifier.size(45.dp)
-                        )
-                        Image(
-                            painterResource(R.drawable.copper),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(30.dp)
-                                .offset(y = (-15).dp)
-                        )
-                        Text(
-                            text = "小夜",
-                            fontSize = 13.sp,
-                            color = Color.Black,
-                            modifier = Modifier.offset(y = (-15).dp)
-                        )
+                        Image(painterResource(R.drawable.my), contentDescription = null, modifier = Modifier.size(45.dp))
+                        Image(painterResource(R.drawable.copper), contentDescription = null, modifier = Modifier.size(30.dp).offset(y = (-15).dp))
+                        Text(text = "小夜", fontSize = 13.sp, color = Color.Black,modifier = Modifier.offset(y = (-15).dp))
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "3000",
-                                fontSize = 18.sp,
-                                color = Color.Black,
-                                fontWeight = FontWeight.Light,
-                                modifier = Modifier.offset(y = (-15).dp)
-                            )
-                            Text(
-                                text = " 步",
-                                fontSize = 13.sp,
-                                color = Color.Black,
-                                fontWeight = FontWeight.Light,
-                                modifier = Modifier.offset(y = (-17).dp)
-                            )
+                            Text(text = animatedValue3.value.toInt().toString(), fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
+                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
                         }
                     }
                 }
