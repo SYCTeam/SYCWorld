@@ -82,6 +82,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.lottie.compose)
+    implementation(libs.okhttp)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.androidx.datastore.core.android)

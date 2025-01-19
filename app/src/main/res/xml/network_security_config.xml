@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 允许 xyc.okc.today 的明文 HTTP 流量 -->
+    <domain-config cleartext-traffic-permitted="true">
+        <domain includeSubdomains="true">xyc.okc.today</domain>
+    </domain-config>
+</network-security-config>
