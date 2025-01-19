@@ -109,7 +109,7 @@ fun HeadlineInLargePrint(headline: String) {
             modifier = Modifier,
             textAlign = TextAlign.Center,
             fontSize = 20.sp,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.inversePrimary,
             style = TextStyle(fontWeight = FontWeight.Bold)
         )
     }
@@ -145,22 +145,27 @@ fun LatestContentShow() {
                 // 小于一分钟，显示秒数
                 "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
             }
+
             diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
                 // 小于1小时，显示分钟数
                 "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
             }
+
             diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
                 // 小于1天，显示小时数
                 "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
             }
+
             diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
                 // 小于30天，显示天数
                 "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
             }
+
             diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
                 // 小于一年，显示月份数
                 "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
             }
+
             else -> {
                 // 大于一年，显示年份
                 "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
@@ -348,7 +353,17 @@ fun LatestContentShow() {
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                indication = null,
+                                interactionSource = MutableInteractionSource()
+                            ) {
+                                if (!isFirstRun) {
+                                    isChange = !isChange
+                                    isClick = !isClick
+                                }
+                            },
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -356,16 +371,7 @@ fun LatestContentShow() {
                             Image(
                                 modifier = Modifier
                                     .padding(10.dp)
-                                    .size(buttonSize)
-                                    .clickable(
-                                        indication = null,
-                                        interactionSource = MutableInteractionSource()
-                                    ) {
-                                        if (!isFirstRun) {
-                                            isChange = !isChange
-                                            isClick = !isClick
-                                        }
-                                    },
+                                    .size(buttonSize),
                                 painter = painterResource(id = R.drawable.thumbs_up),
                                 contentDescription = null
                             )
@@ -405,22 +411,23 @@ fun LatestContentShow() {
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                indication = null,
+                                interactionSource = MutableInteractionSource()
+                            ) {
+                                if (!isFirstRun) {
+                                    // TODO
+                                }
+                            },
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             modifier = Modifier
                                 .padding(10.dp)
-                                .size(30.dp)
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = MutableInteractionSource()
-                                ) {
-                                    if (!isFirstRun) {
-                                        // TODO
-                                    }
-                                },
+                                .size(30.dp),
                             painter = painterResource(id = R.drawable.comments),
                             contentDescription = null
                         )
@@ -443,36 +450,37 @@ fun LatestContentShow() {
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                indication = null,
+                                interactionSource = MutableInteractionSource()
+                            ) {
+                                if (!isFirstRun) {
+                                    // 创建分享的 Intent
+                                    val shareIntent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        putExtra(
+                                            Intent.EXTRA_TEXT,
+                                            "【来自${author}的动态】: $content"
+                                        )
+                                        type = "text/plain"
+                                    }
+                                    context.startActivity(
+                                        Intent.createChooser(
+                                            shareIntent,
+                                            "分享到"
+                                        )
+                                    )
+                                }
+                            },
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             modifier = Modifier
                                 .padding(10.dp)
-                                .size(30.dp)
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = MutableInteractionSource()
-                                ) {
-                                    if (!isFirstRun) {
-                                        // 创建分享的 Intent
-                                        val shareIntent = Intent().apply {
-                                            action = Intent.ACTION_SEND
-                                            putExtra(
-                                                Intent.EXTRA_TEXT,
-                                                "【来自${author}的动态】: $content"
-                                            )
-                                            type = "text/plain"
-                                        }
-                                        context.startActivity(
-                                            Intent.createChooser(
-                                                shareIntent,
-                                                "分享到"
-                                            )
-                                        )
-                                    }
-                                },
+                                .size(30.dp),
                             painter = painterResource(id = R.drawable.share),
                             contentDescription = null
                         )
@@ -571,8 +579,20 @@ fun StepRank() {
                         modifier = Modifier.offset(y = (-15).dp)
                     )
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text(text = animatedValue2.value.toInt().toString(), fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
-                        Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                        Text(
+                            text = animatedValue2.value.toInt().toString(),
+                            fontSize = 18.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Light,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
+                        Text(
+                            text = " 步",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Light,
+                            modifier = Modifier.offset(y = (-17).dp)
+                        )
                     }
                 }
 
@@ -598,20 +618,59 @@ fun StepRank() {
                         modifier = Modifier.offset(y = (-15).dp)
                     )
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text(text = animatedValue.value.toInt().toString(), fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
-                        Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                        Text(
+                            text = animatedValue.value.toInt().toString(),
+                            fontSize = 18.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Light,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
+                        Text(
+                            text = " 步",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Light,
+                            modifier = Modifier.offset(y = (-17).dp)
+                        )
                     }
                 }
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                 ) {
-                    Image(painterResource(R.drawable.my), contentDescription = null, modifier = Modifier.size(45.dp))
-                    Image(painterResource(R.drawable.copper), contentDescription = null, modifier = Modifier.size(30.dp).offset(y = (-15).dp))
-                    Text(text = "小夜", fontSize = 13.sp, color = Color.Black,modifier = Modifier.offset(y = (-15).dp))
+                    Image(
+                        painterResource(R.drawable.my),
+                        contentDescription = null,
+                        modifier = Modifier.size(45.dp)
+                    )
+                    Image(
+                        painterResource(R.drawable.copper),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(30.dp)
+                            .offset(y = (-15).dp)
+                    )
+                    Text(
+                        text = "小夜",
+                        fontSize = 13.sp,
+                        color = Color.Black,
+                        modifier = Modifier.offset(y = (-15).dp)
+                    )
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text(text = animatedValue3.value.toInt().toString(), fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
-                        Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                        Text(
+                            text = animatedValue3.value.toInt().toString(),
+                            fontSize = 18.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Light,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
+                        Text(
+                            text = " 步",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Light,
+                            modifier = Modifier.offset(y = (-17).dp)
+                        )
                     }
                 }
             }

@@ -1,11 +1,8 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
-import android.hardware.biometrics.BiometricManager
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -54,7 +51,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -74,16 +70,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import java.io.IOException
-import kotlin.coroutines.cancellation.CancellationException
 
 @Composable
 fun Person(
@@ -536,39 +526,15 @@ fun Person(
     }
 }
 
-suspend fun getOnline(): String {
-    val url = "http://xyc.okc.today/"
 
-    return withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
-        val request = Request.Builder().url(url).build()
 
-        try {
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                val responseBody = response.body?.string() ?: ""
-                Log.d("网络问题", responseBody)
-                responseBody
-            } else {
-                ""
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-            ""
-        } catch (e: CancellationException) {
-            ""
-        }
-    }
-}
+
 
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun MyselfInformation() {
-    val context = LocalContext.current
     var userName by remember { mutableStateOf("小夜") }
     var userQQ by remember { mutableStateOf("1640432") }
-    var userPassword by remember { mutableStateOf("123456") }
-    var userPasswordCounts by remember { mutableIntStateOf(userPassword.length) }
     var loginCounts by remember { mutableStateOf("12") }
     var registerTime by remember { mutableStateOf("1737276065842") }
     var registerAddress by remember { mutableStateOf("重庆") }
@@ -590,13 +556,6 @@ fun MyselfInformation() {
         delay(200)
         change = true
     }
-
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-           getOnline()
-        }
-    }
-
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -624,6 +583,7 @@ fun MyselfInformation() {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(bottom = 10.dp)
                         .height(50.dp)
                         .clip(CircleShape)
                 ) {
@@ -660,6 +620,7 @@ fun MyselfInformation() {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(bottom = 10.dp)
                         .height(50.dp)
                         .clip(CircleShape)
                 ) {
@@ -697,43 +658,7 @@ fun MyselfInformation() {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
-                        .clip(CircleShape)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .clickable {
-
-                            }
-                            .fillMaxSize(),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            modifier = Modifier
-                                .padding(start = 10.dp)
-                                .size(buttonSize),
-                            painter = painterResource(id = R.drawable.password),
-                            contentDescription = "登录密码已隐藏。"
-                        )
-                        Spacer(modifier = Modifier.width(20.dp))
-                        Text(
-                            text = "登录密码: ",
-                            modifier = Modifier,
-                            fontSize = 15.sp,
-                            style = TextStyle(fontWeight = FontWeight.Bold)
-                        )
-                        Text(
-                            text = "*".repeat(userPasswordCounts),
-                            modifier = Modifier,
-                            fontSize = 20.sp,
-                            style = TextStyle(fontStyle = FontStyle.Normal)
-                        )
-                    }
-                }
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
                         .height(50.dp)
                         .clip(CircleShape)
                 ) {
@@ -771,6 +696,7 @@ fun MyselfInformation() {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(bottom = 10.dp)
                         .height(50.dp)
                         .clip(CircleShape)
                 ) {
@@ -808,6 +734,7 @@ fun MyselfInformation() {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(bottom = 10.dp)
                         .height(50.dp)
                         .clip(CircleShape)
                 ) {
@@ -849,6 +776,7 @@ fun MyselfInformation() {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(bottom = 10.dp)
                         .height(50.dp)
                         .clip(CircleShape)
                 ) {
@@ -872,7 +800,7 @@ fun MyselfInformation() {
                         Text(
                             text = "修改QQ号",
                             style = MaterialTheme.typography.bodyLarge,
-                            fontSize = 20.sp
+                            fontSize = 15.sp
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Image(
@@ -888,6 +816,7 @@ fun MyselfInformation() {
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(bottom = 10.dp)
                         .height(50.dp)
                         .clip(CircleShape)
                 ) {
@@ -911,7 +840,7 @@ fun MyselfInformation() {
                         Text(
                             text = "修改登录密码",
                             style = MaterialTheme.typography.bodyLarge,
-                            fontSize = 20.sp
+                            fontSize = 15.sp
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Image(
@@ -925,7 +854,6 @@ fun MyselfInformation() {
                 }
                 Box(
                     modifier = Modifier
-                        .padding(top = 20.dp)
                         .fillMaxSize(),
                     contentAlignment = Alignment.BottomCenter
                 ) {

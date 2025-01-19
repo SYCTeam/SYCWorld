@@ -412,7 +412,7 @@ fun AllHome(
     val duration = easing.duration.toInt()
 
     Column {
-        NavHost(navController = navController, startDestination = "Regin", enterTransition = {
+        NavHost(navController = navController, startDestination = "Main", enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { windowWidth },
                 animationSpec = tween(duration, 0, easing = easing)

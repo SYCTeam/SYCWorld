@@ -136,6 +136,7 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                                 val response = client.newCall(request).execute()
                                 if (response.isSuccessful) {
                                     val responseBody = response.body?.string() ?: ""
+                                    Log.d("网络问题", responseBody)
                                     responseBody
                                 } else {
                                     ""
