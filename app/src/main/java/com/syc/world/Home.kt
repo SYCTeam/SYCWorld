@@ -59,6 +59,10 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 @Composable
@@ -118,7 +122,37 @@ fun LatestContentShow() {
     val content by remember { mutableStateOf("我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...") }
     val author by remember { mutableStateOf("沉莫") }
     val ipAddress by remember { mutableStateOf("湖北") }
-    val time by remember { mutableStateOf("2025-01-19 16:00:00") }
+    val time by remember { mutableStateOf("1737276065842") }
+    val timestamp = remember { System.currentTimeMillis() }
+    val diffInMillis = timestamp - time.toLong()
+    val timeAgo = remember(diffInMillis) {
+        when {
+            diffInMillis < TimeUnit.MINUTES.toMillis(1) -> {
+                // 小于一分钟，显示秒数
+                "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
+            }
+            diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
+                // 小于1小时，显示分钟数
+                "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
+            }
+            diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
+                // 小于1天，显示小时数
+                "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
+            }
+            diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
+                // 小于30天，显示天数
+                "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
+            }
+            diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
+                // 小于一年，显示月份数
+                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
+            }
+            else -> {
+                // 大于一年，显示年份
+                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
+            }
+        }
+    }
     Box(
         modifier = Modifier
             .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
@@ -142,104 +176,55 @@ fun LatestContentShow() {
                         // TODO
                     }
             ) {
-                Box(
-                    modifier = Modifier
+                Row(
+                    modifier = Modifier.padding(start = 10.dp, top = 10.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier,
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .weight(0.2f)
-                        ) {
-                            OutlinedCard(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface,
-                                ),
-                                border = BorderStroke(1.dp, Color.Black),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .padding(start = 10.dp, end = 10.dp, top = 10.dp),
-                                    horizontalAlignment = Alignment.Start,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Row(
-                                        modifier = Modifier,
-                                        horizontalArrangement = Arrangement.Start,
-                                        verticalAlignment = Alignment.Bottom
-                                    ) {
-                                        Image(
-                                            painterResource(R.drawable.my),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(30.dp)
-                                        )
-                                        Image(
-                                            modifier = Modifier
-                                                .size(10.dp),
-                                            painter = painterResource(id = R.drawable.point_green),
-                                            contentDescription = null
-                                        )
-                                    }
-                                    Text(
-                                        text = author,
-                                        modifier = Modifier
-                                            .padding(10.dp),
-                                        textAlign = TextAlign.Center,
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        style = TextStyle(fontStyle = FontStyle.Normal)
-                                    )
-                                }
-                            }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .weight(0.8f)
-                        ) {
-                            Row(
+                    Image(
+                        painterResource(R.drawable.my),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp).offset(x = 5.dp)
+                    )
+                    Image(
+                        modifier = Modifier
+                            .size(10.dp).offset(x = (-5).dp, y = 10.dp),
+                        painter = painterResource(id = R.drawable.point_green),
+                        contentDescription = null
+                    )
+                    Column() {
+                        Text(
+                            text = author,
+                            modifier = Modifier,
+                            fontSize = 15.sp,
+                            style = TextStyle(fontStyle = FontStyle.Italic)
+                        )
+                        var isTimeago by remember { mutableStateOf(true) }
+                        Row {
+                            Text(
+                                text = if (isTimeago) timeAgo else time,
+                                modifier = Modifier.clickable {
+                                    isTimeago = !isTimeago
+                                },
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                style = TextStyle(fontStyle = FontStyle.Normal)
+                            )
+                            Text(
+                                text = " | IP地址:",
                                 modifier = Modifier,
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "发布于",
-                                    modifier = Modifier
-                                        .padding(start = 10.dp),
-                                    textAlign = TextAlign.Center,
-                                    fontSize = 15.sp,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    style = TextStyle(fontStyle = FontStyle.Normal)
-                                )
-                                Text(
-                                    text = ipAddress,
-                                    modifier = Modifier,
-                                    textAlign = TextAlign.Center,
-                                    fontSize = 15.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    style = TextStyle(fontWeight = FontWeight.Bold)
-                                )
-                                VerticalDivider(
-                                    modifier = Modifier
-                                        .padding(10.dp)
-                                        .height(15.dp)
-                                        .clip(RoundedCornerShape(18.dp)),
-                                    thickness = 2.dp,
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                                Text(
-                                    text = time,
-                                    modifier = Modifier,
-                                    textAlign = TextAlign.Center,
-                                    fontSize = 15.sp,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    style = TextStyle(fontStyle = FontStyle.Normal)
-                                )
-                            }
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                style = TextStyle(fontStyle = FontStyle.Normal)
+                            )
+                            Text(
+                                text = ipAddress,
+                                modifier = Modifier,
+                                textAlign = TextAlign.Center,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                style = TextStyle(fontWeight = FontWeight.Bold)
+                            )
                         }
                     }
                 }
