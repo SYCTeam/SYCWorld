@@ -1,8 +1,14 @@
 package com.syc.world
 
+import android.annotation.SuppressLint
+import android.content.Intent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +31,9 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -47,9 +56,10 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 
 @Composable
-fun Home(topAppBarScrollBehavior: ScrollBehavior,
-         padding: PaddingValues,
-         navController: NavController
+fun Home(
+    topAppBarScrollBehavior: ScrollBehavior,
+    padding: PaddingValues,
+    navController: NavController
 ) {
     Scaffold() {
         LazyColumn(
@@ -96,8 +106,11 @@ fun HeadlineInLargePrint(headline: String) {
     }
 }
 
+@SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun LatestContentShow() {
+    val content by remember { mutableStateOf("我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...") }
+    val author by remember { mutableStateOf("沉莫") }
     Box(
         modifier = Modifier
             .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
@@ -146,7 +159,7 @@ fun LatestContentShow() {
                                 contentDescription = null
                             )
                             Text(
-                                text = "沉莫",
+                                text = author,
                                 modifier = Modifier
                                     .padding(10.dp),
                                 textAlign = TextAlign.Center,
@@ -163,7 +176,7 @@ fun LatestContentShow() {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...",
+                        text = content,
                         modifier = Modifier
                             .padding(start = 10.dp, end = 10.dp, bottom = 20.dp),
                         textAlign = TextAlign.Center,
@@ -174,34 +187,170 @@ fun LatestContentShow() {
                     )
                 }
             }
-            var isThumbsUp by remember { mutableStateOf(false) }
+            // 点赞数
+            var favoriteCounts by remember { mutableIntStateOf(1) }
+            // 评论数
+            var commentsCounts by remember { mutableIntStateOf(1) }
+            // 转发数
+            var sharedCounts by remember { mutableIntStateOf(1) }
+
+            var isFirstRun by remember { mutableStateOf(true) }
+            var isClick by remember { mutableStateOf(false) }
+            var isChange by remember { mutableStateOf(false) }
+            val buttonSize by animateDpAsState(
+                targetValue = if (isChange) 40.dp else 30.dp,
+                animationSpec = tween(
+                    durationMillis = 100,
+                    easing = FastOutSlowInEasing
+                ),
+                label = ""
+            )
+            if (buttonSize == 40.dp) {
+                isChange = false
+            }
+            LaunchedEffect(isClick) {
+                if (isClick) {
+                    favoriteCounts++
+                } else if (!isFirstRun) {
+                    favoriteCounts--
+                } else {
+                    isFirstRun = false
+                }
+            }
             Row(
-                modifier = Modifier,
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isThumbsUp) {
-                    Image(
-                        modifier = Modifier
-                            .padding(10.dp)
-                            .size(30.dp)
-                            .clickable {
-                                isThumbsUp = !isThumbsUp
-                            },
-                        painter = painterResource(id = R.drawable.thumbs_up),
-                        contentDescription = null
-                    )
-                } else {
-                    Icon(
-                        modifier = Modifier
-                            .padding(10.dp)
-                            .size(30.dp)
-                            .clickable {
-                                isThumbsUp = !isThumbsUp
-                            },
-                        painter = painterResource(id = R.drawable.thumbs_up),
-                        contentDescription = null
-                    )
+                // 点赞
+                Box(
+                    modifier = Modifier
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isClick) {
+                            Image(
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .size(buttonSize)
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = MutableInteractionSource()
+                                    ) {
+                                        isChange = !isChange
+                                        isClick = !isClick
+                                    },
+                                painter = painterResource(id = R.drawable.thumbs_up),
+                                contentDescription = null
+                            )
+                        } else {
+                            Icon(
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .size(buttonSize)
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = MutableInteractionSource()
+                                    ) {
+                                        isChange = !isChange
+                                        isClick = !isClick
+                                    },
+                                painter = painterResource(id = R.drawable.thumbs_up),
+                                contentDescription = null
+                            )
+                        }
+                        Text(
+                            text = favoriteCounts.toString(),
+                            modifier = Modifier
+                                .padding(10.dp),
+                            textAlign = TextAlign.Center,
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            style = TextStyle(fontStyle = FontStyle.Normal)
+                        )
+                    }
+                }
+                // 评论
+                Box(
+                    modifier = Modifier
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .size(30.dp)
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = MutableInteractionSource()
+                                ) {
+                                    // TODO
+                                },
+                            painter = painterResource(id = R.drawable.comments),
+                            contentDescription = null
+                        )
+                        Text(
+                            text = commentsCounts.toString(),
+                            modifier = Modifier
+                                .padding(10.dp),
+                            textAlign = TextAlign.Center,
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            style = TextStyle(fontStyle = FontStyle.Normal)
+                        )
+                    }
+                }
+                val context = LocalContext.current
+                // 转发
+                Box(
+                    modifier = Modifier
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .size(30.dp)
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = MutableInteractionSource()
+                                ) {
+                                    // 创建分享的 Intent
+                                    val shareIntent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        putExtra(Intent.EXTRA_TEXT, "【来自${author}的动态】: $content")
+                                        type = "text/plain"
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "分享到"))
+                                },
+                            painter = painterResource(id = R.drawable.share),
+                            contentDescription = null
+                        )
+                        Text(
+                            text = sharedCounts.toString(),
+                            modifier = Modifier
+                                .padding(10.dp),
+                            textAlign = TextAlign.Center,
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            style = TextStyle(fontStyle = FontStyle.Normal)
+                        )
+                    }
                 }
             }
         }
