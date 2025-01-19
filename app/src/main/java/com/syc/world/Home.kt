@@ -60,7 +60,6 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import java.text.ParsePosition
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
@@ -108,7 +107,7 @@ fun HeadlineInLargePrint(headline: String) {
             text = headline,
             modifier = Modifier,
             textAlign = TextAlign.Center,
-            fontSize = 19.sp,
+            fontSize = 20.sp,
             color = MaterialTheme.colorScheme.onBackground,
             style = TextStyle(fontWeight = FontWeight.Bold)
         )
@@ -117,7 +116,7 @@ fun HeadlineInLargePrint(headline: String) {
 
 
 @SuppressLint("SimpleDateFormat", "WeekBasedYear")
-fun transToString(time:Long):String{
+fun transToString(time: Long): String {
     return SimpleDateFormat("YYYY-MM-DD hh:mm:ss").format(time)
 }
 
@@ -145,22 +144,27 @@ fun LatestContentShow() {
                 // 小于一分钟，显示秒数
                 "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
             }
+
             diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
                 // 小于1小时，显示分钟数
                 "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
             }
+
             diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
                 // 小于1天，显示小时数
                 "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
             }
+
             diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
                 // 小于30天，显示天数
                 "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
             }
+
             diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
                 // 小于一年，显示月份数
                 "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
             }
+
             else -> {
                 // 大于一年，显示年份
                 "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
@@ -198,11 +202,14 @@ fun LatestContentShow() {
                     Image(
                         painterResource(R.drawable.my),
                         contentDescription = null,
-                        modifier = Modifier.size(30.dp).offset(x = 5.dp)
+                        modifier = Modifier
+                            .size(30.dp)
+                            .offset(x = 5.dp)
                     )
                     Image(
                         modifier = Modifier
-                            .size(10.dp).offset(x = (-5).dp, y = 10.dp),
+                            .size(10.dp)
+                            .offset(x = (-5).dp, y = 10.dp),
                         painter = painterResource(id = R.drawable.point_green),
                         contentDescription = null
                     )
@@ -219,14 +226,15 @@ fun LatestContentShow() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (isTimeAgo) timeAgo else transToString(time.toLong()),
+                                text = if (isTimeAgo) timeAgo else time.toLongOrNull()
+                                    ?.let { transToString(it) } ?: "",
                                 modifier = Modifier
                                     .clickable(
                                         indication = null,
                                         interactionSource = MutableInteractionSource()
                                     ) {
-                                    isTimeAgo = !isTimeAgo
-                                },
+                                        isTimeAgo = !isTimeAgo
+                                    },
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onBackground,
                                 style = TextStyle(fontStyle = FontStyle.Normal)
@@ -560,8 +568,20 @@ fun LatestContentShow() {
                             modifier = Modifier.offset(y = (-15).dp)
                         )
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(text = animatedValue2.value.toInt().toString(), fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
-                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                            Text(
+                                text = animatedValue2.value.toInt().toString(),
+                                fontSize = 18.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-15).dp)
+                            )
+                            Text(
+                                text = " 步",
+                                fontSize = 13.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-17).dp)
+                            )
                         }
                     }
 
@@ -587,20 +607,59 @@ fun LatestContentShow() {
                             modifier = Modifier.offset(y = (-15).dp)
                         )
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(text = animatedValue.value.toInt().toString(), fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
-                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                            Text(
+                                text = animatedValue.value.toInt().toString(),
+                                fontSize = 18.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-15).dp)
+                            )
+                            Text(
+                                text = " 步",
+                                fontSize = 13.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-17).dp)
+                            )
                         }
                     }
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                     ) {
-                        Image(painterResource(R.drawable.my), contentDescription = null, modifier = Modifier.size(45.dp))
-                        Image(painterResource(R.drawable.copper), contentDescription = null, modifier = Modifier.size(30.dp).offset(y = (-15).dp))
-                        Text(text = "小夜", fontSize = 13.sp, color = Color.Black,modifier = Modifier.offset(y = (-15).dp))
+                        Image(
+                            painterResource(R.drawable.my),
+                            contentDescription = null,
+                            modifier = Modifier.size(45.dp)
+                        )
+                        Image(
+                            painterResource(R.drawable.copper),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .offset(y = (-15).dp)
+                        )
+                        Text(
+                            text = "小夜",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(text = animatedValue3.value.toInt().toString(), fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
-                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                            Text(
+                                text = animatedValue3.value.toInt().toString(),
+                                fontSize = 18.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-15).dp)
+                            )
+                            Text(
+                                text = " 步",
+                                fontSize = 13.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-17).dp)
+                            )
                         }
                     }
                 }
