@@ -1,7 +1,49 @@
+import java.io.ByteArrayOutputStream
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+}
+
+fun getAndIncrementBuildNumber(): Int {
+    val propertiesFile = file("version.properties")
+    val properties = Properties()
+    // Load existing properties
+    if (propertiesFile.exists()) {
+        properties.load(FileInputStream(propertiesFile))
+    } else {
+        // If file doesn't exist, create a new one
+        properties["BUILD_NUMBER"] = "1"
+    }
+    // Get the current build number
+    val buildNumber = properties["BUILD_NUMBER"].toString().toInt()
+    // Increment the build number
+    properties["BUILD_NUMBER"] = (buildNumber + 1).toString()
+    // Save the updated build number back to the properties file
+    properties.store(FileOutputStream(propertiesFile), null)
+    return buildNumber
+}
+
+fun commitCount(): String {
+    val stdout = ByteArrayOutputStream()
+    exec {
+        commandLine = "git rev-list --count HEAD".split(" ")
+        standardOutput = stdout
+    }
+    return stdout.toString().trim()
+}
+
+fun getGitCommitHash(): String {
+    val stdout = ByteArrayOutputStream()
+    exec {
+        commandLine = "git rev-parse --short HEAD".split(" ")
+        standardOutput = stdout
+    }
+    return stdout.toString().trim()
 }
 
 android {
@@ -12,8 +54,8 @@ android {
         applicationId = "com.syc.world"
         minSdk = 30
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = commitCount().toInt()
+        versionName = "1.0"+".b"+commitCount().toInt()+"."+getGitCommitHash()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
