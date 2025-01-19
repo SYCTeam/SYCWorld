@@ -16,12 +16,16 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
@@ -29,15 +33,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.datastore.core.DataStore
@@ -56,6 +63,7 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,15 +72,27 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.FormBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
 import top.yukonga.miuix.kmp.basic.HorizontalPager
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.getWindowSize
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileReader
+import java.io.FileWriter
+import java.io.IOException
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
@@ -399,6 +419,49 @@ fun AllHome(
     modifier: Modifier = Modifier,
     colorMode: MutableState<Int> = remember { mutableIntStateOf(0) }
 ) {
+    val context = LocalContext.current
+    // 读取账号
+    val appInternalDir = context.filesDir
+    val name = remember { mutableStateOf("") }
+    val password = remember { mutableStateOf("") }
+    if (File(appInternalDir, "username").exists() && File(
+            appInternalDir,
+            "username"
+        ).length() > 0
+    ) {
+        BufferedReader(
+            FileReader(
+                File(
+                    appInternalDir,
+                    "username"
+                )
+            )
+        ).use { reader ->
+            val savedUserInput = reader.readLine()
+            if (savedUserInput.isNotEmpty()) {
+                name.value = savedUserInput
+            }
+        }
+    }
+    if (File(appInternalDir, "password").exists() && File(
+            appInternalDir,
+            "password"
+        ).length() > 0
+    ) {
+        BufferedReader(
+            FileReader(
+                File(
+                    appInternalDir,
+                    "password"
+                )
+            )
+        ).use { reader ->
+            val savedUserInput = reader.readLine()
+            if (savedUserInput.isNotEmpty()) {
+                password.value = savedUserInput
+            }
+        }
+    }
     val hazeState = remember { HazeState() }
     val hazeStyle = HazeStyle(
         backgroundColor = MiuixTheme.colorScheme.background,
@@ -410,9 +473,61 @@ fun AllHome(
     val windowWidth = getWindowSize().width
     val easing = SpringEasing(0.95f, 0.4f)//CubicBezierEasing(0.4f, 0.95f, 0.2f, 1f)
     val duration = easing.duration.toInt()
+    val client = OkHttpClient()
+    LaunchedEffect(password.value) {
+        if (password.value != "" && name.value != "") {
+            val result = withContext(Dispatchers.IO) {
+                val url = "https://syc666.gdata.fun/syc/login.php"
+
+                // 创建请求体
+                val formBody = FormBody.Builder()
+                    .add("username", name.value)
+                    .add("password", password.value)
+                    .build()
+
+                // 构建 POST 请求
+                val request = Request.Builder()
+                    .url(url)
+                    .post(formBody)  // 使用 .post() 方法
+                    .build()
+
+                try {
+                    val response = client.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        val responseBody = response.body?.string() ?: ""
+                        responseBody
+                    } else {
+                        ""
+                    }
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                    ""
+                } catch (e: CancellationException) {
+                    e.printStackTrace()
+                    ""
+                }
+            }
+            if (result != "") {
+                val jsonObject = JSONObject(result)
+                if (jsonObject.getString("status") == "success") {
+                    navController.navigate("Main") {
+                        popUpTo("loading") {
+                            inclusive = true
+                        }
+                    }
+                } else {
+                    navController.navigate("Regin") {
+                        popUpTo("loading") {
+                            inclusive = true
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Column {
-        NavHost(navController = navController, startDestination = "Main", enterTransition = {
+        NavHost(navController = navController, startDestination = "loading", enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { windowWidth },
                 animationSpec = tween(duration, 0, easing = easing)
@@ -440,8 +555,37 @@ fun AllHome(
                 SizeTransform(clip = true)  // 允许页面在过渡时进行缩放，但不裁剪内容
             }
         ) {
+            composable("loading") { loading() }
             composable("Main") { Main(modifier = modifier, navController, colorMode = colorMode, hazeState, hazeStyle) }
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
+        }
+    }
+}
+
+@Composable
+fun loading() {
+    Scaffold {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center) // 内容居中
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally // 水平居中
+            ) {
+                // 圆形进度条
+                CircularProgressIndicator(
+                    modifier = Modifier.size(50.dp), // 设置进度条的大小
+                    color = MiuixTheme.colorScheme.primary, // 进度条颜色
+                    strokeWidth = 6.dp // 进度条宽度
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "自动登录中...",
+                )
+            }
         }
     }
 }
