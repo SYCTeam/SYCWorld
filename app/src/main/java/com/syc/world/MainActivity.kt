@@ -382,7 +382,7 @@ fun AllHome(
     val duration = easing.duration.toInt()
 
     Column {
-        NavHost(navController = navController, startDestination = "Main", enterTransition = {
+        NavHost(navController = navController, startDestination = "Regin", enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { windowWidth },
                 animationSpec = tween(duration, 0, easing = easing)
@@ -411,6 +411,7 @@ fun AllHome(
             }
         ) {
             composable("Main") { Main(modifier = modifier, navController, colorMode = colorMode, hazeState, hazeStyle) }
+            composable("Regin") { Regin(hazeStyle, hazeState, navController) }
         }
     }
 }
