@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     AllHome(
                         colorMode = colorMode,
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding()
                     )
                 }
             }
