@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -60,6 +61,7 @@ import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
@@ -219,6 +221,7 @@ fun LatestContentShow() {
                             text = author,
                             modifier = Modifier,
                             fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
                             style = TextStyle(fontStyle = FontStyle.Italic)
                         )
                         var isTimeAgo by remember { mutableStateOf(true) }
@@ -376,7 +379,9 @@ fun LatestContentShow() {
                                 contentDescription = null
                             )
                         } else {
-                            Icon(
+                            Image(
+                                painter = painterResource(R.drawable.thumbs_up),
+                                contentDescription = null,
                                 modifier = Modifier
                                     .padding(10.dp)
                                     .size(buttonSize)
@@ -389,8 +394,7 @@ fun LatestContentShow() {
                                             isClick = !isClick
                                         }
                                     },
-                                painter = painterResource(id = R.drawable.thumbs_up),
-                                contentDescription = null
+                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                             )
                         }
                         Text(
@@ -399,7 +403,6 @@ fun LatestContentShow() {
                                 .padding(10.dp),
                             textAlign = TextAlign.Center,
                             fontSize = 20.sp,
-                            color = MaterialTheme.colorScheme.onBackground,
                             style = TextStyle(fontStyle = FontStyle.Normal)
                         )
                     }
@@ -424,12 +427,13 @@ fun LatestContentShow() {
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
+                        Image(
+                            painter = painterResource(R.drawable.comments),
+                            contentDescription = null,
                             modifier = Modifier
                                 .padding(10.dp)
                                 .size(30.dp),
-                            painter = painterResource(id = R.drawable.comments),
-                            contentDescription = null
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                         )
                         Text(
                             text = animatedCommentsCounts.toString(),
@@ -437,7 +441,6 @@ fun LatestContentShow() {
                                 .padding(10.dp),
                             textAlign = TextAlign.Center,
                             fontSize = 20.sp,
-                            color = MaterialTheme.colorScheme.onBackground,
                             style = TextStyle(fontStyle = FontStyle.Normal)
                         )
                     }
@@ -477,12 +480,13 @@ fun LatestContentShow() {
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
+                        Image(
+                            painter = painterResource(R.drawable.share),
+                            contentDescription = null,
                             modifier = Modifier
                                 .padding(10.dp)
                                 .size(30.dp),
-                            painter = painterResource(id = R.drawable.share),
-                            contentDescription = null
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
                         )
                         Text(
                             text = animatedSharedCounts.toString(),
@@ -490,7 +494,6 @@ fun LatestContentShow() {
                                 .padding(10.dp),
                             textAlign = TextAlign.Center,
                             fontSize = 20.sp,
-                            color = MaterialTheme.colorScheme.onBackground,
                             style = TextStyle(fontStyle = FontStyle.Normal)
                         )
                     }
@@ -575,21 +578,18 @@ fun StepRank() {
                     Text(
                         text = "酸奶",
                         fontSize = 13.sp,
-                        color = Color.Black,
                         modifier = Modifier.offset(y = (-15).dp)
                     )
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             text = animatedValue2.value.toInt().toString(),
                             fontSize = 18.sp,
-                            color = Color.Black,
                             fontWeight = FontWeight.Light,
                             modifier = Modifier.offset(y = (-15).dp)
                         )
                         Text(
                             text = " 步",
                             fontSize = 13.sp,
-                            color = Color.Black,
                             fontWeight = FontWeight.Light,
                             modifier = Modifier.offset(y = (-17).dp)
                         )
@@ -614,21 +614,18 @@ fun StepRank() {
                     Text(
                         text = "沉莫",
                         fontSize = 13.sp,
-                        color = Color.Black,
                         modifier = Modifier.offset(y = (-15).dp)
                     )
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             text = animatedValue.value.toInt().toString(),
                             fontSize = 18.sp,
-                            color = Color.Black,
                             fontWeight = FontWeight.Light,
                             modifier = Modifier.offset(y = (-15).dp)
                         )
                         Text(
                             text = " 步",
                             fontSize = 13.sp,
-                            color = Color.Black,
                             fontWeight = FontWeight.Light,
                             modifier = Modifier.offset(y = (-17).dp)
                         )
@@ -653,21 +650,18 @@ fun StepRank() {
                     Text(
                         text = "小夜",
                         fontSize = 13.sp,
-                        color = Color.Black,
                         modifier = Modifier.offset(y = (-15).dp)
                     )
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             text = animatedValue3.value.toInt().toString(),
                             fontSize = 18.sp,
-                            color = Color.Black,
                             fontWeight = FontWeight.Light,
                             modifier = Modifier.offset(y = (-15).dp)
                         )
                         Text(
                             text = " 步",
                             fontSize = 13.sp,
-                            color = Color.Black,
                             fontWeight = FontWeight.Light,
                             modifier = Modifier.offset(y = (-17).dp)
                         )

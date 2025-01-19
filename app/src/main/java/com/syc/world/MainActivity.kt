@@ -523,6 +523,12 @@ fun AllHome(
                     }
                 }
             }
+        } else {
+            navController.navigate("Regin") {
+                popUpTo("loading") {
+                    inclusive = true
+                }
+            }
         }
     }
 
