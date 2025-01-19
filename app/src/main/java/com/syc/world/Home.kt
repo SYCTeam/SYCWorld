@@ -2,6 +2,7 @@ package com.syc.world
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -69,60 +71,78 @@ fun LatestContentShow() {
             verticalArrangement = Arrangement.Center
         ) {
             HeadlineInLargePrint(headline = "最新动态")
-            OutlinedCard(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-                border = BorderStroke(1.dp, Color.Black),
-                modifier = Modifier
-                    .height(200.dp)
-                    .fillMaxWidth()
-            ) {
                 OutlinedCard(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                     ),
                     border = BorderStroke(1.dp, Color.Black),
                     modifier = Modifier
+                        .height(200.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable {
+                            // TODO
+                        }
                 ) {
-                    Row(
-                        modifier = Modifier,
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
+                    Box(
+                        modifier = Modifier
+
                     ) {
-                        Image(
+                        OutlinedCard(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                            ),
+                            border = BorderStroke(1.dp, Color.Black),
                             modifier = Modifier
-                                .padding(start = 10.dp)
-                                .size(10.dp),
-                            painter = painterResource(id = R.drawable.point_green),
-                            contentDescription = null
-                        )
+                                .clip(RoundedCornerShape(10.dp))
+                        ) {
+                            Row(
+                                modifier = Modifier,
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    modifier = Modifier
+                                        .padding(start = 10.dp)
+                                        .size(10.dp),
+                                    painter = painterResource(id = R.drawable.point_green),
+                                    contentDescription = null
+                                )
+                                Text(
+                                    text = "沉莫",
+                                    modifier = Modifier
+                                        .padding(10.dp),
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 20.sp,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    style = TextStyle(fontStyle = FontStyle.Normal)
+                                )
+                            }
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = "沉莫",
+                            text = "我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...",
                             modifier = Modifier
-                                .padding(10.dp),
+                                .padding(start = 10.dp, end = 10.dp, bottom = 20.dp),
                             textAlign = TextAlign.Center,
                             fontSize = 20.sp,
                             color = MaterialTheme.colorScheme.onBackground,
-                            style = TextStyle(fontStyle = FontStyle.Normal)
+                            style = TextStyle(fontStyle = FontStyle.Normal),
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "我失恋了...",
-                        modifier = Modifier
-                            .padding(start = 10.dp, end = 10.dp, bottom = 20.dp),
-                        textAlign = TextAlign.Center,
-                        fontSize = 20.sp,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        style = TextStyle(fontStyle = FontStyle.Normal)
-                    )
-                }
+            Row(
+                modifier = Modifier,
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
             }
         }
     }
