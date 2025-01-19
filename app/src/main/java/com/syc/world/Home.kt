@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import kotlinx.coroutines.delay
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -114,6 +115,8 @@ fun HeadlineInLargePrint(headline: String) {
 fun LatestContentShow() {
     val content by remember { mutableStateOf("我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...") }
     val author by remember { mutableStateOf("沉莫") }
+    val ipAddress by remember { mutableStateOf("湖北") }
+    val time by remember { mutableStateOf("2025-01-19 16:00:00") }
     Box(
         modifier = Modifier
             .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
@@ -139,37 +142,102 @@ fun LatestContentShow() {
             ) {
                 Box(
                     modifier = Modifier
-
                 ) {
-                    OutlinedCard(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                        ),
-                        border = BorderStroke(1.dp, Color.Black),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
+                    Row(
+                        modifier = Modifier,
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier,
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
+                        Box(
+                            modifier = Modifier
+                                .weight(0.2f)
                         ) {
-                            Image(
+                            OutlinedCard(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                ),
+                                border = BorderStroke(1.dp, Color.Black),
                                 modifier = Modifier
-                                    .padding(start = 10.dp)
-                                    .size(10.dp),
-                                painter = painterResource(id = R.drawable.point_green),
-                                contentDescription = null
-                            )
-                            Text(
-                                text = author,
-                                modifier = Modifier
-                                    .padding(10.dp),
-                                textAlign = TextAlign.Center,
-                                fontSize = 20.sp,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                style = TextStyle(fontStyle = FontStyle.Normal)
-                            )
+                                    .clip(RoundedCornerShape(10.dp))
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(start = 10.dp, end = 10.dp, top = 10.dp),
+                                    horizontalAlignment = Alignment.Start,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Row(
+                                        modifier = Modifier,
+                                        horizontalArrangement = Arrangement.Start,
+                                        verticalAlignment = Alignment.Bottom
+                                    ) {
+                                        Image(
+                                            painterResource(R.drawable.my),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(30.dp)
+                                        )
+                                        Image(
+                                            modifier = Modifier
+                                                .size(10.dp),
+                                            painter = painterResource(id = R.drawable.point_green),
+                                            contentDescription = null
+                                        )
+                                    }
+                                    Text(
+                                        text = author,
+                                        modifier = Modifier
+                                            .padding(10.dp),
+                                        textAlign = TextAlign.Center,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        style = TextStyle(fontStyle = FontStyle.Normal)
+                                    )
+                                }
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(0.8f)
+                        ) {
+                            Row(
+                                modifier = Modifier,
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "发布于",
+                                    modifier = Modifier
+                                        .padding(start = 10.dp),
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 15.sp,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    style = TextStyle(fontStyle = FontStyle.Normal)
+                                )
+                                Text(
+                                    text = ipAddress,
+                                    modifier = Modifier,
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 15.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    style = TextStyle(fontWeight = FontWeight.Bold)
+                                )
+                                VerticalDivider(
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .height(15.dp)
+                                        .clip(RoundedCornerShape(18.dp)),
+                                    thickness = 2.dp,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Text(
+                                    text = time,
+                                    modifier = Modifier,
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 15.sp,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    style = TextStyle(fontStyle = FontStyle.Normal)
+                                )
+                            }
                         }
                     }
                 }
@@ -190,14 +258,41 @@ fun LatestContentShow() {
                     )
                 }
             }
-            // 点赞数
-            var favoriteCounts by remember { mutableIntStateOf(1) }
-            // 评论数
-            var commentsCounts by remember { mutableIntStateOf(1) }
-            // 转发数
-            var sharedCounts by remember { mutableIntStateOf(1) }
 
             var isFirstRun by remember { mutableStateOf(true) }
+            // 点赞数
+            var favoriteCounts by remember { mutableIntStateOf(0) }
+            // 评论数
+            var commentsCounts by remember { mutableIntStateOf(0) }
+            // 转发数
+            var sharedCounts by remember { mutableIntStateOf(0) }
+
+            val animatedFavoriteCounts by animateIntAsState(
+                targetValue = favoriteCounts,
+                animationSpec = if (isFirstRun) tween(durationMillis = 1000) else tween(
+                    durationMillis = 0
+                )
+            )
+
+            val animatedCommentsCounts by animateIntAsState(
+                targetValue = commentsCounts,
+                animationSpec = if (isFirstRun) tween(durationMillis = 1000) else tween(
+                    durationMillis = 0
+                )
+            )
+
+            val animatedSharedCounts by animateIntAsState(
+                targetValue = sharedCounts,
+                animationSpec = if (isFirstRun) tween(durationMillis = 1000) else tween(
+                    durationMillis = 0
+                )
+            )
+
+            LaunchedEffect(Unit) {
+                favoriteCounts = 2
+                commentsCounts = 64
+                sharedCounts = 128
+            }
             var isClick by remember { mutableStateOf(false) }
             var isChange by remember { mutableStateOf(false) }
             val buttonSize by animateDpAsState(
@@ -217,6 +312,7 @@ fun LatestContentShow() {
                 } else if (!isFirstRun) {
                     favoriteCounts--
                 } else {
+                    delay(1000)
                     isFirstRun = false
                 }
             }
@@ -245,8 +341,10 @@ fun LatestContentShow() {
                                         indication = null,
                                         interactionSource = MutableInteractionSource()
                                     ) {
-                                        isChange = !isChange
-                                        isClick = !isClick
+                                        if (!isFirstRun) {
+                                            isChange = !isChange
+                                            isClick = !isClick
+                                        }
                                     },
                                 painter = painterResource(id = R.drawable.thumbs_up),
                                 contentDescription = null
@@ -260,15 +358,17 @@ fun LatestContentShow() {
                                         indication = null,
                                         interactionSource = MutableInteractionSource()
                                     ) {
-                                        isChange = !isChange
-                                        isClick = !isClick
+                                        if (!isFirstRun) {
+                                            isChange = !isChange
+                                            isClick = !isClick
+                                        }
                                     },
                                 painter = painterResource(id = R.drawable.thumbs_up),
                                 contentDescription = null
                             )
                         }
                         Text(
-                            text = favoriteCounts.toString(),
+                            text = animatedFavoriteCounts.toString(),
                             modifier = Modifier
                                 .padding(10.dp),
                             textAlign = TextAlign.Center,
@@ -297,13 +397,15 @@ fun LatestContentShow() {
                                     indication = null,
                                     interactionSource = MutableInteractionSource()
                                 ) {
-                                    // TODO
+                                    if (!isFirstRun) {
+                                        // TODO
+                                    }
                                 },
                             painter = painterResource(id = R.drawable.comments),
                             contentDescription = null
                         )
                         Text(
-                            text = commentsCounts.toString(),
+                            text = animatedCommentsCounts.toString(),
                             modifier = Modifier
                                 .padding(10.dp),
                             textAlign = TextAlign.Center,
@@ -333,19 +435,29 @@ fun LatestContentShow() {
                                     indication = null,
                                     interactionSource = MutableInteractionSource()
                                 ) {
-                                    // 创建分享的 Intent
-                                    val shareIntent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        putExtra(Intent.EXTRA_TEXT, "【来自${author}的动态】: $content")
-                                        type = "text/plain"
+                                    if (!isFirstRun) {
+                                        // 创建分享的 Intent
+                                        val shareIntent = Intent().apply {
+                                            action = Intent.ACTION_SEND
+                                            putExtra(
+                                                Intent.EXTRA_TEXT,
+                                                "【来自${author}的动态】: $content"
+                                            )
+                                            type = "text/plain"
+                                        }
+                                        context.startActivity(
+                                            Intent.createChooser(
+                                                shareIntent,
+                                                "分享到"
+                                            )
+                                        )
                                     }
-                                    context.startActivity(Intent.createChooser(shareIntent, "分享到"))
                                 },
                             painter = painterResource(id = R.drawable.share),
                             contentDescription = null
                         )
                         Text(
-                            text = sharedCounts.toString(),
+                            text = animatedSharedCounts.toString(),
                             modifier = Modifier
                                 .padding(10.dp),
                             textAlign = TextAlign.Center,
@@ -372,36 +484,117 @@ fun LatestContentShow() {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                     ) {
-                        Image(painterResource(R.drawable.my), contentDescription = null, modifier = Modifier.size(45.dp))
-                        Image(painterResource(R.drawable.silver), contentDescription = null, modifier = Modifier.size(30.dp).offset(y = (-15).dp))
-                        Text(text = "酸奶", fontSize = 13.sp, color = Color.Black,modifier = Modifier.offset(y = (-15).dp))
+                        Image(
+                            painterResource(R.drawable.my),
+                            contentDescription = null,
+                            modifier = Modifier.size(45.dp)
+                        )
+                        Image(
+                            painterResource(R.drawable.silver),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .offset(y = (-15).dp)
+                        )
+                        Text(
+                            text = "酸奶",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(text = "6000", fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
-                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                            Text(
+                                text = "6000",
+                                fontSize = 18.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-15).dp)
+                            )
+                            Text(
+                                text = " 步",
+                                fontSize = 13.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-17).dp)
+                            )
                         }
                     }
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                     ) {
-                        Image(painterResource(R.drawable.my), contentDescription = null, modifier = Modifier.size(55.dp))
-                        Image(painterResource(R.drawable.gold), contentDescription = null, modifier = Modifier.size(35.dp).offset(y = (-20).dp))
-                        Text(text = "沉默", fontSize = 13.sp, color = Color.Black,modifier = Modifier.offset(y = (-15).dp))
+                        Image(
+                            painterResource(R.drawable.my),
+                            contentDescription = null,
+                            modifier = Modifier.size(55.dp)
+                        )
+                        Image(
+                            painterResource(R.drawable.gold),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(35.dp)
+                                .offset(y = (-20).dp)
+                        )
+                        Text(
+                            text = "沉莫",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(text = "10000", fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
-                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                            Text(
+                                text = "10000",
+                                fontSize = 18.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-15).dp)
+                            )
+                            Text(
+                                text = " 步",
+                                fontSize = 13.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-17).dp)
+                            )
                         }
                     }
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                     ) {
-                        Image(painterResource(R.drawable.my), contentDescription = null, modifier = Modifier.size(45.dp))
-                        Image(painterResource(R.drawable.copper), contentDescription = null, modifier = Modifier.size(30.dp).offset(y = (-15).dp))
-                        Text(text = "小夜", fontSize = 13.sp, color = Color.Black,modifier = Modifier.offset(y = (-15).dp))
+                        Image(
+                            painterResource(R.drawable.my),
+                            contentDescription = null,
+                            modifier = Modifier.size(45.dp)
+                        )
+                        Image(
+                            painterResource(R.drawable.copper),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .offset(y = (-15).dp)
+                        )
+                        Text(
+                            text = "小夜",
+                            fontSize = 13.sp,
+                            color = Color.Black,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(text = "3000", fontSize = 18.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-15).dp))
-                            Text(text = " 步", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.Light,modifier = Modifier.offset(y = (-17).dp))
+                            Text(
+                                text = "3000",
+                                fontSize = 18.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-15).dp)
+                            )
+                            Text(
+                                text = " 步",
+                                fontSize = 13.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.offset(y = (-17).dp)
+                            )
                         }
                     }
                 }
