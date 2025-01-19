@@ -58,6 +58,8 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
@@ -76,6 +78,34 @@ import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+object Global {
+
+    private val _isShowEditPassword = MutableStateFlow(false)
+    val isShowEditPassword: StateFlow<Boolean>
+        get() = _isShowEditPassword
+
+    fun setIsShowEditPassword(value: Boolean) {
+        _isShowEditPassword.value = value
+    }
+
+    private val _isShowEditQQ = MutableStateFlow(false)
+    val isShowEditQQ: StateFlow<Boolean>
+        get() = _isShowEditQQ
+
+    fun setIsShowEditQQ(value: Boolean) {
+        _isShowEditQQ.value = value
+    }
+
+    private val _isShowAskExit = MutableStateFlow(false)
+    val isShowAskExit: StateFlow<Boolean>
+        get() = _isShowAskExit
+
+    fun setIsShowAskExit(value: Boolean) {
+        _isShowAskExit.value = value
+    }
+
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -382,7 +412,7 @@ fun AllHome(
     val duration = easing.duration.toInt()
 
     Column {
-        NavHost(navController = navController, startDestination = "Regin", enterTransition = {
+        NavHost(navController = navController, startDestination = "Main", enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { windowWidth },
                 animationSpec = tween(duration, 0, easing = easing)
