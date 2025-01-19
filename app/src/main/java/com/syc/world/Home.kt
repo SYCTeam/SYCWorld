@@ -2,10 +2,11 @@ package com.syc.world
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.icu.text.SimpleDateFormat
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -59,9 +60,7 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.text.ParsePosition
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
@@ -116,6 +115,20 @@ fun HeadlineInLargePrint(headline: String) {
     }
 }
 
+
+@SuppressLint("SimpleDateFormat", "WeekBasedYear")
+fun transToString(time:Long):String{
+    return SimpleDateFormat("YYYY-MM-DD hh:mm:ss").format(time)
+}
+
+/*
+// 通过字符串转化为时间戳
+@SuppressLint("SimpleDateFormat", "WeekBasedYear")
+fun transToTimeStamp(date:String):Long{
+    return SimpleDateFormat("YY-MM-DD-hh-mm-ss").parse(date, ParsePosition(0)).time
+}
+*/
+
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun LatestContentShow() {
@@ -123,6 +136,7 @@ fun LatestContentShow() {
     val author by remember { mutableStateOf("沉莫") }
     val ipAddress by remember { mutableStateOf("湖北") }
     val time by remember { mutableStateOf("1737276065842") }
+
     val timestamp = remember { System.currentTimeMillis() }
     val diffInMillis = timestamp - time.toLong()
     val timeAgo = remember(diffInMillis) {
@@ -192,26 +206,41 @@ fun LatestContentShow() {
                         painter = painterResource(id = R.drawable.point_green),
                         contentDescription = null
                     )
-                    Column() {
+                    Column {
                         Text(
                             text = author,
                             modifier = Modifier,
                             fontSize = 15.sp,
                             style = TextStyle(fontStyle = FontStyle.Italic)
                         )
-                        var isTimeago by remember { mutableStateOf(true) }
-                        Row {
+                        var isTimeAgo by remember { mutableStateOf(true) }
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = if (isTimeago) timeAgo else time,
-                                modifier = Modifier.clickable {
-                                    isTimeago = !isTimeago
+                                text = if (isTimeAgo) timeAgo else transToString(time.toLong()),
+                                modifier = Modifier
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = MutableInteractionSource()
+                                    ) {
+                                    isTimeAgo = !isTimeAgo
                                 },
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onBackground,
                                 style = TextStyle(fontStyle = FontStyle.Normal)
                             )
+                            VerticalDivider(
+                                modifier = Modifier
+                                    .padding(3.dp)
+                                    .height(15.dp)
+                                    .clip(RoundedCornerShape(18.dp)),
+                                thickness = 2.dp,
+                                color = Color.Gray
+                            )
                             Text(
-                                text = " | IP地址:",
+                                text = "IP地址:",
                                 modifier = Modifier,
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onBackground,
