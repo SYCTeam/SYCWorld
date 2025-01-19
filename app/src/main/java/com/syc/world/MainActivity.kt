@@ -439,7 +439,7 @@ fun Main(
         topAppBarScrollBehavior2,
         topAppBarScrollBehavior3
     )
-    val pagerState = rememberPagerState(pageCount = { 3 }, initialPage = 0)
+    val pagerState = rememberPagerState(pageCount = { 4 }, initialPage = 0)
     var targetPage by remember { mutableIntStateOf(pagerState.currentPage) }
     val coroutineScope = rememberCoroutineScope()
     val currentScrollBehavior = when (pagerState.currentPage) {
