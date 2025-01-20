@@ -24,6 +24,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileReader
+import java.io.IOException
+import java.io.InputStreamReader
 
 // 使用前台服务以保持后台运行
 
@@ -87,6 +93,7 @@ class ForegroundService : Service() {
         return null
     }
 
+    @SuppressLint("SdCardPath")
     private fun buildForegroundNotification(): Notification {
         val channelId = "SYC"
 
@@ -99,9 +106,10 @@ class ForegroundService : Service() {
             emptyIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val name = readFile("/data/data/com.syc.world/files/username")
 
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("酸夜沉空间正在运行中")
+            .setContentTitle(if (name != "error") name else "酸夜沉空间正在运行中")
             .setContentText("We are unstoppable.")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
@@ -111,4 +119,22 @@ class ForegroundService : Service() {
 
 
     companion object
+}
+
+private fun readFile(filePath: String): String {
+    val file = File(filePath)
+    return if (file.exists()) {
+        try {
+            val inputStream = FileInputStream(file)
+            val reader = InputStreamReader(inputStream)
+            val content = reader.readText()
+            reader.close()
+            content.trim()  // 去除多余的空格和换行符
+        } catch (e: IOException) {
+            e.printStackTrace()
+            "error"
+        }
+    } else {
+        "error"
+    }
 }
