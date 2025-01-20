@@ -292,7 +292,7 @@ fun checkUserOnline(username: String): String {
     val client = OkHttpClient()
 
     val formBody = FormBody.Builder()
-        .add("username", "酸奶")
+        .add("username", username)
         .build()
 
     val request = Request.Builder()
