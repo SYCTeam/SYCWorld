@@ -240,17 +240,21 @@ class MainActivity : ComponentActivity() {
                             Log.d("在线状态", "开始循环,username: ${Global.username}")
                             if (Global.username.trim().isNotEmpty()) {
                                 if (checkUserOnline(username = Global.username).contains("success")) {
-                                    Toast.makeText(
-                                        context,
-                                        "心跳成功！",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "心跳成功！",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 } else {
-                                    Toast.makeText(
-                                        context,
-                                        "心跳失败！",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "心跳失败！",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
                                 Log.d("在线状态", "已访问")
                             }
