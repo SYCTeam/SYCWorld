@@ -82,6 +82,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.gson)
     implementation(libs.lottie.compose)
     implementation(libs.okhttp)
     implementation(libs.coil.compose)

@@ -1,7 +1,7 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
-import android.webkit.WebSettings.TextSize
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -42,7 +42,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -68,14 +67,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -95,7 +99,7 @@ import kotlin.coroutines.cancellation.CancellationException
 fun Personsn(
     colorMode: MutableState<Int>,
     navController: NavController,
-    ui : MutableState<Int>
+    ui: MutableState<Int>
 ) {
     val context = LocalContext.current
     val qq = remember { mutableStateOf("2223289765") }
@@ -213,7 +217,11 @@ fun Person(
         ) {
             item {
                 var ui = remember { mutableStateOf(0) }
-                if(ui.value == 0) MyselfInformation(ui = ui) else Personsn(colorMode = colorMode, navController = navController, ui = ui)
+                if (ui.value == 0) MyselfInformation(ui = ui) else Personsn(
+                    colorMode = colorMode,
+                    navController = navController,
+                    ui = ui
+                )
                 Spacer(
                     Modifier.height(
                         WindowInsets.navigationBars.asPaddingValues()
@@ -630,14 +638,130 @@ fun Person(
     }
 }
 
+fun getUserInformation(username: String): String {
+
+    val url = "${Global.url}/syc/check.php".toHttpUrlOrNull()?.newBuilder()
+        ?.addQueryParameter("username", username)
+        ?.build()
+
+    if (url == null) {
+        return "Error"
+    }
+
+    val client = OkHttpClient()
+
+    val request = Request.Builder()
+        .url(url)
+        .get()
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("信息获取", responseBody)
+            responseBody
+        } else {
+            "Error"
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        "Error"
+    }
+}
+
+fun parseUserInfo(json: String): UserInfo? {
+    val gson = Gson()
+    return try {
+        gson.fromJson(json, UserInfo::class.java)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+data class UserInfo(
+    @SerializedName("status") val status: String,
+    @SerializedName("username") val username: String,
+    @SerializedName("registerIp") val registerIp: String,
+    @SerializedName("registerTime") val registerTime: Long,
+    @SerializedName("lastAccessTime") val lastAccessTime: Long,
+    @SerializedName("loginCount") val loginCount: String,
+    @SerializedName("loginIp") val loginIp: String,
+    @SerializedName("online") val online: String,
+    @SerializedName("qq") val qq: String
+)
+
+fun isJson(jsonString: String): Boolean {
+    return try {
+        Gson().fromJson(jsonString, Any::class.java)
+        true
+    } catch (e: JsonSyntaxException) {
+        false
+    }
+}
+
+suspend fun getAddressFromIp(ip: String): String {
+    val url = "https://whois.pconline.com.cn/ipJson.jsp?ip=$ip&json=true"
+
+    return withContext(Dispatchers.IO) {
+        val client = OkHttpClient()
+
+        val request = Request.Builder()
+            .url(url)
+            .build()
+
+        try {
+            val response = withTimeout(4000) {
+                client.newCall(request).execute()
+            }
+            if (response.isSuccessful) {
+                val responseString = response.body?.string() ?: "无"
+                try {
+                    Log.d("信息获取", responseString)
+                    val ipInfo: IpInfo =
+                        Gson().fromJson(responseString, IpInfo::class.java)
+
+                    ipInfo.city.ifEmpty {
+                        ipInfo.province
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    "无"
+                }
+            } else {
+                "无"
+            }
+        } catch (e: TimeoutCancellationException) {
+            "无"
+        } catch (e: IOException) {
+            e.printStackTrace()
+            "无"
+        }
+    }
+}
+
+data class IpInfo(
+    @SerializedName("ip") val ip: String,
+    @SerializedName("pro") val province: String,
+    @SerializedName("proCode") val provinceCode: String,
+    @SerializedName("city") val city: String,
+    @SerializedName("cityCode") val cityCode: String,
+    @SerializedName("region") val region: String,
+    @SerializedName("regionCode") val regionCode: String,
+    @SerializedName("addr") val addr: String,
+    @SerializedName("regionNames") val regionNames: String,
+    @SerializedName("err") val err: String
+)
+
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun MyselfInformation(ui: MutableState<Int>) {
-    var userName by remember { mutableStateOf("小夜") }
-    var userQQ by remember { mutableStateOf("1640432") }
-    var loginCounts by remember { mutableStateOf("12") }
-    var registerTime by remember { mutableStateOf("1737276065842") }
-    var registerAddress by remember { mutableStateOf("重庆") }
+    var userName by remember { mutableStateOf("...") }
+    var userQQ by remember { mutableStateOf("...") }
+    var loginCounts by remember { mutableStateOf("...") }
+    var registerTime by remember { mutableStateOf("...") }
+    var registerAddress by remember { mutableStateOf("...") }
 
     var change by remember { mutableStateOf(false) }
     val buttonSize by animateDpAsState(
@@ -657,16 +781,35 @@ fun MyselfInformation(ui: MutableState<Int>) {
         change = true
     }
 
+    LaunchedEffect(Unit) {
+        if (Global.username.trim().isNotEmpty()) {
+            withContext(Dispatchers.IO) {
+                userName = Global.username
+                val userInfoFirst = getUserInformation(userName)
+                if (isJson(userInfoFirst)) {
+                    val userInfo = parseUserInfo(userInfoFirst)
+                    if (userInfo != null) {
+                        userQQ = userInfo.qq
+                        loginCounts = userInfo.loginCount
+                        registerTime = transToString(userInfo.registerTime)
+                        registerAddress = getAddressFromIp(userInfo.registerIp)
+                    }
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        Image(
-            painterResource(R.drawable.my),
+        AsyncImage(
+            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${userQQ}&spec=640&img_type=jpg",
             contentDescription = null,
             modifier = Modifier
                 .size(80.dp)
+                .clip(CircleShape)
         )
         Box(
             modifier = Modifier
@@ -706,8 +849,9 @@ fun MyselfInformation(ui: MutableState<Int>) {
                         Spacer(modifier = Modifier.width(20.dp))
                         Text(
                             text = "用户名: ",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontSize = 15.sp
+                            modifier = Modifier,
+                            fontSize = 15.sp,
+                            style = TextStyle(fontWeight = FontWeight.Bold)
                         )
                         Text(
                             text = userName,
@@ -824,7 +968,7 @@ fun MyselfInformation(ui: MutableState<Int>) {
                             style = TextStyle(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = registerTime.toLongOrNull()?.let { transToString(it) } ?: "无",
+                            text = registerTime,
                             modifier = Modifier,
                             fontSize = 15.sp,
                             style = TextStyle(fontStyle = FontStyle.Normal)
@@ -899,7 +1043,7 @@ fun MyselfInformation(ui: MutableState<Int>) {
                         Spacer(modifier = Modifier.width(20.dp))
                         Text(
                             text = "修改QQ号",
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = TextStyle(fontWeight = FontWeight.Bold),
                             fontSize = 15.sp
                         )
                         Spacer(modifier = Modifier.weight(1f))
@@ -939,7 +1083,7 @@ fun MyselfInformation(ui: MutableState<Int>) {
                         Spacer(modifier = Modifier.width(20.dp))
                         Text(
                             text = "修改登录密码",
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = TextStyle(fontWeight = FontWeight.Bold),
                             fontSize = 15.sp
                         )
                         Spacer(modifier = Modifier.weight(1f))

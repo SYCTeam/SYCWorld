@@ -1,4 +1,5 @@
 [versions]
+gson = "2.10.1"
 agp = "8.8.0"
 coilNetworkOkhttp = "3.0.4"
 haze = "1.2.2"
@@ -19,6 +20,7 @@ navigationCompose = "2.8.5"
 okhttp = "4.12.0"
 
 [libraries]
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-datastore-core-android = { group = "androidx.datastore", name = "datastore-core-android", version.ref = "datastoreCoreAndroid" }
 androidx-datastore-preferences-core-jvm = { group = "androidx.datastore", name = "datastore-preferences-core-jvm", version.ref = "datastorePreferencesCoreJvm" }
