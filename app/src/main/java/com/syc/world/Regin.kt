@@ -38,6 +38,7 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
@@ -125,10 +126,19 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                         composition = compositionResult.value
                     )
                 LaunchedEffect(name.value) {
-                    if (islogin) {
+                    while (Global.url == "") {
+                        withContext(Dispatchers.IO) {
+                            Global.url = getUrl()
+                        }
+                        if (Global.url != "" && Global.url.contains("http")) {
+                            break
+                        }
+                        delay(2000)
+                    }
+                    if (islogin && Global.url != "" && Global.url.contains("http")) {
                         val result = withContext(Dispatchers.IO) {
                             val request = Request.Builder()
-                                .url("https://syc666.gdata.fun/syc/check.php?username=${name.value}")
+                                .url("${Global.url}/syc/check.php?username=${name.value}")
                                 .build()
                             try {
                                 val response = client.newCall(request).execute()
@@ -160,9 +170,19 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                 val startlogin = remember { mutableStateOf(false) }
                 val startregister = remember { mutableStateOf(false) }
                 LaunchedEffect(startlogin.value) {
-                    if (startlogin.value) {
+                    while (Global.url == "") {
+                        withContext(Dispatchers.IO) {
+                            Global.url = getUrl()
+                        }
+                        if (Global.url != "" && Global.url.contains("http")) {
+                           break
+                        }
+                        delay(2000)
+                    }
+                    if (startlogin.value && Global.url != "" && Global.url.contains("http")) {
+
                         val result = withContext(Dispatchers.IO) {
-                            val url = "https://syc666.gdata.fun/syc/login.php"
+                            val url = "${Global.url}/syc/login.php"
 
                             // 创建请求体
                             val formBody = FormBody.Builder()
@@ -248,9 +268,18 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                     }
                 }
                 LaunchedEffect(startregister.value) {
-                    if (startregister.value) {
+                    while (Global.url == "") {
+                        withContext(Dispatchers.IO) {
+                            Global.url = getUrl()
+                        }
+                        if (Global.url != "" && Global.url.contains("http")) {
+                            break
+                        }
+                        delay(2000)
+                    }
+                    if (startregister.value && Global.url != "" && Global.url.contains("http")) {
                         val result = withContext(Dispatchers.IO) {
-                            val url = "https://syc666.gdata.fun/syc/register.php"
+                            val url = "${Global.url}/syc/register.php"
 
                             // 创建请求体
                             val formBody = FormBody.Builder()

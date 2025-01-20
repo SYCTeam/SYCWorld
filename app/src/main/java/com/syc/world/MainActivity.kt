@@ -105,6 +105,7 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
 import java.io.IOException
+import java.util.regex.Pattern
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.math.cos
@@ -115,6 +116,7 @@ import kotlin.system.exitProcess
 
 object Global {
 
+    var url = ""
     var username = ""
 
     var isGiveNotificationPermissions = false
@@ -228,43 +230,6 @@ class MainActivity : ComponentActivity() {
             // 申请电池白名单
             requestIgnoreBatteryOptimizations(context)
 
-            val isLogin = Global.isLogin.collectAsState()
-
-            // 10s刷新一次在线状态
-            LaunchedEffect(isLogin.value) {
-                Log.d("在线状态", "isLogin.value发生变化")
-                if (isLogin.value) {
-                    Log.d("在线状态", "isLogin.value为true")
-                    while (true) {
-                        withContext(Dispatchers.IO) {
-                            Log.d("在线状态", "开始循环,username: ${Global.username}")
-                            if (Global.username.trim().isNotEmpty()) {
-                                if (checkUserOnline(username = Global.username).contains("success")) {
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            context,
-                                            "心跳成功！",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                } else {
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            context,
-                                            "心跳失败！",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
-                                Log.d("在线状态", "已访问")
-                            }
-                            delay(10000)
-                        }
-                    }
-                }
-            }
-
-
             val colorMode = remember { mutableIntStateOf(0) }
             val darkMode =
                 colorMode.intValue == 2 || (isSystemInDarkTheme() && colorMode.intValue == 0)
@@ -302,8 +267,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+suspend fun getUrl(): String {
+    val url = "https://sharechain.qq.com/93bd306d9c78bc6c4bc469c43c086cb6"
+
+    return withContext(Dispatchers.IO) {
+        val client = OkHttpClient()
+        val request = Request.Builder().url(url).build()
+
+        try {
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: "【URL】http://xyc.okc.today【URL】"
+                val pattern = Pattern.compile("【URL】(.*?)【URL】", Pattern.DOTALL)
+                val matcher = pattern.matcher(responseBody)
+
+                if (matcher.find()) {
+                    matcher.group(1) ?: "http://xyc.okc.today"
+                } else {
+                    "http://xyc.okc.today"
+                }
+            } else {
+                "http://xyc.okc.today"
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            "http://xyc.okc.today"
+        } catch (e: CancellationException) {
+            "http://xyc.okc.today"
+        }
+    }
+}
+
 fun checkUserOnline(username: String): String {
-    val url = "https://syc666.gdata.fun/syc/keepAlive.php"
+    val url = "${Global.url}/syc/keepAlive.php"
 
     val client = OkHttpClient()
 
@@ -763,9 +759,18 @@ fun AllHome(
     val duration = easing.duration.toInt()
     val client = OkHttpClient()
     LaunchedEffect(password.value) {
-        if (password.value != "" && name.value != "") {
+        while (Global.url == "") {
+            withContext(Dispatchers.IO) {
+                Global.url = getUrl()
+            }
+            if (Global.url != "" && Global.url.contains("http")) {
+                break
+            }
+            delay(2000)
+        }
+        if (password.value != "" && name.value != "" && Global.url != "" && Global.url.contains("http")) {
             val result = withContext(Dispatchers.IO) {
-                val url = "https://syc666.gdata.fun/syc/login.php"
+                val url = "${Global.url}/syc/login.php"
 
                 // 创建请求体
                 val formBody = FormBody.Builder()

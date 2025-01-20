@@ -9,22 +9,34 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
-import androidx.annotation.RequiresApi
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-//使用前台服务以保持后台运行
+// 使用前台服务以保持后台运行
 
 class ForegroundService : Service() {
 
-        private fun createNotificationChannel() {
+    private fun createNotificationChannel() {
         val channelId = "SYC"
         val channelName = "酸夜沉空间"
         val importance = NotificationManager.IMPORTANCE_DEFAULT
         val notificationChannel = NotificationChannel(channelId, channelName, importance)
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(notificationChannel)
     }
 
@@ -36,10 +48,38 @@ class ForegroundService : Service() {
 
     }
 
-    @SuppressLint("ForegroundServiceType")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = buildForegroundNotification()
         startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+
+        // 启动后台任务进行心跳检测
+        CoroutineScope(Dispatchers.IO).launch {
+            while (Global.url == "") {
+                withContext(Dispatchers.IO) {
+                    Global.url = getUrl()
+                }
+                if (Global.url != "" && Global.url.contains("http")) {
+                    break
+                }
+                delay(2000)
+            }
+            while (true) {
+                if (Global.isLogin.value && Global.url != "" && Global.url.contains("http")) {
+                    if (Global.username.trim().isNotEmpty()) {
+                        val response = checkUserOnline(username = Global.username)
+                        withContext(Dispatchers.Main) {
+                            if (response.contains("success")) {
+                                Toast.makeText(applicationContext, "后台：心跳成功！", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(applicationContext, "后台：心跳失败！", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+                delay(10000)
+            }
+        }
+
         return START_STICKY
     }
 
