@@ -1,6 +1,7 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
+import android.webkit.WebSettings.TextSize
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -67,13 +68,128 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.extra.SuperArrow
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileReader
+import java.io.IOException
+import kotlin.coroutines.cancellation.CancellationException
+
+@Composable
+fun Personsn(
+    colorMode: MutableState<Int>,
+    navController: NavController,
+    ui : MutableState<Int>
+) {
+    val context = LocalContext.current
+    val qq = remember { mutableStateOf("2223289765") }
+    val appInternalDir = context.filesDir
+    val name = remember { mutableStateOf("") }
+    val client = OkHttpClient()
+    if (File(appInternalDir, "username").exists() && File(
+            appInternalDir,
+            "username"
+        ).length() > 0
+    ) {
+        BufferedReader(
+            FileReader(
+                File(
+                    appInternalDir,
+                    "username"
+                )
+            )
+        ).use { reader ->
+            val savedUserInput = reader.readLine()
+            if (savedUserInput.isNotEmpty()) {
+                name.value = savedUserInput
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            while (Global.url == "") {
+                withContext(Dispatchers.IO) {
+                    Global.url = getUrl()
+                }
+                if (Global.url != "" && Global.url.contains("http")) {
+                    break
+                }
+                delay(2000)
+            }
+            if (Global.url != "" && Global.url.contains("http")) {
+                val result = withContext(Dispatchers.IO) {
+                    val request = Request.Builder()
+                        .url("${Global.url}/syc/check.php?username=${name.value}")
+                        .build()
+                    try {
+                        val response = client.newCall(request).execute()
+                        if (response.isSuccessful) {
+                            val responseBody = response.body?.string() ?: ""
+                            responseBody
+                        } else {
+                            ""
+                        }
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                        ""
+                    } catch (e: CancellationException) {
+                        e.printStackTrace()
+                        ""
+                    }
+                }
+                if (result != "") {
+                    val jsonObject = JSONObject(result)
+                    if (jsonObject.getString("status") == "success") {
+                        qq.value = jsonObject.getLong("qq").toString()
+                    }
+                }
+            }
+        }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 6.dp, top = 6.dp)
+    ) {
+        SuperArrow(
+            title = name.value,
+            summary = "这个人很懒，暂时没有简介~",
+            //rightText = "个人信息",
+            leftAction = {
+                Row(modifier = Modifier.padding(end = 10.dp)) {
+                    AsyncImage(
+                        model = "https://q.qlogo.cn/headimg_dl?dst_uin=${qq.value}&spec=640&img_type=jpg",
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                    )
+                }
+            }
+        )
+    }
+    SmallTitle(text = "切换小夜布局", modifier = Modifier.clickable {
+        ui.value = 0
+    })
+}
 
 @Composable
 fun Person(
@@ -96,7 +212,8 @@ fun Person(
             topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
         ) {
             item {
-                MyselfInformation()
+                var ui = remember { mutableStateOf(0) }
+                if(ui.value == 0) MyselfInformation(ui = ui) else Personsn(colorMode = colorMode, navController = navController, ui = ui)
                 Spacer(
                     Modifier.height(
                         WindowInsets.navigationBars.asPaddingValues()
@@ -513,13 +630,9 @@ fun Person(
     }
 }
 
-
-
-
-
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
-fun MyselfInformation() {
+fun MyselfInformation(ui: MutableState<Int>) {
     var userName by remember { mutableStateOf("小夜") }
     var userQQ by remember { mutableStateOf("1640432") }
     var loginCounts by remember { mutableStateOf("12") }
@@ -856,5 +969,8 @@ fun MyselfInformation() {
                 }
             }
         }
+        SmallTitle(text = "切换酸奶布局", modifier = Modifier.clickable {
+            ui.value = 1
+        })
     }
 }

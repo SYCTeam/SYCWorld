@@ -121,7 +121,7 @@ class ForegroundService : Service() {
     companion object
 }
 
-private fun readFile(filePath: String): String {
+fun readFile(filePath: String): String {
     val file = File(filePath)
     return if (file.exists()) {
         try {
