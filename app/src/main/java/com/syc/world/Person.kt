@@ -106,19 +106,8 @@ fun Personsn(
     val appInternalDir = context.filesDir
     val name = remember { mutableStateOf("") }
     val client = OkHttpClient()
-    if (File(appInternalDir, "username").exists() && File(
-            appInternalDir,
-            "username"
-        ).length() > 0
-    ) {
-        BufferedReader(
-            FileReader(
-                File(
-                    appInternalDir,
-                    "username"
-                )
-            )
-        ).use { reader ->
+    if (File(appInternalDir, "username").exists() && File(appInternalDir, "username").length() > 0) {
+        BufferedReader(FileReader(File(appInternalDir, "username"))).use { reader ->
             val savedUserInput = reader.readLine()
             if (savedUserInput.isNotEmpty()) {
                 name.value = savedUserInput
@@ -187,6 +176,9 @@ fun Personsn(
                             .clip(CircleShape)
                     )
                 }
+            },
+            onClick = {
+                navController.navigate("PersonInfo")
             }
         )
     }
@@ -216,7 +208,7 @@ fun Person(
             topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
         ) {
             item {
-                var ui = remember { mutableStateOf(0) }
+                val ui = remember { mutableStateOf(0) }
                 if (ui.value == 0) MyselfInformation(ui = ui) else Personsn(
                     colorMode = colorMode,
                     navController = navController,

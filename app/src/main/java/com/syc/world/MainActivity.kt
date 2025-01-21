@@ -867,6 +867,7 @@ fun AllHome(
                 )
             }
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
+            composable("PersonInfo") { PersonInfo(navController) }
         }
     }
 }
