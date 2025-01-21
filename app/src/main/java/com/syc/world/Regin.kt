@@ -126,40 +126,31 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                         composition = compositionResult.value
                     )
                 LaunchedEffect(name.value) {
-                    while (Global.url == "") {
-                        withContext(Dispatchers.IO) {
-                            Global.url = getUrl()
-                        }
-                        if (Global.url != "" && Global.url.contains("http")) {
-                            break
-                        }
+                    while (Global.url.isEmpty()) {
+                        withContext(Dispatchers.IO) { Global.url = getUrl() }
+                        if (Global.url.contains("http")) break
                         delay(2000)
                     }
-                    if (islogin && Global.url != "" && Global.url.contains("http")) {
+
+                    if (islogin && Global.url.contains("http")) {
                         val result = withContext(Dispatchers.IO) {
-                            val request = Request.Builder()
-                                .url("${Global.url}/syc/check.php?username=${name.value}")
-                                .build()
                             try {
-                                val response = client.newCall(request).execute()
-                                if (response.isSuccessful) {
-                                    val responseBody = response.body?.string() ?: ""
-                                    responseBody
-                                } else {
-                                    ""
-                                }
-                            } catch (e: IOException) {
-                                e.printStackTrace()
-                                ""
-                            } catch (e: CancellationException) {
+                                val response = client.newCall(
+                                    Request.Builder()
+                                        .url("${Global.url}/syc/check.php?username=${name.value}")
+                                        .build()
+                                ).execute()
+                                response.takeIf { it.isSuccessful }?.body?.string().orEmpty()
+                            } catch (e: Exception) {
                                 e.printStackTrace()
                                 ""
                             }
                         }
-                        if (result != "") {
-                            val jsonObject = JSONObject(result)
-                            if (jsonObject.getString("status") == "success") {
-                                loginqq = jsonObject.getLong("qq")
+
+                        result.takeIf { it.isNotEmpty() }?.let {
+                            val jsonObject = JSONObject(it)
+                            if (jsonObject.optString("status") == "success") {
+                                loginqq = jsonObject.optLong("qq")
                             }
                         }
                     }
@@ -169,185 +160,143 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                 val startlogin = remember { mutableStateOf(false) }
                 val startregister = remember { mutableStateOf(false) }
                 LaunchedEffect(startlogin.value) {
-                    while (Global.url == "") {
-                        withContext(Dispatchers.IO) {
-                            Global.url = getUrl()
-                        }
-                        if (Global.url != "" && Global.url.contains("http")) {
-                           break
-                        }
+                    while (Global.url.isEmpty()) {
+                        withContext(Dispatchers.IO) { Global.url = getUrl() }
+                        if (Global.url.contains("http")) break
                         delay(2000)
                     }
-                    if (startlogin.value && Global.url != "" && Global.url.contains("http")) {
 
+                    if (startlogin.value && Global.url.contains("http")) {
                         val result = withContext(Dispatchers.IO) {
                             val url = "${Global.url}/syc/login.php"
 
-                            // 创建请求体
-                            val formBody = FormBody.Builder()
-                                .add("username", name.value)
-                                .add("password", password.value)
-                                .build()
-
-                            // 构建 POST 请求
+                            // 创建 POST 请求
                             val request = Request.Builder()
                                 .url(url)
-                                .post(formBody)  // 使用 .post() 方法
-                                .build()
+                                .post(
+                                    FormBody.Builder()
+                                        .add("username", name.value)
+                                        .add("password", password.value)
+                                        .build()
+                                ).build()
 
                             try {
-                                val response = client.newCall(request).execute()
-                                if (response.isSuccessful) {
-                                    val responseBody = response.body?.string() ?: ""
-                                    responseBody
-                                } else {
-                                    ""
+                                client.newCall(request).execute().use { response ->
+                                    if (response.isSuccessful) response.body?.string().orEmpty() else ""
                                 }
-                            } catch (e: IOException) {
-                                e.printStackTrace()
-                                ""
-                            } catch (e: CancellationException) {
+                            } catch (e: Exception) {
                                 e.printStackTrace()
                                 ""
                             }
                         }
-
-                        println(result)
                         startlogin.value = false
-                        if (result != "") {
-                            val jsonObject = JSONObject(result)
-                            if (jsonObject.getString("status") == "success") {
-                                /*println("登录成功")
-                                context.dataStore.edit { preferences ->
-                                    preferences[stringPreferencesKey("name")] = name.value
-                                }
-                                println("登录成功")
-                                context.dataStore.edit { preferences ->
-                                    preferences[stringPreferencesKey("password")] = password.value
-                                }
-                                println("登录成功")*/
-
+                        if (result.isNotEmpty()) {
+                            JSONObject(result).takeIf { it.getString("status") == "success" }?.let { jsonObject ->
+                                // 储存账号信息
                                 val appInternalDir = context.filesDir
-
-
-                                // 储存账号
                                 val userFile = File(appInternalDir, "username")
-                                if (!userFile.exists()) {
-                                    userFile.createNewFile()
-                                }
                                 val userpassFile = File(appInternalDir, "password")
-                                if (!userpassFile.exists()) {
-                                    userpassFile.createNewFile()
-                                }
-                                BufferedReader(FileReader(userpassFile)).use { reader ->
-                                    FileWriter(userpassFile).use { writer ->
-                                        writer.write(password.value)
-                                    }
-                                }
-                                BufferedReader(FileReader(userFile)).use { reader ->
-                                    FileWriter(userFile).use { writer ->
-                                        writer.write(name.value)
-                                    }
+
+                                listOf(userFile to name.value, userpassFile to password.value).forEach { (file, value) ->
+                                    file.writeText(value)
                                 }
 
                                 Global.username = name.value
                                 Global.setIsLogin(true)
 
                                 navController.navigate("Main") {
-                                    popUpTo("Regin") {
-                                        inclusive = true
-                                    }
+                                    popUpTo("Regin") { inclusive = true }
                                 }
-                                println("登录成功")
-                            } else {
+                            } ?: run {
                                 showErrorDialog.value = true
-                                ErrorDialog.value = jsonObject.getString("message")
+                                ErrorDialog.value = JSONObject(result).optString("message", "登录失败")
                             }
                         }
                     }
                 }
+
                 LaunchedEffect(startregister.value) {
-                    while (Global.url == "") {
-                        withContext(Dispatchers.IO) {
-                            Global.url = getUrl()
-                        }
-                        if (Global.url != "" && Global.url.contains("http")) {
-                            break
-                        }
+                    while (Global.url.isEmpty()) {
+                        withContext(Dispatchers.IO) { Global.url = getUrl() }
+                        if (Global.url.contains("http")) break
                         delay(2000)
                     }
-                    if (startregister.value && Global.url != "" && Global.url.contains("http")) {
+
+                    if (startregister.value && Global.url.contains("http")) {
                         val result = withContext(Dispatchers.IO) {
                             val url = "${Global.url}/syc/register.php"
-
-                            // 创建请求体
                             val formBody = FormBody.Builder()
                                 .add("username", name.value)
                                 .add("password", password.value)
                                 .add("qq", qq.longValue.toString())
                                 .build()
 
-                            // 构建 POST 请求
                             val request = Request.Builder()
                                 .url(url)
-                                .post(formBody)  // 使用 .post() 方法
+                                .post(formBody)
                                 .build()
 
                             try {
-                                val response = client.newCall(request).execute()
-                                if (response.isSuccessful) {
-                                    val responseBody = response.body?.string() ?: ""
-                                    responseBody
-                                } else {
-                                    ""
+                                client.newCall(request).execute().use { response ->
+                                    if (response.isSuccessful) response.body?.string().orEmpty() else ""
                                 }
-                            } catch (e: IOException) {
-                                e.printStackTrace()
-                                ""
-                            } catch (e: CancellationException) {
+                            } catch (e: Exception) {
                                 e.printStackTrace()
                                 ""
                             }
                         }
+                        startregister.value = false
 
-                        println(result)
-                        startlogin.value = false
-                        if (result != "") {
-                            val jsonObject = JSONObject(result)
-                            if (jsonObject.getString("status") == "success") {
+                        if (result.isNotEmpty()) {
+                            JSONObject(result).takeIf { it.getString("status") == "success" }?.let {
                                 val appInternalDir = context.filesDir
 
-                                // 储存账号
-                                val userFile = File(appInternalDir, "username")
-                                if (!userFile.exists()) {
-                                    userFile.createNewFile()
+                                // 储存账号信息
+                                listOf("username" to name.value, "password" to password.value).forEach { (fileName, value) ->
+                                    val file = File(appInternalDir, fileName)
+                                    file.writeText(value)
                                 }
-                                BufferedReader(FileReader(userFile)).use { reader ->
-                                    FileWriter(userFile).use { writer ->
-                                        writer.write(name.value)
+                                if (Global.url.contains("http")) {
+                                    val result1 = withContext(Dispatchers.IO) {
+                                        val url = "${Global.url}/syc/login.php"
+
+                                        // 创建 POST 请求
+                                        val request = Request.Builder()
+                                            .url(url)
+                                            .post(
+                                                FormBody.Builder()
+                                                    .add("username", name.value)
+                                                    .add("password", password.value)
+                                                    .build()
+                                            ).build()
+
+                                        try {
+                                            client.newCall(request).execute().use { response ->
+                                                if (response.isSuccessful) response.body?.string().orEmpty() else ""
+                                            }
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                            ""
+                                        }
                                     }
-                                }
-                                val userpassFile = File(appInternalDir, "password")
-                                if (!userpassFile.exists()) {
-                                    userpassFile.createNewFile()
-                                }
-                                BufferedReader(FileReader(userpassFile)).use { reader ->
-                                    FileWriter(userpassFile).use { writer ->
-                                        writer.write(password.value)
+                                    if (result1.isNotEmpty()) {
+                                        JSONObject(result1).takeIf { it.getString("status") == "success" }?.let { jsonObject ->
+                                            navController.navigate("Main") {
+                                                popUpTo("Regin") { inclusive = true }
+                                            }
+                                        } ?: run {
+                                            showErrorDialog.value = true
+                                            ErrorDialog.value = JSONObject(result1).optString("message", "登录失败")
+                                        }
                                     }
                                 }
 
                                 Global.username = name.value
                                 Global.setIsLogin(true)
 
-                                navController.navigate("Main") {
-                                    popUpTo("Regin") {
-                                        inclusive = true
-                                    }
-                                }
-                            } else {
+                            } ?: run {
                                 showErrorDialog.value = true
-                                ErrorDialog.value = jsonObject.getString("message")
+                                ErrorDialog.value = JSONObject(result).optString("message", "注册失败")
                             }
                         }
                     }
