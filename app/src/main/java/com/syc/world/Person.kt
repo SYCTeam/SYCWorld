@@ -220,7 +220,7 @@ fun Person(
                             withContext(Dispatchers.Main) {
                                 Toast.makeText(
                                     context,
-                                    "资料修改成功！",
+                                    "简介修改成功！",
                                     Toast.LENGTH_SHORT
                                 )
                                     .show()

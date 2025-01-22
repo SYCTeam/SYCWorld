@@ -113,6 +113,39 @@ suspend fun getUrl(): String {
     }
 }
 
+fun login(username: String, password: String): String {
+    val url = "${Global.url}/syc/login.php".toHttpUrlOrNull() ?: return "Error: Invalid URL"
+
+    val client = OkHttpClient()
+
+    // 创建请求体，包含用户名和密码
+    val formBody = FormBody.Builder()
+        .add("username", username)
+        .add("password", password)
+        .build()
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("信息获取", responseBody)
+            responseBody
+        } else {
+            "Error: ${response.message}"
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        "Error: ${e.message}"
+    }
+}
+
+
 fun checkUserOnline(username: String): String {
     val url = "${Global.url}/syc/keepAlive.php"
 

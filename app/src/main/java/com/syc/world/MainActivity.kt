@@ -3,6 +3,8 @@ package com.syc.world
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -11,7 +13,6 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
@@ -67,6 +68,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
@@ -387,6 +389,29 @@ fun requestPermissions(context: Context) {
     }
 }
 
+@SuppressLint("ServiceCast")
+fun createStepCountNotification(context: Context, title: String, content: String) {
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    // 创建通知渠道
+    val channelId = "SYC StepCount"
+    val channelName = "酸夜沉空间计步服务"
+    val importance = NotificationManager.IMPORTANCE_DEFAULT
+    val notificationChannel = NotificationChannel(channelId, channelName, importance)
+    notificationManager.createNotificationChannel(notificationChannel)
+
+    // 创建通知
+    val notificationBuilder = NotificationCompat.Builder(context, channelId)
+        .setSmallIcon(R.mipmap.ic_launcher) // 设置通知图标
+        .setContentTitle(title) // 设置通知标题
+        .setContentText(content) // 设置通知内容
+        .setOngoing(true) // 设置通知为常驻通知
+        .setAutoCancel(false) // 设置通知自动消失
+
+    // 发送通知
+    notificationManager.notify(10001, notificationBuilder.build())
+}
+
 // 电池优化
 @SuppressLint("BatteryLife")
 fun requestIgnoreBatteryOptimizations(context: Context) {
@@ -586,27 +611,14 @@ suspend fun monitorStepCount(context: Context) {
     val stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
         ?: return // 不支持步态检测传感器
 
-    var lastStepTime = System.currentTimeMillis() // 用来跟踪上次步伐的时间
-    val timeThreshold = 50L // 最小时间间隔，100ms 适合防止误判
-
     var stepCount = 0
 
-    // 步伐阈值可以根据需求调整
-    val stepThreshold = 0.1f // 较低的步伐阈值，尝试捕捉每一个步伐
-
     val sensorEventListener = object : SensorEventListener {
+        @SuppressLint("SuspiciousIndentation")
         override fun onSensorChanged(event: SensorEvent?) {
             if (event == null || event.sensor.type != Sensor.TYPE_STEP_DETECTOR) return
-
-            // 通过检查 event.values[0] 来确认步伐是否真的发生
-            if (event.values[0] > stepThreshold) {  // 调整阈值，增加灵敏度
-                val currentTime = System.currentTimeMillis()
-                if (currentTime - lastStepTime > timeThreshold) {
                     // 防止误判，增加步数计数
                     stepCount++
-                    lastStepTime = currentTime // 更新上次步伐的时间
-                }
-            }
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -625,7 +637,7 @@ suspend fun monitorStepCount(context: Context) {
         withContext(Dispatchers.Main) {
             Global.stepCount = stepCount
         }
-        delay(500) // 每50ms 更新一次，增加实时响应
+        delay(500)
     }
 }
 

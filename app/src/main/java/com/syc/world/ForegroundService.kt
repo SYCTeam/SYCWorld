@@ -21,6 +21,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStreamReader
+import kotlin.system.exitProcess
 
 // 使用前台服务以保持后台运行
 
@@ -28,8 +29,8 @@ class ForegroundService : Service() {
 
     private fun createNotificationChannel() {
         val channelId = "SYC"
-        val channelName = "酸夜沉空间"
-        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channelName = "酸夜沉空间前台服务"
+        val importance = NotificationManager.IMPORTANCE_HIGH
         val notificationChannel = NotificationChannel(channelId, channelName, importance)
 
         val notificationManager =
@@ -46,8 +47,11 @@ class ForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = buildForegroundNotification()
+        val currentTime = System.currentTimeMillis()
         var lastExecutionTime: Long = 0
+        var nextExecutionTime = 5 * 60 * 1000
+        val notification =
+            buildForegroundNotification()
 
         startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
 
@@ -55,10 +59,20 @@ class ForegroundService : Service() {
             monitorStepCount(applicationContext)
         }
 
+        CoroutineScope(Dispatchers.IO).launch {
+            while (true) {
+                delay(1 * 60 * 1000)
+                nextExecutionTime -= 1 * 60 * 1000
+                createStepCountNotification(applicationContext, "步数：${Global.stepCount}", "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。")
+                if (nextExecutionTime <= 0) {
+                    nextExecutionTime = 5 * 60 * 1000
+                }
+            }
+        }
+
         // 启动后台任务进行步数监测
         CoroutineScope(Dispatchers.IO).launch {
             while (true) {
-                val currentTime = System.currentTimeMillis()
                 if (currentTime - lastExecutionTime >= 5 * 60 * 1000) { // 5 分钟
                     // 每5分钟提交一次步数
                     withContext(Dispatchers.IO) {
@@ -90,6 +104,7 @@ class ForegroundService : Service() {
                 delay(2000)
             }
             while (true) {
+                createStepCountNotification(applicationContext, "步数：${Global.stepCount}", "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。")
                 if (Global.isLogin.value && Global.url != "" && Global.url.contains("http")) {
                     if (Global.username.trim().isNotEmpty()) {
                         val response = checkUserOnline(username = Global.username)
@@ -101,11 +116,35 @@ class ForegroundService : Service() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             } else {
-                                Toast.makeText(
-                                    applicationContext,
-                                    "后台：心跳失败！",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                withContext(Dispatchers.IO) {
+                                    val loginResponse = login(Global.username, Global.password)
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            applicationContext,
+                                            "后台：心跳失败！\n正在尝试重新登录...",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                    if (loginResponse.contains("success")) {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(
+                                                applicationContext,
+                                                "登录成功！",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    } else {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(
+                                                applicationContext,
+                                                "登录失败，请重启软件！",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        delay(1000)
+                                        exitProcess(0)
+                                    }
+                                }
                             }
                         }
                     }
@@ -122,7 +161,7 @@ class ForegroundService : Service() {
     }
 
     @SuppressLint("SdCardPath")
-    private fun buildForegroundNotification(): Notification {
+    private fun buildForegroundNotification(text: String = "We are unstoppable."): Notification {
         val channelId = "SYC"
 
         val emptyIntent = Intent().apply {
@@ -138,7 +177,7 @@ class ForegroundService : Service() {
 
         return NotificationCompat.Builder(this, channelId)
             .setContentTitle(if (name != "error") name else "酸夜沉空间正在运行中")
-            .setContentText("We are unstoppable.")
+            .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
