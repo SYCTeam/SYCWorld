@@ -572,46 +572,62 @@ fun RequestAllFilesAccessPermission(
     }
 }
 
-fun getStepCount(context: Context): Int {
-
-    // 检查权限，如果没有权限，直接返回-2，因为未授权
+suspend fun monitorStepCount(context: Context) {
+    // 检查权限，如果没有权限，直接返回
     if (ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACTIVITY_RECOGNITION
         ) != PackageManager.PERMISSION_GRANTED
     ) {
-        return -2 // 未获得权限
+        return // 没有权限，退出
     }
 
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     val stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
-        ?: return -1 // 不支持步态检测传感器，该换手机啦
+        ?: return // 不支持步态检测传感器
+
+    var lastStepTime = System.currentTimeMillis() // 用来跟踪上次步伐的时间
+    val timeThreshold = 50L // 最小时间间隔，100ms 适合防止误判
+
+    var stepCount = 0
+
+    // 步伐阈值可以根据需求调整
+    val stepThreshold = 0.1f // 较低的步伐阈值，尝试捕捉每一个步伐
 
     val sensorEventListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent?) {
             if (event == null || event.sensor.type != Sensor.TYPE_STEP_DETECTOR) return
 
-            // 每次检测到一步，就增加一步，我真是太聪明了
-            Global.stepCount++
+            // 通过检查 event.values[0] 来确认步伐是否真的发生
+            if (event.values[0] > stepThreshold) {  // 调整阈值，增加灵敏度
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastStepTime > timeThreshold) {
+                    // 防止误判，增加步数计数
+                    stepCount++
+                    lastStepTime = currentTime // 更新上次步伐的时间
+                }
+            }
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     }
 
+    // 注册步态传感器监听器
     sensorManager.registerListener(
         sensorEventListener,
         stepDetectorSensor,
-        SensorManager.SENSOR_DELAY_UI
+        SensorManager.SENSOR_DELAY_UI // 使用UI延迟，适合较高频的更新
     )
 
-    // 给传感器一点时间来收集数据！
-    Thread.sleep(1000)
-
-    sensorManager.unregisterListener(sensorEventListener)
-
-    return Global.stepCount
+    // 循环监测步数
+    while (true) {
+        // 这里可以更新 UI 或进行其他操作
+        withContext(Dispatchers.Main) {
+            Global.stepCount = stepCount
+        }
+        delay(500) // 每50ms 更新一次，增加实时响应
+    }
 }
-
 
 @Immutable
 class SpringEasing @JvmOverloads constructor(

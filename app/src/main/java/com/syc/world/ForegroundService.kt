@@ -52,10 +52,7 @@ class ForegroundService : Service() {
         startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
 
         CoroutineScope(Dispatchers.IO).launch {
-            while (true) {
-                getStepCount(applicationContext)
-                delay(1000)
-            }
+            monitorStepCount(applicationContext)
         }
 
         // 启动后台任务进行步数监测
