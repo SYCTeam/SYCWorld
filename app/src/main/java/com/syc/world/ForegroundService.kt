@@ -10,24 +10,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
-import android.util.Log
 import android.widget.Toast
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileReader
 import java.io.IOException
 import java.io.InputStreamReader
 
@@ -56,7 +47,39 @@ class ForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = buildForegroundNotification()
+        var lastExecutionTime: Long = 0
+
         startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            while (true) {
+                getStepCount(applicationContext)
+                delay(1000)
+            }
+        }
+
+        // 启动后台任务进行步数监测
+        CoroutineScope(Dispatchers.IO).launch {
+            while (true) {
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastExecutionTime >= 5 * 60 * 1000) { // 5 分钟
+                    // 每5分钟提交一次步数
+                    withContext(Dispatchers.IO) {
+                        if (Global.username.trim().isNotEmpty() && Global.password.trim()
+                                .isNotEmpty() && Global.stepCount.toString().trim().isNotEmpty()
+                        ) {
+                            modifyStepCount(
+                                Global.username,
+                                Global.password,
+                                Global.stepCount.toString()
+                            )
+                        }
+                    }
+                    lastExecutionTime = currentTime
+                }
+                delay(1000) // 每秒检查一次
+            }
+        }
 
         // 启动后台任务进行心跳检测
         CoroutineScope(Dispatchers.IO).launch {
@@ -75,9 +98,17 @@ class ForegroundService : Service() {
                         val response = checkUserOnline(username = Global.username)
                         withContext(Dispatchers.Main) {
                             if (response.contains("success")) {
-                                Toast.makeText(applicationContext, "后台：心跳成功！", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    applicationContext,
+                                    "后台：心跳成功！\n步数：${Global.stepCount}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             } else {
-                                Toast.makeText(applicationContext, "后台：心跳失败！", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    applicationContext,
+                                    "后台：心跳失败！",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     }

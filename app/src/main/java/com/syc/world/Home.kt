@@ -27,15 +27,16 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,14 +56,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import java.util.Date
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
@@ -121,7 +125,11 @@ fun HeadlineInLargePrint(headline: String) {
 
 @SuppressLint("SimpleDateFormat", "WeekBasedYear")
 fun transToString(time: Long): String {
-    return SimpleDateFormat("YYYY-MM-DD hh:mm:ss").format(time)
+    val isMillisecond = time > 9999999999L
+    val pattern = if (isMillisecond) "yyyy-MM-dd HH:mm:ss.SSS" else "yyyy-MM-dd HH:mm:ss"
+    val formatter = SimpleDateFormat(pattern)
+    val date = if (isMillisecond) Date(time) else Date(time * 1000)
+    return formatter.format(date)
 }
 
 /*
@@ -506,6 +514,43 @@ fun LatestContentShow() {
 
 @Composable
 fun StepRank() {
+    var isLoading by remember { mutableStateOf(true) }
+    var userQQ by remember { mutableStateOf("...") }
+
+    LaunchedEffect(isLoading) {
+        if (Global.username.trim().isNotEmpty()) {
+            while (isLoading) {
+                withContext(Dispatchers.IO) {
+                    val userInfoFirst = getUserInformation(Global.username)
+                    if (isJson(userInfoFirst)) {
+                        val userInfo = parseUserInfo(userInfoFirst)
+                        if (userInfo != null) {
+                            userQQ = userInfo.qq
+                        }
+                    }
+                }
+                delay(1000)
+            }
+        }
+    }
+
+    LaunchedEffect(userQQ) {
+        if (userQQ.trim().isNotEmpty() && userQQ != "...") {
+            isLoading = false
+        }
+    }
+
+    var stepCount by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            withContext(Dispatchers.IO) {
+                stepCount = Global.stepCount
+                delay(500)
+            }
+        }
+    }
+
     Column(modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)) {
         HeadlineInLargePrint(headline = "步数排行")
         Card(
@@ -520,11 +565,11 @@ fun StepRank() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                var step by remember { mutableStateOf(0f) }
-                var step2 by remember { mutableStateOf(0f) }
-                var step3 by remember { mutableStateOf(0f) }
+                var step by remember { mutableFloatStateOf(0f) }
+                var step2 by remember { mutableFloatStateOf(0f) }
+                var step3 by remember { mutableFloatStateOf(0f) }
                 LaunchedEffect(Unit) {
-                    step = 10000f
+                    step = stepCount.toFloat()
                     step2 = 6000f
                     step3 = 3000f
                 }
@@ -600,11 +645,21 @@ fun StepRank() {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                 ) {
-                    Image(
-                        painterResource(R.drawable.my),
-                        contentDescription = null,
-                        modifier = Modifier.size(55.dp)
-                    )
+                    if (isLoading) {
+                        Image(
+                            painterResource(R.drawable.my),
+                            contentDescription = null,
+                            modifier = Modifier.size(45.dp)
+                        )
+                    } else {
+                        AsyncImage(
+                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${userQQ}&spec=640&img_type=jpg",
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(55.dp)
+                                .clip(CircleShape)
+                        )
+                    }
                     Image(
                         painterResource(R.drawable.gold),
                         contentDescription = null,
@@ -613,13 +668,13 @@ fun StepRank() {
                             .offset(y = (-20).dp)
                     )
                     Text(
-                        text = "沉莫",
+                        text = Global.username,
                         fontSize = 13.sp,
                         modifier = Modifier.offset(y = (-15).dp)
                     )
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            text = animatedValue.value.toInt().toString(),
+                            text = stepCount.toString(),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Light,
                             modifier = Modifier.offset(y = (-15).dp)

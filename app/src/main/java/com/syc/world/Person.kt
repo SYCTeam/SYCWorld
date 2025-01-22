@@ -1,7 +1,6 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -45,12 +44,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,19 +68,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
-import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -96,7 +92,7 @@ import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 
 @Composable
-fun Personsn(
+fun Person(
     colorMode: MutableState<Int>,
     navController: NavController,
     ui: MutableState<Int>
@@ -106,7 +102,11 @@ fun Personsn(
     val appInternalDir = context.filesDir
     val name = remember { mutableStateOf("") }
     val client = OkHttpClient()
-    if (File(appInternalDir, "username").exists() && File(appInternalDir, "username").length() > 0) {
+    if (File(appInternalDir, "username").exists() && File(
+            appInternalDir,
+            "username"
+        ).length() > 0
+    ) {
         BufferedReader(FileReader(File(appInternalDir, "username"))).use { reader ->
             val savedUserInput = reader.readLine()
             if (savedUserInput.isNotEmpty()) {
@@ -194,8 +194,10 @@ fun Person(
     colorMode: MutableState<Int>,
     navController: NavController
 ) {
-    Scaffold() {
+    Scaffold {
         val context = LocalContext.current
+        val isShowEditSynopsis = Global.isShowEditSynopsis.collectAsState()
+        var isSynopsis by remember { mutableStateOf(false) }
         val isShowEditPassword = Global.isShowEditPassword.collectAsState()
         val isShowEditQQ = Global.isShowEditQQ.collectAsState()
         val isShowAskExit = Global.isShowAskExit.collectAsState()
@@ -203,13 +205,66 @@ fun Person(
         var textNew by remember { mutableStateOf("") }
         var passwordHidden by remember { mutableStateOf(false) }
 
+        LaunchedEffect(isSynopsis) {
+            if (isSynopsis) {
+                withContext(Dispatchers.IO) {
+                    val synopsis = modifySynopsis(
+                        username = Global.username,
+                        password = Global.password,
+                        synopsis = textNew
+                    )
+                    if (isJson(synopsis)) {
+                        if ((parseSynopsisData(synopsis)?.status
+                                ?: "未知错误，请稍后再试") == "success"
+                        ) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "资料修改成功！",
+                                    Toast.LENGTH_SHORT
+                                )
+                                    .show()
+                            }
+                            textOld = ""
+                            textNew = ""
+                            Global.setIsShowEditSynopsis(false)
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    parseSynopsisData(synopsis)?.message
+                                        ?: "未知错误，请稍后再试", Toast.LENGTH_SHORT
+                                )
+                                    .show()
+                            }
+                            textOld = ""
+                            textNew = ""
+                            Global.setIsShowEditSynopsis(false)
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "未知错误，请稍后再试", Toast.LENGTH_SHORT
+                            )
+                                .show()
+                        }
+                        textOld = ""
+                        textNew = ""
+                        Global.setIsShowEditSynopsis(false)
+                    }
+                    isSynopsis = false
+                }
+            }
+        }
+
         LazyColumn(
             contentPadding = PaddingValues(top = padding.calculateTopPadding()),
             topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
         ) {
             item {
-                val ui = remember { mutableStateOf(0) }
-                if (ui.value == 0) MyselfInformation(ui = ui) else Personsn(
+                val ui = remember { mutableIntStateOf(0) }
+                if (ui.intValue == 0) MyselfInformation(ui = ui) else Person(
                     colorMode = colorMode,
                     navController = navController,
                     ui = ui
@@ -224,7 +279,7 @@ fun Person(
         }
 
         AnimatedVisibility(
-            visible = isShowEditPassword.value || isShowEditQQ.value || isShowAskExit.value,
+            visible = isShowEditPassword.value || isShowEditQQ.value || isShowAskExit.value || isShowEditSynopsis.value,
             enter = fadeIn(
                 animationSpec = tween(durationMillis = 200)
             ),
@@ -238,6 +293,7 @@ fun Person(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
                     ) {
+                        Global.setIsShowEditSynopsis(false)
                         Global.setIsShowEditPassword(false)
                         Global.setIsShowEditQQ(false)
                         Global.setIsShowAskExit(false)
@@ -524,6 +580,111 @@ fun Person(
         }
 
         AnimatedVisibility(
+            visible = isShowEditSynopsis.value,
+            enter = scaleIn(
+                initialScale = 0f,
+                animationSpec = tween(
+                    durationMillis = 300
+                )
+            ) + slideInVertically(
+                initialOffsetY = { fullHeight -> fullHeight },
+                animationSpec = tween(
+                    durationMillis = 300
+                )
+            ),
+            exit = scaleOut(
+                targetScale = 0f,
+                animationSpec = tween(
+                    durationMillis = 300
+                )
+            ) + slideOutVertically(
+                targetOffsetY = { fullHeight -> fullHeight },
+                animationSpec = tween(
+                    durationMillis = 300
+                )
+            )
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                ElevatedCard(
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(10.dp),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.Top
+                    ) {
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        HeadlineInLargePrint(headline = "修改简介")
+
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                modifier = Modifier,
+                                horizontalAlignment = Alignment.Start,
+                                verticalArrangement = Arrangement.Top
+                            ) {
+                                Text(
+                                    text = "请输入新简介: ",
+                                    modifier = Modifier
+                                        .padding(10.dp),
+                                    fontSize = 15.sp,
+                                    style = TextStyle(fontWeight = FontWeight.Bold)
+                                )
+
+                                TextField(
+                                    modifier = Modifier.padding(10.dp),
+                                    value = textNew,
+                                    onValueChange = {
+                                        textNew = it
+                                    },
+                                    label = {
+                                        Text("简介")
+                                    },
+                                    visualTransformation = VisualTransformation.None,
+                                    keyboardOptions = KeyboardOptions.Default,
+                                    keyboardActions = KeyboardActions.Default
+                                )
+
+                            }
+                        }
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Button(
+                                modifier = Modifier.padding(10.dp),
+                                onClick = {
+                                    if (textNew.trim().isNotEmpty()) {
+                                        isSynopsis = true
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "请确保资料不为空！",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }) {
+                                Icon(
+                                    Icons.Filled.Done,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                                )
+                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                                Text("确认")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        AnimatedVisibility(
             visible = isShowAskExit.value,
             enter = scaleIn(
                 initialScale = 0f,
@@ -630,130 +791,20 @@ fun Person(
     }
 }
 
-fun getUserInformation(username: String): String {
-
-    val url = "${Global.url}/syc/check.php".toHttpUrlOrNull()?.newBuilder()
-        ?.addQueryParameter("username", username)
-        ?.build()
-
-    if (url == null) {
-        return "Error"
-    }
-
-    val client = OkHttpClient()
-
-    val request = Request.Builder()
-        .url(url)
-        .get()
-        .build()
-
-    return try {
-        val response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            val responseBody = response.body?.string() ?: ""
-            Log.d("信息获取", responseBody)
-            responseBody
-        } else {
-            "Error"
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        "Error"
-    }
-}
-
-fun parseUserInfo(json: String): UserInfo? {
-    val gson = Gson()
-    return try {
-        gson.fromJson(json, UserInfo::class.java)
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
-    }
-}
-
-data class UserInfo(
-    @SerializedName("status") val status: String,
-    @SerializedName("username") val username: String,
-    @SerializedName("registerIp") val registerIp: String,
-    @SerializedName("registerTime") val registerTime: Long,
-    @SerializedName("lastAccessTime") val lastAccessTime: Long,
-    @SerializedName("loginCount") val loginCount: String,
-    @SerializedName("loginIp") val loginIp: String,
-    @SerializedName("online") val online: String,
-    @SerializedName("qq") val qq: String
-)
-
-fun isJson(jsonString: String): Boolean {
-    return try {
-        Gson().fromJson(jsonString, Any::class.java)
-        true
-    } catch (e: JsonSyntaxException) {
-        false
-    }
-}
-
-suspend fun getAddressFromIp(ip: String): String {
-    val url = "https://whois.pconline.com.cn/ipJson.jsp?ip=$ip&json=true"
-
-    return withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
-
-        val request = Request.Builder()
-            .url(url)
-            .build()
-
-        try {
-            val response = withTimeout(4000) {
-                client.newCall(request).execute()
-            }
-            if (response.isSuccessful) {
-                val responseString = response.body?.string() ?: "无"
-                try {
-                    Log.d("信息获取", responseString)
-                    val ipInfo: IpInfo =
-                        Gson().fromJson(responseString, IpInfo::class.java)
-
-                    ipInfo.city.ifEmpty {
-                        ipInfo.province
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    "无"
-                }
-            } else {
-                "无"
-            }
-        } catch (e: TimeoutCancellationException) {
-            "无"
-        } catch (e: IOException) {
-            e.printStackTrace()
-            "无"
-        }
-    }
-}
-
-data class IpInfo(
-    @SerializedName("ip") val ip: String,
-    @SerializedName("pro") val province: String,
-    @SerializedName("proCode") val provinceCode: String,
-    @SerializedName("city") val city: String,
-    @SerializedName("cityCode") val cityCode: String,
-    @SerializedName("region") val region: String,
-    @SerializedName("regionCode") val regionCode: String,
-    @SerializedName("addr") val addr: String,
-    @SerializedName("regionNames") val regionNames: String,
-    @SerializedName("err") val err: String
-)
-
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun MyselfInformation(ui: MutableState<Int>) {
+    var isLoading by remember { mutableStateOf(true) }
     var userName by remember { mutableStateOf("...") }
     var userQQ by remember { mutableStateOf("...") }
     var loginCounts by remember { mutableStateOf("...") }
     var registerTime by remember { mutableStateOf("...") }
     var registerAddress by remember { mutableStateOf("...") }
+    var synopsis by remember { mutableStateOf("...") }
+
+    val isShowEditSynopsis = Global.isShowEditSynopsis.collectAsState()
+    val isShowEditPassword = Global.isShowEditPassword.collectAsState()
+    val isShowEditQQ = Global.isShowEditQQ.collectAsState()
 
     var change by remember { mutableStateOf(false) }
     val buttonSize by animateDpAsState(
@@ -773,21 +824,51 @@ fun MyselfInformation(ui: MutableState<Int>) {
         change = true
     }
 
-    LaunchedEffect(Unit) {
-        if (Global.username.trim().isNotEmpty()) {
-            withContext(Dispatchers.IO) {
-                userName = Global.username
-                val userInfoFirst = getUserInformation(userName)
-                if (isJson(userInfoFirst)) {
-                    val userInfo = parseUserInfo(userInfoFirst)
-                    if (userInfo != null) {
-                        userQQ = userInfo.qq
-                        loginCounts = userInfo.loginCount
-                        registerTime = transToString(userInfo.registerTime)
-                        registerAddress = getAddressFromIp(userInfo.registerIp)
-                    }
+    LaunchedEffect(isShowEditSynopsis.value, isShowEditPassword.value, isShowEditQQ.value) {
+        withContext(Dispatchers.IO) {
+            userName = Global.username
+            val userInfoFirst = getUserInformation(userName)
+            if (isJson(userInfoFirst)) {
+                val userInfo = parseUserInfo(userInfoFirst)
+                if (userInfo != null) {
+                    synopsis = userInfo.synopsis
+                    userQQ = userInfo.qq
+                    loginCounts = userInfo.loginCount
+                    registerTime = transToString(userInfo.registerTime)
                 }
             }
+        }
+    }
+
+
+    LaunchedEffect(isLoading) {
+        if (Global.username.trim().isNotEmpty()) {
+            while (isLoading) {
+                withContext(Dispatchers.IO) {
+                    userName = Global.username
+                    val userInfoFirst = getUserInformation(userName)
+                    if (isJson(userInfoFirst)) {
+                        val userInfo = parseUserInfo(userInfoFirst)
+                        if (userInfo != null) {
+                            synopsis = userInfo.synopsis
+                            userQQ = userInfo.qq
+                            loginCounts = userInfo.loginCount
+                            registerTime = transToString(userInfo.registerTime)
+                            registerAddress = getAddressFromIp(userInfo.registerIp)
+                        }
+                    }
+                }
+                delay(1000)
+            }
+        }
+    }
+
+    LaunchedEffect(userName, userQQ, loginCounts, registerTime, registerAddress, synopsis) {
+        if (userName.trim().isNotEmpty() && userQQ.trim().isNotEmpty() && loginCounts.trim()
+                .isNotEmpty() && registerTime.trim().isNotEmpty() && registerAddress.trim()
+                .isNotEmpty() && synopsis.trim().isNotEmpty()
+        ) {
+            isLoading = false
         }
     }
 
@@ -796,6 +877,15 @@ fun MyselfInformation(ui: MutableState<Int>) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
+        if (isLoading) {
+            Image(
+                painterResource(R.drawable.my),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+            )
+        } else {
         AsyncImage(
             model = "https://q.qlogo.cn/headimg_dl?dst_uin=${userQQ}&spec=640&img_type=jpg",
             contentDescription = null,
@@ -803,6 +893,21 @@ fun MyselfInformation(ui: MutableState<Int>) {
                 .size(80.dp)
                 .clip(CircleShape)
         )
+            }
+        TextButton(
+            modifier = Modifier.padding(top = 10.dp),
+            onClick = {
+                Global.setIsShowEditSynopsis(true)
+            }
+        ) {
+            Text(
+                text = synopsis,
+                fontSize = 20.sp,
+                style = TextStyle(fontStyle = FontStyle.Italic),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         Box(
             modifier = Modifier
                 .padding(10.dp)
@@ -949,18 +1054,18 @@ fun MyselfInformation(ui: MutableState<Int>) {
                             modifier = Modifier
                                 .padding(start = 10.dp)
                                 .size(buttonSize),
-                            painter = painterResource(id = R.drawable.time),
-                            contentDescription = "此处为注册时间。"
+                            painter = painterResource(id = R.drawable.address),
+                            contentDescription = "注册地区为$registerAddress。"
                         )
                         Spacer(modifier = Modifier.width(20.dp))
                         Text(
-                            text = "注册时间: ",
+                            text = "注册地区: ",
                             modifier = Modifier,
                             fontSize = 15.sp,
                             style = TextStyle(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = registerTime,
+                            text = registerAddress,
                             modifier = Modifier,
                             fontSize = 15.sp,
                             style = TextStyle(fontStyle = FontStyle.Normal)
@@ -987,18 +1092,18 @@ fun MyselfInformation(ui: MutableState<Int>) {
                             modifier = Modifier
                                 .padding(start = 10.dp)
                                 .size(buttonSize),
-                            painter = painterResource(id = R.drawable.address),
-                            contentDescription = "注册地区为$registerAddress。"
+                            painter = painterResource(id = R.drawable.time),
+                            contentDescription = "此处为注册时间。"
                         )
                         Spacer(modifier = Modifier.width(20.dp))
                         Text(
-                            text = "注册地区: ",
+                            text = "注册时间: ",
                             modifier = Modifier,
                             fontSize = 15.sp,
                             style = TextStyle(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = registerAddress,
+                            text = registerTime,
                             modifier = Modifier,
                             fontSize = 15.sp,
                             style = TextStyle(fontStyle = FontStyle.Normal)

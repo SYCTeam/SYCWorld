@@ -202,6 +202,7 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                                 }
 
                                 Global.username = name.value
+                                Global.password = password.value
                                 Global.setIsLogin(true)
 
                                 navController.navigate("Main") {
@@ -292,6 +293,7 @@ fun Regin(hazeStyle: HazeStyle, hazeState: HazeState, navController: NavControll
                                 }
 
                                 Global.username = name.value
+                                Global.password = password.value
                                 Global.setIsLogin(true)
 
                             } ?: run {

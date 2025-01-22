@@ -1,9 +1,17 @@
 package com.syc.world
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
@@ -42,7 +50,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,7 +66,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -105,7 +114,6 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
 import java.io.IOException
-import java.util.regex.Pattern
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.math.cos
@@ -118,9 +126,21 @@ object Global {
 
     var url = ""
     var username = ""
+    var password = ""
+    var stepCount = 0
 
+    var isGiveBodySensorsPermissions = false
+    var isGiveActivityRecognitionPermissions = false
     var isGiveNotificationPermissions = false
     var isGiveManageFilePermissions = false
+
+    private val _isShowEditSynopsis = MutableStateFlow(false)
+    val isShowEditSynopsis: StateFlow<Boolean>
+        get() = _isShowEditSynopsis
+
+    fun setIsShowEditSynopsis(value: Boolean) {
+        _isShowEditSynopsis.value = value
+    }
 
     private val _isShowEditPassword = MutableStateFlow(false)
     val isShowEditPassword: StateFlow<Boolean>
@@ -163,14 +183,51 @@ class MainActivity : ComponentActivity() {
         window.isNavigationBarContrastEnforced = false
         setContent {
 
+            requestPermissions(this)
+
+
             // 前台服务，启动！！！
             val serviceIntent = Intent(this, ForegroundService::class.java)
             startForegroundService(serviceIntent)
 
+            var showBodySensorsPermissionDialog by remember { mutableStateOf(false) }
+            var showActivityRecognitionPermissionDialog by remember { mutableStateOf(false) }
             var showNotificationPermissionDialog by remember { mutableStateOf(false) }
             var showManageFilePermissionDialog by remember { mutableStateOf(false) }
 
             val context = LocalContext.current
+
+            //在 Composable 中根据需要显示弹窗
+            if (showBodySensorsPermissionDialog) {
+                CheckBodySensorsPermission(
+                    "申请身体传感器权限",
+                    "应用需要'运动健康'权限和'身体传感器'权限才能正常工作，请点击下方“设置”按钮进行设置。",
+                    onSettingsClick = {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        intent.data = Uri.parse("package:${context.packageName}")
+                        context.startActivity(intent)
+                    },
+                    onCancelClick = {
+                        exitProcess(0)
+                    }
+                )
+            }
+
+            //在 Composable 中根据需要显示弹窗
+            if (showActivityRecognitionPermissionDialog) {
+                CheckBodySensorsPermission(
+                    "申请运动健康权限",
+                    "应用需要'运动健康'权限和'身体传感器'权限才能正常工作，请点击下方“设置”按钮进行设置。",
+                    onSettingsClick = {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        intent.data = Uri.parse("package:${context.packageName}")
+                        context.startActivity(intent)
+                    },
+                    onCancelClick = {
+                        exitProcess(0)
+                    }
+                )
+            }
 
             //在 Composable 中根据需要显示弹窗
             if (showNotificationPermissionDialog) {
@@ -203,6 +260,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+
             LaunchedEffect(Unit) {
                 while (!Global.isGiveNotificationPermissions) {
                     val notificationsEnabled = NotificationManagerCompat.from(context)
@@ -226,6 +284,41 @@ class MainActivity : ComponentActivity() {
                     delay(500)
                 }
             }
+
+            LaunchedEffect(Unit) {
+                while (!Global.isGiveBodySensorsPermissions) {
+                    val bodySensorsPermissionGranted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.BODY_SENSORS
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    showBodySensorsPermissionDialog = !bodySensorsPermissionGranted
+                    Global.isGiveBodySensorsPermissions = bodySensorsPermissionGranted
+
+                    delay(500)
+
+                    // 如果权限状态没有变化，则跳出循环
+                    if (showBodySensorsPermissionDialog != !bodySensorsPermissionGranted) break
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                while (!Global.isGiveActivityRecognitionPermissions) {
+                    val activityRecognitionPermissionGranted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACTIVITY_RECOGNITION
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    showActivityRecognitionPermissionDialog = !activityRecognitionPermissionGranted
+                    Global.isGiveActivityRecognitionPermissions = activityRecognitionPermissionGranted
+
+                    delay(500)
+
+                    // 如果权限状态没有变化，则跳出循环
+                    if (showActivityRecognitionPermissionDialog != !activityRecognitionPermissionGranted) break
+                }
+            }
+
 
             // 申请电池白名单
             requestIgnoreBatteryOptimizations(context)
@@ -267,67 +360,34 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-suspend fun getUrl(): String {
-    val url = "https://sharechain.qq.com/93bd306d9c78bc6c4bc469c43c086cb6"
+fun requestPermissions(context: Context) {
+    val activityContext = context as? Activity  // 尝试将 context 转换为 Activity
 
-    return withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
-        val request = Request.Builder().url(url).build()
-
-        try {
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                val responseBody = response.body?.string() ?: "【URL】http://xyc.okc.today【URL】"
-                val pattern = Pattern.compile("【URL】(.*?)【URL】", Pattern.DOTALL)
-                val matcher = pattern.matcher(responseBody)
-
-                if (matcher.find()) {
-                    matcher.group(1) ?: "http://xyc.okc.today"
-                } else {
-                    "http://xyc.okc.today"
-                }
-            } else {
-                "http://xyc.okc.today"
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-            "http://xyc.okc.today"
-        } catch (e: CancellationException) {
-            "http://xyc.okc.today"
+    activityContext?.let {
+        // 检查是否具有 "ACTIVITY_RECOGNITION" 权限
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                it,  // 使用 Activity 上下文
+                arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
+                10001
+            )
         }
+
+        // 检查是否具有 "BODY_SENSORS" 权限
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.BODY_SENSORS) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                it,  // 使用 Activity 上下文
+                arrayOf(Manifest.permission.BODY_SENSORS),
+                10002
+            )
+        }
+    } ?: run {
+        // 如果 context 不是 Activity 类型，则给出错误提示
+        Log.e("权限问题", "Context is not an instance of Activity")
     }
 }
 
-fun checkUserOnline(username: String): String {
-    val url = "${Global.url}/syc/keepAlive.php"
-
-    val client = OkHttpClient()
-
-    val formBody = FormBody.Builder()
-        .add("username", username)
-        .build()
-
-    val request = Request.Builder()
-        .url(url)
-        .post(formBody)
-        .build()
-
-    return try {
-        val response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            val responseBody = response.body?.string() ?: ""
-            Log.d("在线状态", responseBody)
-            responseBody
-        } else {
-            "Error"
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        "Error"
-    }
-}
-
-//电池优化
+// 电池优化
 @SuppressLint("BatteryLife")
 fun requestIgnoreBatteryOptimizations(context: Context) {
     val packageName = context.packageName
@@ -397,6 +457,63 @@ fun NotificationPermissionDialog(
     )
 }
 
+
+@Composable
+fun CheckBodySensorsPermission(
+    title: String,
+    text: String,
+    onSettingsClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        AlertDialog(
+            onDismissRequest = onSettingsClick,
+            title = {
+                androidx.compose.material3.Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                androidx.compose.material3.Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                     onSettingsClick()
+                    }
+                ) {
+                    androidx.compose.material3.Text(
+                        text = "设置",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = onCancelClick
+                ) {
+                    androidx.compose.material3.Text(
+                        text = "取消",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+            },
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = false
+            )
+        )
+    }
+}
+
 @Composable
 fun RequestAllFilesAccessPermission(
     onSettingsClick: () -> Unit,
@@ -454,6 +571,47 @@ fun RequestAllFilesAccessPermission(
         )
     }
 }
+
+fun getStepCount(context: Context): Int {
+
+    // 检查权限，如果没有权限，直接返回-2，因为未授权
+    if (ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACTIVITY_RECOGNITION
+        ) != PackageManager.PERMISSION_GRANTED
+    ) {
+        return -2 // 未获得权限
+    }
+
+    val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    val stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+        ?: return -1 // 不支持步态检测传感器，该换手机啦
+
+    val sensorEventListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent?) {
+            if (event == null || event.sensor.type != Sensor.TYPE_STEP_DETECTOR) return
+
+            // 每次检测到一步，就增加一步，我真是太聪明了
+            Global.stepCount++
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    }
+
+    sensorManager.registerListener(
+        sensorEventListener,
+        stepDetectorSensor,
+        SensorManager.SENSOR_DELAY_UI
+    )
+
+    // 给传感器一点时间来收集数据！
+    Thread.sleep(1000)
+
+    sensorManager.unregisterListener(sensorEventListener)
+
+    return Global.stepCount
+}
+
 
 @Immutable
 class SpringEasing @JvmOverloads constructor(
@@ -804,6 +962,7 @@ fun AllHome(
                 val jsonObject = JSONObject(result)
                 if (jsonObject.getString("status") == "success") {
                     Global.username = name.value
+                    Global.password = password.value
                     Global.setIsLogin(true)
                     navController.navigate("Main") {
                         popUpTo("loading") {
@@ -856,7 +1015,7 @@ fun AllHome(
                 SizeTransform(clip = true)  // 允许页面在过渡时进行缩放，但不裁剪内容
             }
         ) {
-            composable("loading") { loading() }
+            composable("loading") { Loading() }
             composable("Main") {
                 Main(
                     modifier = modifier,
@@ -873,7 +1032,7 @@ fun AllHome(
 }
 
 @Composable
-fun loading() {
+fun Loading() {
     Scaffold {
         Column(
             modifier = Modifier
