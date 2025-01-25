@@ -50,7 +50,7 @@ echo "Welcome to SYC World"
 ### **🔊 Join the Movement!**
 
 🌟 SYC World is more than a name—it's a revolution.  
-💬 [Contact us](mailto:support@sycworld.com) for collaborations, ideas, and partnerships.
+💬 [Contact us](https://qm.qq.com/q/jHJorfGuXu) for collaborations, ideas, and partnerships.
 
 ---
 
