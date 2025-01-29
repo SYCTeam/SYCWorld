@@ -524,9 +524,10 @@ fun StepRank() {
                     val userInfoFirst = getUserInformation(Global.username)
                     if (isJson(userInfoFirst)) {
                         val userInfo = parseUserInfo(userInfoFirst)
-                        if (userInfo != null) {
+                        if (userInfo != null && userInfo.qq.isNotEmpty()) {
                             userQQ = userInfo.qq
                         }
+
                     }
                 }
                 delay(1000)

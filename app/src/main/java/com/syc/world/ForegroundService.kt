@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
@@ -17,10 +18,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileInputStream
-import java.io.IOException
-import java.io.InputStreamReader
 import kotlin.system.exitProcess
 
 // 使用前台服务以保持后台运行
@@ -47,7 +44,8 @@ class ForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val currentTime = System.currentTimeMillis()
+        var stepCount = ""
+        var currentTime: Long
         var lastExecutionTime: Long = 0
         var nextExecutionTime = 5 * 60 * 1000
         val notification =
@@ -56,37 +54,62 @@ class ForegroundService : Service() {
         startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
 
         CoroutineScope(Dispatchers.IO).launch {
+            stepCount = readFromFile(applicationContext, "stepCount")
+            Log.d("读取问题", stepCount)
+            if (stepCount.trim().isNotEmpty() && stepCount.toIntOrNull() != null) {
+                Global.stepCount = stepCount.toInt()
+            }
             monitorStepCount(applicationContext)
         }
 
         CoroutineScope(Dispatchers.IO).launch {
             while (true) {
-                delay(1 * 60 * 1000)
-                nextExecutionTime -= 1 * 60 * 1000
-                createStepCountNotification(applicationContext, "步数：${Global.stepCount}", "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。")
-                if (nextExecutionTime <= 0) {
-                    nextExecutionTime = 5 * 60 * 1000
+                if (Global.isLogin.value) {
+                    delay(1 * 60 * 1000)
+                    nextExecutionTime -= 1 * 60 * 1000
+                    createStepCountNotification(
+                        applicationContext,
+                        "步数：${Global.stepCount}",
+                        "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。"
+                    )
+                    if (nextExecutionTime <= 0) {
+                        nextExecutionTime = 5 * 60 * 1000
+                    }
                 }
+                delay(1000)
             }
         }
 
+        var result = ""
+
         // 启动后台任务进行步数监测
         CoroutineScope(Dispatchers.IO).launch {
+            Log.d("提交问题", "已启动步数提交线程")
             while (true) {
-                if (currentTime - lastExecutionTime >= 5 * 60 * 1000) { // 5 分钟
-                    // 每5分钟提交一次步数
-                    withContext(Dispatchers.IO) {
-                        if (Global.username.trim().isNotEmpty() && Global.password.trim()
-                                .isNotEmpty() && Global.stepCount.toString().trim().isNotEmpty()
-                        ) {
-                            modifyStepCount(
-                                Global.username,
-                                Global.password,
-                                Global.stepCount.toString()
-                            )
+                if (Global.isLogin.value) {
+                    currentTime = System.currentTimeMillis()
+                    if (currentTime - lastExecutionTime >= 5 * 60 * 1000) { // 5 分钟
+                        Log.d(
+                            "提交问题",
+                            "已符合步数提交时间\n用户名: ${Global.username}, 用户密码: ${Global.password}, 步数: ${Global.stepCount}"
+                        )
+                        // 每5分钟提交一次步数
+                        withContext(Dispatchers.IO) {
+                            if (Global.username.trim().isNotEmpty() && Global.password.trim()
+                                    .isNotEmpty() && Global.stepCount.toString().trim().isNotEmpty()
+                            ) {
+                                Log.d("提交问题", "开始提交步数...")
+                                result = modifyStepCount(
+                                    Global.username,
+                                    Global.password,
+                                    Global.stepCount.toString()
+                                )
+                                Log.d("提交问题", result)
+                            }
                         }
+                        Log.d("提交问题", "已更新上一次执行的时间")
+                        lastExecutionTime = currentTime
                     }
-                    lastExecutionTime = currentTime
                 }
                 delay(1000) // 每秒检查一次
             }
@@ -104,7 +127,11 @@ class ForegroundService : Service() {
                 delay(2000)
             }
             while (true) {
-                createStepCountNotification(applicationContext, "步数：${Global.stepCount}", "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。")
+                createStepCountNotification(
+                    applicationContext,
+                    "步数：${Global.stepCount}",
+                    "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。"
+                )
                 if (Global.isLogin.value && Global.url != "" && Global.url.contains("http")) {
                     if (Global.username.trim().isNotEmpty()) {
                         val response = checkUserOnline(username = Global.username)
@@ -186,22 +213,4 @@ class ForegroundService : Service() {
 
 
     companion object
-}
-
-fun readFile(filePath: String): String {
-    val file = File(filePath)
-    return if (file.exists()) {
-        try {
-            val inputStream = FileInputStream(file)
-            val reader = InputStreamReader(inputStream)
-            val content = reader.readText()
-            reader.close()
-            content.trim()  // 去除多余的空格和换行符
-        } catch (e: IOException) {
-            e.printStackTrace()
-            "error"
-        }
-    } else {
-        "error"
-    }
 }

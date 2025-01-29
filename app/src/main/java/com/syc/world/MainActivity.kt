@@ -114,8 +114,12 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.getWindowSize
 import java.io.BufferedReader
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.FileReader
 import java.io.IOException
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.math.cos
@@ -361,6 +365,52 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+fun writeToFile(context: Context, filename: String, content: String) {
+    // 获取文件路径
+    val file = File(context.filesDir, filename)
+
+    FileOutputStream(file).use { fos ->
+        OutputStreamWriter(fos).use { writer ->
+            writer.write(content)
+        }
+    }
+}
+
+fun readFromFile(context: Context, filename: String): String {
+    // 获取文件路径
+    val file = File(context.filesDir, filename)
+
+    return if (file.exists()) {
+        // 使用 FileInputStream 和 InputStreamReader 来读取文件内容
+        FileInputStream(file).use { fis ->
+            InputStreamReader(fis).use { reader ->
+                reader.readText() // 读取所有内容并返回
+            }
+        }
+    } else {
+        "" // 如果文件不存在，返回空字符串，或根据需要返回其他值
+    }
+}
+
+fun readFile(filename: String): String {
+        val file = File(filename)
+        return if (file.exists()) {
+            try {
+                val inputStream = FileInputStream(filename)
+                val reader = InputStreamReader(inputStream)
+                val content = reader.readText()
+                reader.close()
+                content.trim()  // 去除多余的空格和换行符
+            } catch (e: IOException) {
+                e.printStackTrace()
+                "error"
+            }
+        } else {
+            "error"
+        }
+    }
+
 
 fun requestPermissions(context: Context) {
     val activityContext = context as? Activity  // 尝试将 context 转换为 Activity
@@ -611,14 +661,13 @@ suspend fun monitorStepCount(context: Context) {
     val stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
         ?: return // 不支持步态检测传感器
 
-    var stepCount = 0
 
     val sensorEventListener = object : SensorEventListener {
         @SuppressLint("SuspiciousIndentation")
         override fun onSensorChanged(event: SensorEvent?) {
             if (event == null || event.sensor.type != Sensor.TYPE_STEP_DETECTOR) return
                     // 防止误判，增加步数计数
-                    stepCount++
+            Global.stepCount++
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -633,9 +682,8 @@ suspend fun monitorStepCount(context: Context) {
 
     // 循环监测步数
     while (true) {
-        // 这里可以更新 UI 或进行其他操作
         withContext(Dispatchers.Main) {
-            Global.stepCount = stepCount
+            writeToFile(context, "stepCount", Global.stepCount.toString())
         }
         delay(500)
     }

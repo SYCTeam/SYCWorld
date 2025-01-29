@@ -280,7 +280,7 @@ fun modifySynopsis(username: String, password: String,synopsis: String): String 
     }
 }
 
-fun modifyStepCount(username: String, password: String,synopsis: String): String {
+fun modifyStepCount(username: String, password: String,stepCount: String): String {
     val url = "${Global.url}/syc/stepCount.php".toHttpUrlOrNull() ?: return "Error: Invalid URL"
 
     val client = OkHttpClient()
@@ -289,7 +289,7 @@ fun modifyStepCount(username: String, password: String,synopsis: String): String
     val formBody = FormBody.Builder()
         .add("username", username)
         .add("password", password)
-        .add("stepCount", synopsis)
+        .add("stepCount", stepCount)
         .build()
 
     // 构建请求
