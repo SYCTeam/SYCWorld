@@ -648,36 +648,61 @@ fun RequestAllFilesAccessPermission(
 }
 
 suspend fun monitorStepCount(context: Context) {
-    // 检查权限，如果没有权限，直接返回
-    if (ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACTIVITY_RECOGNITION
-        ) != PackageManager.PERMISSION_GRANTED
-    ) {
-        return // 没有权限，退出
-    }
-
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     val stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
-        ?: return // 不支持步态检测传感器
+        ?: sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) // 如果没有步态检测传感器，就使用步数计数器传感器
 
+    // 如果没有任何传感器支持，则退出
+    if (stepDetectorSensor == null) {
+        return
+    }
+
+    var initialStepCount = -1 // 用于记录当天开始时的总步数
+    var todayStepCount: Int  // 用于记录今天的步数
 
     val sensorEventListener = object : SensorEventListener {
-        @SuppressLint("SuspiciousIndentation")
         override fun onSensorChanged(event: SensorEvent?) {
-            if (event == null || event.sensor.type != Sensor.TYPE_STEP_DETECTOR) return
-                    // 防止误判，增加步数计数
-            Global.stepCount++
+            if (event == null) return
+
+            // 判断传感器类型
+            if (event.sensor.type == Sensor.TYPE_STEP_DETECTOR) {
+                // 如果传感器类型是步态检测器，需要检查权限
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACTIVITY_RECOGNITION
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    return // 如果没有权限，退出
+                }
+                // 防止误判，增加步数计数
+                Global.stepCount++
+            }
+            // 如果是 TYPE_STEP_COUNTER
+            else if (event.sensor.type == Sensor.TYPE_STEP_COUNTER) {
+                val currentStepCount = event.values[0].toInt() // 当前的总步数
+
+                // 如果这是第一次获取步数（即设备重启后的首次获取）
+                if (initialStepCount == -1) {
+                    initialStepCount = currentStepCount // 记录当前总步数为基准
+                }
+
+                // 获取当天的步数（从今天开始到当前的步数差）
+                todayStepCount = currentStepCount - initialStepCount
+
+                // 更新 Global.stepCount 为今天的步数
+                Global.stepCount += todayStepCount
+            }
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     }
 
     // 注册步态传感器监听器
+    val delayOption = SensorManager.SENSOR_DELAY_NORMAL // 使用正常延迟
     sensorManager.registerListener(
         sensorEventListener,
         stepDetectorSensor,
-        SensorManager.SENSOR_DELAY_UI // 使用UI延迟，适合较高频的更新
+        delayOption
     )
 
     // 循环监测步数
@@ -688,6 +713,8 @@ suspend fun monitorStepCount(context: Context) {
         delay(500)
     }
 }
+
+
 
 @Immutable
 class SpringEasing @JvmOverloads constructor(
