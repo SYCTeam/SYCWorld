@@ -686,10 +686,8 @@ suspend fun monitorStepCount(context: Context) {
                     initialStepCount = currentStepCount // 记录当前总步数为基准
                 }
 
-                // 获取当天的步数（从今天开始到当前的步数差）
                 todayStepCount = currentStepCount - initialStepCount
 
-                // 更新 Global.stepCount 为今天的步数
                 Global.stepCount += todayStepCount
             }
         }
