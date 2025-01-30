@@ -104,6 +104,7 @@ class ForegroundService : Service() {
                                     Global.password,
                                     Global.stepCount.toString()
                                 )
+                                nextExecutionTime = 5 * 60 * 1000
                                 Log.d("提交问题", result)
                             }
                         }
@@ -134,14 +135,15 @@ class ForegroundService : Service() {
                 )
                 if (Global.isLogin.value && Global.url != "" && Global.url.contains("http")) {
                     if (Global.username.trim().isNotEmpty()) {
-                        val response = checkUserOnline(username = Global.username)
-                        withContext(Dispatchers.Main) {
-                            if (response.contains("success")) {
-                                Toast.makeText(
-                                    applicationContext,
-                                    "后台：心跳成功！\n步数：${Global.stepCount}",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                        withContext(Dispatchers.IO) {
+                            if (checkUserOnline(username = Global.username).contains("success")) {
+                                /*withContext(Dispatchers.Main) {
+                                    Toast.makeText(
+                                        applicationContext,
+                                        "后台：心跳成功！\n步数：${Global.stepCount}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }*/
                             } else {
                                 withContext(Dispatchers.IO) {
                                     val loginResponse = login(Global.username, Global.password)
