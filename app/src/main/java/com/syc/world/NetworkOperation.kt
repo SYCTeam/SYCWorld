@@ -72,12 +72,14 @@ data class IpInfo(
     @SerializedName("err") val err: String
 )
 
-data class SynopsisData(
-    @SerializedName("status") val status: String,
-    @SerializedName("message") val message: String
+data class RankInfo(
+    @SerializedName("username") val username: String,
+    @SerializedName("qq") val qq: String,
+    @SerializedName("stepCount") val stepCount: Int,
+    @SerializedName("rank") val rank: Int
 )
 
-data class StepCount(
+data class SynopsisData(
     @SerializedName("status") val status: String,
     @SerializedName("message") val message: String
 )
@@ -312,3 +314,43 @@ fun modifyStepCount(username: String, password: String,stepCount: String): Strin
         "Error: ${e.message}"
     }
 }
+
+suspend fun getRank(): List<RankInfo> {
+    val url = "${Global.url}/syc/rank.php"
+
+    return withContext(Dispatchers.IO) {
+        val client = OkHttpClient()
+
+        val request = Request.Builder()
+            .url(url)
+            .build()
+
+        try {
+            val response = withTimeout(4000) {
+                client.newCall(request).execute()
+            }
+
+            if (response.isSuccessful) {
+                val responseString = response.body?.string() ?: "[]"
+                try {
+                    Log.d("信息获取", responseString)
+                    val rankInfoList: List<RankInfo> =
+                        Gson().fromJson(responseString, Array<RankInfo>::class.java).toList()
+
+                    rankInfoList.take(3)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
+        } catch (e: TimeoutCancellationException) {
+            emptyList()
+        } catch (e: IOException) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+}
+

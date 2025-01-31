@@ -3,6 +3,7 @@ package com.syc.world
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.icu.text.SimpleDateFormat
+import android.util.Log
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -46,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -76,7 +78,7 @@ fun Home(
     padding: PaddingValues,
     navController: NavController
 ) {
-    Scaffold() {
+    Scaffold {
         LazyColumn(
             contentPadding = PaddingValues(top = padding.calculateTopPadding()),
             topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
@@ -512,10 +514,26 @@ fun LatestContentShow() {
     }
 }
 
+@SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun StepRank() {
     var isLoading by remember { mutableStateOf(true) }
     var userQQ by remember { mutableStateOf("...") }
+
+    var stepCount by remember { mutableIntStateOf(0) }
+    var rank by remember { mutableStateOf(emptyList<RankInfo>()) }
+
+    var rank1Name by remember { mutableStateOf("") }
+    var rank1QQ by remember { mutableStateOf("") }
+    var rank1StepCount by remember { mutableIntStateOf(-1) }
+
+    var rank2Name by remember { mutableStateOf("") }
+    var rank2QQ by remember { mutableStateOf("") }
+    var rank2StepCount by remember { mutableIntStateOf(-1) }
+
+    var rank3Name by remember { mutableStateOf("") }
+    var rank3QQ by remember { mutableStateOf("") }
+    var rank3StepCount by remember { mutableIntStateOf(-1) }
 
     LaunchedEffect(isLoading) {
         if (Global.username.trim().isNotEmpty()) {
@@ -535,13 +553,80 @@ fun StepRank() {
         }
     }
 
-    LaunchedEffect(userQQ) {
-        if (userQQ.trim().isNotEmpty() && userQQ != "...") {
+    LaunchedEffect(userQQ, rank) {
+        if (userQQ.trim().isNotEmpty() && userQQ != "..." && rank.isNotEmpty()) {
             isLoading = false
         }
     }
 
-    var stepCount by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (rank.isEmpty()) {
+            withContext(Dispatchers.IO) {
+                rank = getRank()
+
+                if (rank.isNotEmpty()) {
+                    rank1Name = rank[0].username
+                    rank1QQ = rank[0].qq
+                    rank1StepCount = rank[0].stepCount
+
+                    Log.d("排名问题", "第一名: $rank1Name, QQ: $rank1QQ, 步数: $rank1StepCount")
+
+                    if (rank.size > 1) {
+                        rank2Name = rank[1].username
+                        rank2QQ = rank[1].qq
+                        rank2StepCount = rank[1].stepCount
+                        Log.d("排名问题", "第二名: $rank2Name, QQ: $rank2QQ, 步数: $rank2StepCount")
+                    }
+
+                    if (rank.size > 2) {
+                        rank3Name = rank[2].username
+                        rank3QQ = rank[2].qq
+                        rank3StepCount = rank[2].stepCount
+                        Log.d("排名问题", "第三名: $rank3Name, QQ: $rank3QQ, 步数: $rank3StepCount")
+                    }
+                }
+            }
+            delay(1000)
+        }
+
+        while (rank.isNotEmpty()) {
+            withContext(Dispatchers.IO) {
+                rank = getRank()
+
+                if (rank.isNotEmpty()) {
+                    rank1Name = rank[0].username
+                    rank1QQ = rank[0].qq
+                    rank1StepCount = rank[0].stepCount
+                    Log.d(
+                        "排名问题",
+                        "------------------------------------------------------------"
+                    )
+
+                    Log.d("排名问题", "第一名: $rank1Name, QQ: $rank1QQ, 步数: $rank1StepCount")
+
+                    if (rank.size > 1) {
+                        rank2Name = rank[1].username
+                        rank2QQ = rank[1].qq
+                        rank2StepCount = rank[1].stepCount
+                        Log.d("排名问题", "第二名: $rank2Name, QQ: $rank2QQ, 步数: $rank2StepCount")
+                    }
+
+                    if (rank.size > 2) {
+                        rank3Name = rank[2].username
+                        rank3QQ = rank[2].qq
+                        rank3StepCount = rank[2].stepCount
+                        Log.d("排名问题", "第三名: $rank3Name, QQ: $rank3QQ, 步数: $rank3StepCount")
+
+                        Log.d(
+                            "排名问题",
+                            "------------------------------------------------------------"
+                        )
+                    }
+                }
+            }
+            delay(20000)
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -553,7 +638,135 @@ fun StepRank() {
     }
 
     Column(modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)) {
-        HeadlineInLargePrint(headline = "步数排行")
+        Row(
+            modifier = Modifier
+                .fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HeadlineInLargePrint(headline = "步数排行")
+            Row(
+                modifier = Modifier
+                    .padding(start = 10.dp, bottom = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "我的步数: ",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Light
+                )
+                Text(
+                    text = stepCount.toString(),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Light
+                )
+                Text(
+                    text = " 步",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Light
+                )
+
+                var change by remember { mutableStateOf(false) }
+                val buttonSize by animateDpAsState(
+                    targetValue = if (change) 40.dp else 25.dp,
+                    animationSpec = tween(
+                        durationMillis = 500,
+                        easing = FastOutSlowInEasing
+                    ),
+                    label = ""
+                )
+
+                if (buttonSize == 40.dp) {
+                    change = false
+                }
+                LaunchedEffect(Unit) {
+                    delay(200)
+                    change = true
+                }
+
+                var isRotating by remember { mutableStateOf(false) }
+                val rotation by animateFloatAsState(
+                    targetValue = if (isRotating) 360f else 0f,
+                    animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+                )
+                var isFirstRun by remember { mutableStateOf(false) }
+
+                LaunchedEffect(isRotating) {
+                    if (isFirstRun) {
+                        withContext(Dispatchers.IO) {
+                            modifyStepCount(
+                                Global.username,
+                                Global.password,
+                                Global.stepCount.toString()
+                            )
+
+                            rank = getRank()
+
+                            if (rank.isNotEmpty()) {
+                                rank1Name = rank[0].username
+                                rank1QQ = rank[0].qq
+                                rank1StepCount = rank[0].stepCount
+                                Log.d(
+                                    "排名问题",
+                                    "------------------------------------------------------------"
+                                )
+
+                                Log.d(
+                                    "排名问题",
+                                    "第一名: $rank1Name, QQ: $rank1QQ, 步数: $rank1StepCount"
+                                )
+
+                                if (rank.size > 1) {
+                                    rank2Name = rank[1].username
+                                    rank2QQ = rank[1].qq
+                                    rank2StepCount = rank[1].stepCount
+                                    Log.d(
+                                        "排名问题",
+                                        "第二名: $rank2Name, QQ: $rank2QQ, 步数: $rank2StepCount"
+                                    )
+                                }
+
+                                if (rank.size > 2) {
+                                    rank3Name = rank[2].username
+                                    rank3QQ = rank[2].qq
+                                    rank3StepCount = rank[2].stepCount
+                                    Log.d(
+                                        "排名问题",
+                                        "第三名: $rank3Name, QQ: $rank3QQ, 步数: $rank3StepCount"
+                                    )
+
+                                    Log.d(
+                                        "排名问题",
+                                        "------------------------------------------------------------"
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        isFirstRun = true
+                    }
+                }
+
+                Image(
+                    modifier = Modifier
+                        .padding(start = 10.dp, bottom = 3.dp)
+                        .size(buttonSize)
+                        .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            isRotating = !isRotating
+
+                        }
+                        .graphicsLayer {
+                            rotationX = rotation
+                        },
+                    painter = painterResource(id = R.drawable.flushed),
+                    contentDescription = "点击刷新。"
+                )
+            }
+        }
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -569,26 +782,26 @@ fun StepRank() {
                 var step by remember { mutableFloatStateOf(0f) }
                 var step2 by remember { mutableFloatStateOf(0f) }
                 var step3 by remember { mutableFloatStateOf(0f) }
-                LaunchedEffect(Unit) {
-                    step = stepCount.toFloat()
-                    step2 = 6000f
-                    step3 = 3000f
+                LaunchedEffect(rank) {
+                    step = rank1StepCount.toFloat()
+                    step2 = rank2StepCount.toFloat()
+                    step3 = rank3StepCount.toFloat()
                 }
-                LaunchedEffect(Unit) {
+                LaunchedEffect(rank) {
                     delay(600)
                     val randomChange = Random.nextFloat() * 100f
                     step += randomChange  // 增加随机值
                     delay(600)
                     step -= randomChange
                 }
-                LaunchedEffect(Unit) {
+                LaunchedEffect(rank) {
                     delay(600)
                     val randomChange = Random.nextFloat() * 100f
                     step2 += randomChange  // 增加随机值
                     delay(600)
                     step2 -= randomChange
                 }
-                LaunchedEffect(Unit) {
+                LaunchedEffect(rank) {
                     delay(600)
                     val randomChange = Random.nextFloat() * 100f
                     step3 += randomChange  // 增加随机值
@@ -610,11 +823,21 @@ fun StepRank() {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Image(
-                        painterResource(R.drawable.my),
-                        contentDescription = null,
-                        modifier = Modifier.size(45.dp)
-                    )
+                    if (isLoading) {
+                        Image(
+                            painterResource(R.drawable.my),
+                            contentDescription = null,
+                            modifier = Modifier.size(45.dp)
+                        )
+                    } else {
+                        AsyncImage(
+                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${rank2QQ}&spec=640&img_type=jpg",
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(55.dp)
+                                .clip(CircleShape)
+                        )
+                    }
                     Image(
                         painterResource(R.drawable.silver),
                         contentDescription = null,
@@ -623,7 +846,7 @@ fun StepRank() {
                             .offset(y = (-15).dp)
                     )
                     Text(
-                        text = "酸奶",
+                        text = rank2Name,
                         fontSize = 13.sp,
                         modifier = Modifier.offset(y = (-15).dp)
                     )
@@ -654,7 +877,7 @@ fun StepRank() {
                         )
                     } else {
                         AsyncImage(
-                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${userQQ}&spec=640&img_type=jpg",
+                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${rank1QQ}&spec=640&img_type=jpg",
                             contentDescription = null,
                             modifier = Modifier
                                 .size(55.dp)
@@ -669,13 +892,13 @@ fun StepRank() {
                             .offset(y = (-20).dp)
                     )
                     Text(
-                        text = Global.username,
+                        text = rank1Name,
                         fontSize = 13.sp,
                         modifier = Modifier.offset(y = (-15).dp)
                     )
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            text = stepCount.toString(),
+                            text = animatedValue.value.toInt().toString(),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Light,
                             modifier = Modifier.offset(y = (-15).dp)
@@ -692,11 +915,22 @@ fun StepRank() {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                 ) {
-                    Image(
-                        painterResource(R.drawable.my),
-                        contentDescription = null,
-                        modifier = Modifier.size(45.dp)
-                    )
+                    if (isLoading) {
+                        Image(
+                            painterResource(R.drawable.my),
+                            contentDescription = null,
+                            modifier = Modifier.size(45.dp)
+
+                        )
+                    } else {
+                        AsyncImage(
+                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${rank3QQ}&spec=640&img_type=jpg",
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(55.dp)
+                                .clip(CircleShape)
+                        )
+                    }
                     Image(
                         painterResource(R.drawable.copper),
                         contentDescription = null,
@@ -705,7 +939,7 @@ fun StepRank() {
                             .offset(y = (-15).dp)
                     )
                     Text(
-                        text = "小夜",
+                        text = rank3Name,
                         fontSize = 13.sp,
                         modifier = Modifier.offset(y = (-15).dp)
                     )

@@ -665,7 +665,7 @@ fun Person(
                                     } else {
                                         Toast.makeText(
                                             context,
-                                            "请确保资料不为空！",
+                                            "请确保简介不为空！",
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }
