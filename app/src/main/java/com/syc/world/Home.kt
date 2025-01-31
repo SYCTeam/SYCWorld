@@ -787,21 +787,21 @@ fun StepRank() {
                     step2 = rank2StepCount.toFloat()
                     step3 = rank3StepCount.toFloat()
                 }
-                LaunchedEffect(rank) {
+                LaunchedEffect(rank1StepCount) {
                     delay(600)
                     val randomChange = Random.nextFloat() * 100f
                     step += randomChange  // 增加随机值
                     delay(600)
                     step -= randomChange
                 }
-                LaunchedEffect(rank) {
+                LaunchedEffect(rank2StepCount) {
                     delay(600)
                     val randomChange = Random.nextFloat() * 100f
                     step2 += randomChange  // 增加随机值
                     delay(600)
                     step2 -= randomChange
                 }
-                LaunchedEffect(rank) {
+                LaunchedEffect(rank3StepCount) {
                     delay(600)
                     val randomChange = Random.nextFloat() * 100f
                     step3 += randomChange  // 增加随机值
@@ -845,11 +845,22 @@ fun StepRank() {
                             .size(30.dp)
                             .offset(y = (-15).dp)
                     )
-                    Text(
-                        text = rank2Name,
-                        fontSize = 13.sp,
-                        modifier = Modifier.offset(y = (-15).dp)
-                    )
+                    if (rank2Name == Global.username) {
+                        Text(
+                            text = "我",
+                            fontSize = 16.sp,
+                            modifier = Modifier.offset(y = (-15).dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = TextStyle(fontWeight = FontWeight.Bold)
+                        )
+                    } else {
+                        Text(
+                            text = rank2Name,
+                            fontSize = 13.sp,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
+                    }
+
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             text = animatedValue2.value.toInt().toString(),
@@ -891,11 +902,21 @@ fun StepRank() {
                             .size(35.dp)
                             .offset(y = (-20).dp)
                     )
-                    Text(
-                        text = rank1Name,
-                        fontSize = 13.sp,
-                        modifier = Modifier.offset(y = (-15).dp)
-                    )
+                    if (rank1Name == Global.username) {
+                        Text(
+                            text = "我",
+                            fontSize = 16.sp,
+                            modifier = Modifier.offset(y = (-15).dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = TextStyle(fontWeight = FontWeight.Bold)
+                        )
+                    } else {
+                        Text(
+                            text = rank1Name,
+                            fontSize = 13.sp,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
+                    }
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             text = animatedValue.value.toInt().toString(),
@@ -938,11 +959,21 @@ fun StepRank() {
                             .size(30.dp)
                             .offset(y = (-15).dp)
                     )
-                    Text(
-                        text = rank3Name,
-                        fontSize = 13.sp,
-                        modifier = Modifier.offset(y = (-15).dp)
-                    )
+                    if (rank3Name == Global.username) {
+                        Text(
+                            text = "我",
+                            fontSize = 16.sp,
+                            modifier = Modifier.offset(y = (-15).dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = TextStyle(fontWeight = FontWeight.Bold)
+                        )
+                    } else {
+                        Text(
+                            text = rank3Name,
+                            fontSize = 13.sp,
+                            modifier = Modifier.offset(y = (-15).dp)
+                        )
+                    }
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             text = animatedValue3.value.toInt().toString(),
