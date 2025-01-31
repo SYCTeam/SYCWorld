@@ -3,8 +3,10 @@ package com.syc.world
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -443,24 +445,48 @@ fun requestPermissions(context: Context) {
 fun createStepCountNotification(context: Context, title: String, content: String) {
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    // 创建通知渠道
-    val channelId = "SYC StepCount"
+    // 创建通知渠道，设置为低重要性，避免打扰用户
+    val channelId = "SYC_StepCount"
     val channelName = "酸夜沉空间计步服务"
-    val importance = NotificationManager.IMPORTANCE_DEFAULT
-    val notificationChannel = NotificationChannel(channelId, channelName, importance)
+    val importance = NotificationManager.IMPORTANCE_LOW // 低重要性，避免打扰
+    val notificationChannel = NotificationChannel(channelId, channelName, importance).apply {
+        setSound(null, null) // 禁用声音
+        enableVibration(false) // 禁用震动
+        vibrationPattern = longArrayOf(0) // 震动模式为空
+        setShowBadge(false) // 不在桌面图标上显示通知角标
+        lockscreenVisibility = Notification.VISIBILITY_SECRET // 锁屏不显示
+    }
     notificationManager.createNotificationChannel(notificationChannel)
+
+    // 创建点击通知后跳转的 Intent，跳转到应用首页
+    val intent = Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    }
+
+    // 创建 PendingIntent
+    val pendingIntent = PendingIntent.getActivity(
+        context,
+        0,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 
     // 创建通知
     val notificationBuilder = NotificationCompat.Builder(context, channelId)
-        .setSmallIcon(R.mipmap.ic_launcher) // 设置通知图标
+        .setSmallIcon(R.drawable.step_count) // 设置通知图标
         .setContentTitle(title) // 设置通知标题
         .setContentText(content) // 设置通知内容
         .setOngoing(true) // 设置通知为常驻通知
-        .setAutoCancel(false) // 设置通知自动消失
+        .setAutoCancel(false) // 禁止自动消失
+        .setPriority(NotificationCompat.PRIORITY_LOW) // 低优先级，避免打扰
+        .setSilent(true) // Android 11+ 进一步确保静默
+        .setDefaults(Notification.DEFAULT_LIGHTS) // 仅使用 LED 提示（如果有的话）
+        .setContentIntent(pendingIntent) // 设置点击通知时打开应用首页
 
     // 发送通知
     notificationManager.notify(10001, notificationBuilder.build())
 }
+
 
 // 电池优化
 @SuppressLint("BatteryLife")

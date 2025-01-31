@@ -568,7 +568,7 @@ fun StepRank() {
     }
 
     LaunchedEffect(Unit) {
-        while (rank.isEmpty()) {
+        while (Global.url.contains("http") && rank.isEmpty()) {
             withContext(Dispatchers.IO) {
                 rank = getRank()
 
@@ -598,7 +598,7 @@ fun StepRank() {
             delay(1000)
         }
 
-        while (rank.isNotEmpty()) {
+        while (Global.url.contains("http") && rank.isNotEmpty()) {
             withContext(Dispatchers.IO) {
                 rank = getRank()
 
