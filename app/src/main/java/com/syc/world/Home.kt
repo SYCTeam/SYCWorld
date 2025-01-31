@@ -535,6 +535,14 @@ fun StepRank() {
     var rank3QQ by remember { mutableStateOf("") }
     var rank3StepCount by remember { mutableIntStateOf(-1) }
 
+    var isRotating by remember { mutableStateOf(false) }
+    val rotation by animateFloatAsState(
+        targetValue = if (isRotating) 360f else 0f,
+        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+    )
+    var isFirstRun by remember { mutableStateOf(false) }
+
+
     LaunchedEffect(isLoading) {
         if (Global.username.trim().isNotEmpty()) {
             while (isLoading) {
@@ -585,6 +593,7 @@ fun StepRank() {
                         Log.d("排名问题", "第三名: $rank3Name, QQ: $rank3QQ, 步数: $rank3StepCount")
                     }
                 }
+                isRotating = true
             }
             delay(1000)
         }
@@ -666,31 +675,6 @@ fun StepRank() {
                     fontWeight = FontWeight.Light
                 )
 
-                var change by remember { mutableStateOf(false) }
-                val buttonSize by animateDpAsState(
-                    targetValue = if (change) 40.dp else 25.dp,
-                    animationSpec = tween(
-                        durationMillis = 500,
-                        easing = FastOutSlowInEasing
-                    ),
-                    label = ""
-                )
-
-                if (buttonSize == 40.dp) {
-                    change = false
-                }
-                LaunchedEffect(Unit) {
-                    delay(200)
-                    change = true
-                }
-
-                var isRotating by remember { mutableStateOf(false) }
-                val rotation by animateFloatAsState(
-                    targetValue = if (isRotating) 360f else 0f,
-                    animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
-                )
-                var isFirstRun by remember { mutableStateOf(false) }
-
                 LaunchedEffect(isRotating) {
                     if (isFirstRun) {
                         withContext(Dispatchers.IO) {
@@ -750,7 +734,7 @@ fun StepRank() {
                 Image(
                     modifier = Modifier
                         .padding(start = 10.dp, bottom = 3.dp)
-                        .size(buttonSize)
+                        .size(25.dp)
                         .clickable(
                             indication = null,
                             interactionSource = MutableInteractionSource()
