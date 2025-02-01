@@ -225,7 +225,7 @@ fun getUserInformation(username: String): String {
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
             val responseBody = response.body?.string() ?: ""
-            Log.d("信息获取", responseBody)
+            Log.d("用户信息获取", responseBody)
             responseBody
         } else {
             "Error"

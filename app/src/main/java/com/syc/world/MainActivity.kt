@@ -186,6 +186,64 @@ object Global {
         _isLogin.value = value
     }
 
+    // 查看他人状态
+
+    private val _isShowState = MutableStateFlow(false)
+    val isShowState: StateFlow<Boolean>
+        get() = _isShowState
+
+    fun setIsShowState(value: Boolean) {
+        _isShowState.value = value
+    }
+
+    private val _personNameBeingViewed = MutableStateFlow("")
+    val personNameBeingViewed: StateFlow<String>
+        get() = _personNameBeingViewed
+
+    fun setPersonNameBeingViewed(value: String) {
+        _personNameBeingViewed.value = value
+    }
+
+    private val _personQQBeingViewed = MutableStateFlow("")
+    val personQQBeingViewed: StateFlow<String>
+        get() = _personQQBeingViewed
+
+    fun setPersonQQBeingViewed(value: String) {
+        _personQQBeingViewed.value = value
+    }
+
+    private val _personIsOnlineBeingViewed = MutableStateFlow(false)
+    val personIsOnlineBeingViewed: StateFlow<Boolean>
+        get() = _personIsOnlineBeingViewed
+
+    fun setPersonIsOnlineBeingViewed(value: Boolean) {
+        _personIsOnlineBeingViewed.value = value
+    }
+
+    private val _personSynopsisBeingViewed = MutableStateFlow("")
+    val personSynopsisBeingViewed: StateFlow<String>
+        get() = _personSynopsisBeingViewed
+
+    fun setPersonSynopsisBeingViewed(value: String) {
+        _personSynopsisBeingViewed.value = value
+    }
+
+    private val _personAddressBeingViewed = MutableStateFlow("")
+    val personAddressBeingViewed: StateFlow<String>
+        get() = _personAddressBeingViewed
+
+    fun setPersonAddressBeingViewed(value: String) {
+        _personAddressBeingViewed.value = value
+    }
+
+    private val _personLastAccessTimeBeingViewed = MutableStateFlow("")
+    val personLastAccessTimeBeingViewed: StateFlow<String>
+        get() = _personLastAccessTimeBeingViewed
+
+    fun setPersonLastAccessTimeBeingViewed(value: String) {
+        _personLastAccessTimeBeingViewed.value = value
+    }
+
 }
 
 class MainActivity : ComponentActivity() {

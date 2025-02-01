@@ -4,11 +4,18 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.icu.text.SimpleDateFormat
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -30,12 +37,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Surface
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,6 +59,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -94,7 +110,206 @@ fun Home(
                 )
             }
         }
+        val isShowState = Global.isShowState.collectAsState()
+        val personNameBeingViewed = Global.personNameBeingViewed.collectAsState()
+        val personQQBeingViewed = Global.personQQBeingViewed.collectAsState()
+        val personIsOnlineBeingViewed = Global.personIsOnlineBeingViewed.collectAsState()
+        val personSynopsisBeingViewed = Global.personSynopsisBeingViewed.collectAsState()
+        val personAddressBeingViewed = Global.personAddressBeingViewed.collectAsState()
+        val personLastAccessTimeBeingViewed =
+            Global.personLastAccessTimeBeingViewed.collectAsState()
+
+        AnimatedVisibility(
+            visible = isShowState.value,
+            enter = fadeIn(
+                animationSpec = tween(durationMillis = 200)
+            ),
+            exit = fadeOut(
+                animationSpec = tween(durationMillis = 200)
+            )
+        ) {
+            Surface(
+                modifier = Modifier
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {
+                        Global.setIsShowState(false)
+                    }
+                    .fillMaxSize()
+                    .alpha(0.5f),
+                color = Color.Black
+            ) {
+
+            }
+        }
+
+        AnimatedVisibility(
+            visible = isShowState.value,
+            enter = scaleIn(
+                initialScale = 0f,
+                animationSpec = tween(
+                    durationMillis = 300
+                )
+            ) + slideInVertically(
+                initialOffsetY = { fullHeight -> fullHeight },
+                animationSpec = tween(
+                    durationMillis = 300
+                )
+            ),
+            exit = scaleOut(
+                targetScale = 0f,
+                animationSpec = tween(
+                    durationMillis = 300
+                )
+            ) + slideOutVertically(
+                targetOffsetY = { fullHeight -> fullHeight },
+                animationSpec = tween(
+                    durationMillis = 300
+                )
+            )
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                ElevatedCard(
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(10.dp),
+                        horizontalAlignment = Alignment.Start,
+                        verticalArrangement = Arrangement.Top
+                    ) {
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        HeadlineInLargePrint(headline = personNameBeingViewed.value)
+
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(bottom = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    AsyncImage(
+                                        model = "https://q.qlogo.cn/headimg_dl?dst_uin=${personQQBeingViewed.value}&spec=640&img_type=jpg",
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(80.dp)
+                                            .clip(CircleShape)
+                                    )
+                                    if (personIsOnlineBeingViewed.value) {
+                                        Image(
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .offset(x = (-20).dp, y = 30.dp),
+                                            painter = painterResource(id = R.drawable.point_green),
+                                            contentDescription = null
+                                        )
+                                    } else {
+                                        Image(
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .offset(x = (-20).dp, y = 30.dp),
+                                            painter = painterResource(id = R.drawable.point_gray),
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 10.dp),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Ta正在",
+                                        modifier = Modifier,
+                                        fontSize = 15.sp,
+                                    )
+                                    Text(
+                                        text = personAddressBeingViewed.value,
+                                        modifier = Modifier,
+                                        fontSize = 20.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                                if (!personIsOnlineBeingViewed.value) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Start,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "下线时间: ",
+                                            modifier = Modifier,
+                                            fontSize = 15.sp,
+                                        )
+                                        Text(
+                                            text = personLastAccessTimeBeingViewed.value,
+                                            modifier = Modifier,
+                                            fontSize = 20.sp,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Ta总说: ",
+                                        modifier = Modifier,
+                                        fontSize = 15.sp,
+                                    )
+                                    Text(
+                                        text = personSynopsisBeingViewed.value,
+                                        modifier = Modifier,
+                                        fontSize = 20.sp,
+                                        style = TextStyle(fontStyle = FontStyle.Italic),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Button(
+                                modifier = Modifier.padding(10.dp),
+                                onClick = {
+                                    Global.setIsShowState(false)
+                                }) {
+                                Icon(
+                                    Icons.Filled.Done,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                                )
+                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                                androidx.compose.material3.Text("我知道了")
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+
 }
 
 @Composable
@@ -526,14 +741,27 @@ fun StepRank() {
     var rank1Name by remember { mutableStateOf("") }
     var rank1QQ by remember { mutableStateOf("") }
     var rank1StepCount by remember { mutableIntStateOf(-1) }
+    var rank1IsOnline by remember { mutableStateOf(false) }
+    var rank1LastAccessTime by remember { mutableStateOf("") }
+    var rank1Synopsis by remember { mutableStateOf("") }
+    var rank1Address by remember { mutableStateOf("") }
 
     var rank2Name by remember { mutableStateOf("") }
     var rank2QQ by remember { mutableStateOf("") }
     var rank2StepCount by remember { mutableIntStateOf(-1) }
+    var rank2IsOnline by remember { mutableStateOf(false) }
+    var rank2LastAccessTime by remember { mutableStateOf("") }
+    var rank2Synopsis by remember { mutableStateOf("") }
+    var rank2Address by remember { mutableStateOf("") }
 
     var rank3Name by remember { mutableStateOf("") }
     var rank3QQ by remember { mutableStateOf("") }
     var rank3StepCount by remember { mutableIntStateOf(-1) }
+    var rank3IsOnline by remember { mutableStateOf(false) }
+    var rank3LastAccessTime by remember { mutableStateOf("") }
+    var rank3Synopsis by remember { mutableStateOf("") }
+    var rank3Address by remember { mutableStateOf("") }
+
 
     var isRotating by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(
@@ -541,7 +769,7 @@ fun StepRank() {
         animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
     )
     var isFirstRun by remember { mutableStateOf(false) }
-
+    var isFirstFlushed by remember { mutableStateOf(true) }
 
     LaunchedEffect(isLoading) {
         if (Global.username.trim().isNotEmpty()) {
@@ -583,6 +811,7 @@ fun StepRank() {
                         rank2Name = rank[1].username
                         rank2QQ = rank[1].qq
                         rank2StepCount = rank[1].stepCount
+
                         Log.d("排名问题", "第二名: $rank2Name, QQ: $rank2QQ, 步数: $rank2StepCount")
                     }
 
@@ -590,50 +819,102 @@ fun StepRank() {
                         rank3Name = rank[2].username
                         rank3QQ = rank[2].qq
                         rank3StepCount = rank[2].stepCount
+
                         Log.d("排名问题", "第三名: $rank3Name, QQ: $rank3QQ, 步数: $rank3StepCount")
                     }
                 }
                 isRotating = true
             }
-            delay(1000)
+            delay(5000)
         }
 
         while (Global.url.contains("http") && rank.isNotEmpty()) {
-            withContext(Dispatchers.IO) {
-                rank = getRank()
+            if (!isFirstFlushed) {
+                withContext(Dispatchers.IO) {
+                    rank = getRank()
 
-                if (rank.isNotEmpty()) {
-                    rank1Name = rank[0].username
-                    rank1QQ = rank[0].qq
-                    rank1StepCount = rank[0].stepCount
-                    Log.d(
-                        "排名问题",
-                        "------------------------------------------------------------"
-                    )
-
-                    Log.d("排名问题", "第一名: $rank1Name, QQ: $rank1QQ, 步数: $rank1StepCount")
-
-                    if (rank.size > 1) {
-                        rank2Name = rank[1].username
-                        rank2QQ = rank[1].qq
-                        rank2StepCount = rank[1].stepCount
-                        Log.d("排名问题", "第二名: $rank2Name, QQ: $rank2QQ, 步数: $rank2StepCount")
-                    }
-
-                    if (rank.size > 2) {
-                        rank3Name = rank[2].username
-                        rank3QQ = rank[2].qq
-                        rank3StepCount = rank[2].stepCount
-                        Log.d("排名问题", "第三名: $rank3Name, QQ: $rank3QQ, 步数: $rank3StepCount")
-
+                    if (rank.isNotEmpty()) {
+                        rank1Name = rank[0].username
+                        rank1QQ = rank[0].qq
+                        rank1StepCount = rank[0].stepCount
                         Log.d(
                             "排名问题",
                             "------------------------------------------------------------"
                         )
+
+                        Log.d("排名问题", "第一名: $rank1Name, QQ: $rank1QQ, 步数: $rank1StepCount")
+
+                        if (rank.size > 1) {
+                            rank2Name = rank[1].username
+                            rank2QQ = rank[1].qq
+                            rank2StepCount = rank[1].stepCount
+                            Log.d(
+                                "排名问题",
+                                "第二名: $rank2Name, QQ: $rank2QQ, 步数: $rank2StepCount"
+                            )
+                        }
+
+                        if (rank.size > 2) {
+                            rank3Name = rank[2].username
+                            rank3QQ = rank[2].qq
+                            rank3StepCount = rank[2].stepCount
+                            Log.d(
+                                "排名问题",
+                                "第三名: $rank3Name, QQ: $rank3QQ, 步数: $rank3StepCount"
+                            )
+
+                            Log.d(
+                                "排名问题",
+                                "------------------------------------------------------------"
+                            )
+                        }
+                    }
+                }
+            } else {
+                isFirstFlushed = false
+            }
+            delay(20000)
+        }
+    }
+
+    LaunchedEffect(rank) {
+        if (rank.isNotEmpty()) {
+            var userInfoFirst: String
+
+            withContext(Dispatchers.IO) {
+                userInfoFirst = getUserInformation(rank[0].username)
+                if (isJson(userInfoFirst)) {
+                    val userInfo = parseUserInfo(userInfoFirst)
+                    if (userInfo != null) {
+                        rank1Synopsis = userInfo.synopsis
+                        rank1Address = getAddressFromIp(userInfo.registerIp)
+                        rank1IsOnline = userInfo.online == "在线"
+                        rank1LastAccessTime = transToString(userInfo.lastAccessTime)
+                    }
+                }
+
+                userInfoFirst = getUserInformation(rank[1].username)
+                if (isJson(userInfoFirst)) {
+                    val userInfo = parseUserInfo(userInfoFirst)
+                    if (userInfo != null) {
+                        rank2Synopsis = userInfo.synopsis
+                        rank2Address = getAddressFromIp(userInfo.registerIp)
+                        rank2IsOnline = userInfo.online == "在线"
+                        rank2LastAccessTime = transToString(userInfo.lastAccessTime)
+                    }
+                }
+
+                userInfoFirst = getUserInformation(rank[2].username)
+                if (isJson(userInfoFirst)) {
+                    val userInfo = parseUserInfo(userInfoFirst)
+                    if (userInfo != null) {
+                        rank3Synopsis = userInfo.synopsis
+                        rank3Address = getAddressFromIp(userInfo.registerIp)
+                        rank3IsOnline = userInfo.online == "在线"
+                        rank3LastAccessTime = transToString(userInfo.lastAccessTime)
                     }
                 }
             }
-            delay(20000)
         }
     }
 
@@ -767,9 +1048,15 @@ fun StepRank() {
                 var step2 by remember { mutableFloatStateOf(0f) }
                 var step3 by remember { mutableFloatStateOf(0f) }
                 LaunchedEffect(rank) {
-                    step = rank1StepCount.toFloat()
-                    step2 = rank2StepCount.toFloat()
-                    step3 = rank3StepCount.toFloat()
+                    while (true) {
+                        if (rank.isNotEmpty()) {
+                            step = rank1StepCount.toFloat()
+                            step2 = rank2StepCount.toFloat()
+                            step3 = rank3StepCount.toFloat()
+                            break
+                        }
+                        delay(100)
+                    }
                 }
                 LaunchedEffect(rank1StepCount) {
                     delay(600)
@@ -804,7 +1091,23 @@ fun StepRank() {
                     targetValue = step3,
                     animationSpec = tween(durationMillis = 600)
                 )
+
                 Column(
+                    modifier = Modifier
+                        .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            if (rank2Name.trim().isNotEmpty() && rank2QQ.trim().isNotEmpty() && rank2Synopsis.trim().isNotEmpty() && rank2Address.trim().isNotEmpty() && rank2LastAccessTime.trim().isNotEmpty()) {
+                                Global.setPersonNameBeingViewed(rank2Name)
+                                Global.setPersonSynopsisBeingViewed(rank2Synopsis)
+                                Global.setPersonAddressBeingViewed(rank2Address)
+                                Global.setPersonIsOnlineBeingViewed(rank2IsOnline)
+                                Global.setPersonQQBeingViewed(rank2QQ)
+                                Global.setPersonLastAccessTimeBeingViewed(rank2LastAccessTime)
+                                Global.setIsShowState(true)
+                            }
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (isLoading) {
@@ -862,6 +1165,21 @@ fun StepRank() {
                 }
 
                 Column(
+                    modifier = Modifier
+                        .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            if (rank1Name.trim().isNotEmpty() && rank1QQ.trim().isNotEmpty() && rank1Synopsis.trim().isNotEmpty() && rank1Address.trim().isNotEmpty() && rank1LastAccessTime.trim().isNotEmpty()) {
+                                Global.setPersonNameBeingViewed(rank1Name)
+                                Global.setPersonSynopsisBeingViewed(rank1Synopsis)
+                                Global.setPersonAddressBeingViewed(rank1Address)
+                                Global.setPersonIsOnlineBeingViewed(rank1IsOnline)
+                                Global.setPersonQQBeingViewed(rank1QQ)
+                                Global.setPersonLastAccessTimeBeingViewed(rank1LastAccessTime)
+                                Global.setIsShowState(true)
+                            }
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                 ) {
                     if (isLoading) {
@@ -918,6 +1236,21 @@ fun StepRank() {
                 }
 
                 Column(
+                    modifier = Modifier
+                        .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
+                            if (rank3Name.trim().isNotEmpty() && rank3QQ.trim().isNotEmpty() && rank3Synopsis.trim().isNotEmpty() && rank3Address.trim().isNotEmpty() && rank3LastAccessTime.trim().isNotEmpty()) {
+                                Global.setPersonNameBeingViewed(rank3Name)
+                                Global.setPersonSynopsisBeingViewed(rank3Synopsis)
+                                Global.setPersonAddressBeingViewed(rank3Address)
+                                Global.setPersonIsOnlineBeingViewed(rank3IsOnline)
+                                Global.setPersonQQBeingViewed(rank3QQ)
+                                Global.setPersonLastAccessTimeBeingViewed(rank3LastAccessTime)
+                                Global.setIsShowState(true)
+                            }
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally  // Column 中内容水平居中
                 ) {
                     if (isLoading) {
