@@ -89,8 +89,10 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -98,6 +100,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -136,6 +139,7 @@ object Global {
     var username = ""
     var password = ""
     var stepCount = 0
+    var monitorJob: Job? = null
 
     var isGiveBodySensorsPermissions = false
     var isGiveActivityRecognitionPermissions = false
@@ -673,72 +677,82 @@ fun RequestAllFilesAccessPermission(
     }
 }
 
-suspend fun monitorStepCount(context: Context) {
+fun monitorStepCount(context: Context) {
+    // 如果已有任务在运行，则不启动新的任务
+    if (Global.monitorJob?.isActive == true) {
+        return
+    }
+
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     val stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
-        ?: sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) // 如果没有步态检测传感器，就使用步数计数器传感器
+        ?: sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
-    // 如果没有任何传感器支持，则退出
     if (stepDetectorSensor == null) {
         return
     }
 
-    var initialStepCount = -1 // 用于记录当天开始时的总步数
-    var todayStepCount: Int  // 用于记录今天的步数
+    // 用于 TYPE_STEP_COUNTER 的初始读数和上一次读数，均为 -1 表示未初始化
+    var initialStepCount = -1
+    var lastStepCount = -1
 
     val sensorEventListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent?) {
             if (event == null) return
 
-            // 判断传感器类型
-            if (event.sensor.type == Sensor.TYPE_STEP_DETECTOR) {
-                // 如果传感器类型是步态检测器，需要检查权限
-                if (ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACTIVITY_RECOGNITION
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    return // 如果没有权限，退出
+            when (event.sensor.type) {
+                Sensor.TYPE_STEP_DETECTOR -> {
+                    // 对于步态检测器，每次事件默认增量为 1
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.ACTIVITY_RECOGNITION
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        return
+                    }
+                    Global.stepCount++
                 }
-                // 防止误判，增加步数计数
-                Global.stepCount++
-            }
-            // 如果是 TYPE_STEP_COUNTER
-            else if (event.sensor.type == Sensor.TYPE_STEP_COUNTER) {
-                val currentStepCount = event.values[0].toInt() // 当前的总步数
-
-                // 如果这是第一次获取步数（即设备重启后的首次获取）
-                if (initialStepCount == -1) {
-                    initialStepCount = currentStepCount // 记录当前总步数为基准
+                Sensor.TYPE_STEP_COUNTER -> {
+                    val currentStepCount = event.values[0].toInt()
+                    if (initialStepCount == -1) {
+                        // 第一次接收到数据，初始化初始值和上一次读数
+                        initialStepCount = currentStepCount
+                        lastStepCount = currentStepCount
+                    } else {
+                        // 计算与上一次读数的差值
+                        val delta = currentStepCount - lastStepCount
+                        lastStepCount = currentStepCount
+                        // 仅当差值大于 0 时累加（防止偶尔传回相同或减少的值）
+                        if (delta > 0) {
+                            Global.stepCount += delta
+                        }
+                    }
                 }
-
-                todayStepCount = currentStepCount - initialStepCount
-
-                Global.stepCount += todayStepCount
             }
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     }
 
-    // 注册步态传感器监听器
-    val delayOption = SensorManager.SENSOR_DELAY_NORMAL // 使用正常延迟
     sensorManager.registerListener(
         sensorEventListener,
         stepDetectorSensor,
-        delayOption
+        SensorManager.SENSOR_DELAY_NORMAL
     )
 
-    // 循环监测步数
-    while (true) {
-        withContext(Dispatchers.Main) {
-            writeToFile(context, "stepCount", Global.stepCount.toString())
+    // 用协程启动监控任务，并保存 Job
+    Global.monitorJob = CoroutineScope(Dispatchers.Default).launch {
+        try {
+            while (isActive) {
+                withContext(Dispatchers.Main) {
+                    writeToFile(context, "stepCount", Global.stepCount.toString())
+                }
+                delay(500)
+            }
+        } finally {
+            sensorManager.unregisterListener(sensorEventListener)
         }
-        delay(500)
     }
 }
-
-
 
 @Immutable
 class SpringEasing @JvmOverloads constructor(

@@ -1,6 +1,7 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -806,9 +807,9 @@ fun MyselfInformation(ui: MutableState<Int>) {
     val isShowEditPassword = Global.isShowEditPassword.collectAsState()
     val isShowEditQQ = Global.isShowEditQQ.collectAsState()
 
-    var change by remember { mutableStateOf(false) }
+    var buttonChange by remember { mutableStateOf(false) }
     val buttonSize by animateDpAsState(
-        targetValue = if (change) 30.dp else 25.dp,
+        targetValue = if (buttonChange) 30.dp else 25.dp,
         animationSpec = tween(
             durationMillis = 500,
             easing = FastOutSlowInEasing
@@ -817,11 +818,27 @@ fun MyselfInformation(ui: MutableState<Int>) {
     )
 
     if (buttonSize == 30.dp) {
-        change = false
+        buttonChange = false
     }
+
+    var imageChange by remember { mutableStateOf(false) }
+    val imageSize by animateDpAsState(
+        targetValue = if (imageChange) 100.dp else 80.dp,
+        animationSpec = tween(
+            durationMillis = 500,
+            easing = FastOutSlowInEasing
+        ),
+        label = ""
+    )
+
+    if (imageSize == 100.dp) {
+        imageChange = false
+    }
+
     LaunchedEffect(Unit) {
         delay(200)
-        change = true
+        buttonChange = true
+        imageChange = true
     }
 
     LaunchedEffect(isShowEditSynopsis.value, isShowEditPassword.value, isShowEditQQ.value) {
@@ -854,7 +871,9 @@ fun MyselfInformation(ui: MutableState<Int>) {
                             userQQ = userInfo.qq
                             loginCounts = userInfo.loginCount
                             registerTime = transToString(userInfo.registerTime)
+                            Log.d("IP获取", "开始获取IP地址:${userInfo.registerIp}")
                             registerAddress = getAddressFromIp(userInfo.registerIp)
+                            Log.d("IP获取", "获取完成！")
                         }
                     }
                 }
@@ -890,7 +909,7 @@ fun MyselfInformation(ui: MutableState<Int>) {
             model = "https://q.qlogo.cn/headimg_dl?dst_uin=${userQQ}&spec=640&img_type=jpg",
             contentDescription = null,
             modifier = Modifier
-                .size(80.dp)
+                .size(imageSize)
                 .clip(CircleShape)
         )
             }

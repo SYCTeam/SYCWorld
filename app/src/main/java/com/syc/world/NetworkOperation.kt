@@ -59,18 +59,45 @@ data class UserInfo(
     @SerializedName("stepCount") val stepCount: String
 )
 
-data class IpInfo(
-    @SerializedName("ip") val ip: String,
-    @SerializedName("pro") val province: String,
-    @SerializedName("proCode") val provinceCode: String,
-    @SerializedName("city") val city: String,
-    @SerializedName("cityCode") val cityCode: String,
-    @SerializedName("region") val region: String,
-    @SerializedName("regionCode") val regionCode: String,
-    @SerializedName("addr") val addr: String,
-    @SerializedName("regionNames") val regionNames: String,
-    @SerializedName("err") val err: String
+data class IpResponse(
+    @SerializedName("code")
+    val code: String,
+    @SerializedName("data")
+    val data: IpInfo
 )
+
+data class IpInfo(
+    // 接口中的 "QUERY_IP" 对应用户的IP地址
+    @SerializedName("QUERY_IP")
+    val ip: String,
+    // 省份中文
+    @SerializedName("PROVINCE_CN")
+    val province: String,
+    // 省份代码
+    @SerializedName("PROVINCE_CODE")
+    val provinceCode: String,
+    // 城市中文
+    @SerializedName("CITY_CN")
+    val city: String,
+    // 城市代码
+    @SerializedName("CITY_CODE")
+    val cityCode: String,
+    // 区域中文（例如 "AREA_CN"）
+    @SerializedName("AREA_CN")
+    val region: String,
+    // 区域代码（例如 "AREA_CODE"）
+    @SerializedName("AREA_CODE")
+    val regionCode: String,
+    // 这里简单使用国家中文作为地址（你也可以根据需要组合多个字段）
+    @SerializedName("COUNTRY_CN")
+    val addr: String,
+    // 区域英文名称（例如 "AREA_EN"）
+    @SerializedName("AREA_EN")
+    val regionNames: String,
+    // 如果有错误信息，可用此字段，这里没有返回值，默认为空字符串
+    val err: String = ""
+)
+
 
 data class RankInfo(
     @SerializedName("username") val username: String,
@@ -210,9 +237,9 @@ fun getUserInformation(username: String): String {
 }
 
 suspend fun getAddressFromIp(ip: String): String {
-    val url = "https://whois.pconline.com.cn/ipJson.jsp?ip=$ip&json=true"
+    val url = "https://zj.v.api.aa1.cn/api/ip-taobao/?ip=$ip"
 
-    return withContext(Dispatchers.IO) {
+
         val client = OkHttpClient()
 
         val request = Request.Builder()
@@ -220,33 +247,27 @@ suspend fun getAddressFromIp(ip: String): String {
             .build()
 
         try {
-            val response = withTimeout(4000) {
-                client.newCall(request).execute()
-            }
+            val response = client.newCall(request).execute()
             if (response.isSuccessful) {
+                Log.d("IP问题", "访问成功")
                 val responseString = response.body?.string() ?: "无"
                 try {
-                    Log.d("信息获取", responseString)
-                    val ipInfo: IpInfo =
-                        Gson().fromJson(responseString, IpInfo::class.java)
-
-                    ipInfo.city.ifEmpty {
-                        ipInfo.province
-                    }
+                    val ipResponse: IpResponse =
+                        Gson().fromJson(responseString, IpResponse::class.java)
+                    return ipResponse.data.addr + " · " + ipResponse.data.province
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    "无"
+                    return "无"
                 }
             } else {
-                "无"
+                return "无"
             }
         } catch (e: TimeoutCancellationException) {
-            "无"
+            return "无"
         } catch (e: IOException) {
             e.printStackTrace()
-            "无"
+            return "无"
         }
-    }
 }
 
 fun modifySynopsis(username: String, password: String,synopsis: String): String {
