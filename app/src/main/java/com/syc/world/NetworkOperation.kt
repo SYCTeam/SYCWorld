@@ -66,6 +66,13 @@ data class IpResponse(
     val data: IpInfo
 )
 
+data class PasswordInfo(
+    @SerializedName("status")
+    val status: String,
+    @SerializedName("message")
+    val message: String
+)
+
 data class IpInfo(
     // 接口中的 "QUERY_IP" 对应用户的IP地址
     @SerializedName("QUERY_IP")
@@ -236,7 +243,8 @@ fun getUserInformation(username: String): String {
     }
 }
 
-suspend fun getAddressFromIp(ip: String): String {
+fun getAddressFromIp(ip: String): String {
+
     val url = "https://zj.v.api.aa1.cn/api/ip-taobao/?ip=$ip"
 
 
@@ -325,7 +333,7 @@ fun modifyStepCount(username: String, password: String,stepCount: String): Strin
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
             val responseBody = response.body?.string() ?: ""
-            Log.d("信息获取", responseBody)
+            Log.d("步数信息获取", responseBody)
             responseBody
         } else {
             "Error: ${response.message}"
@@ -375,3 +383,43 @@ suspend fun getRank(): List<RankInfo> {
     }
 }
 
+fun modifyPassword(username: String, oldPassword: String, newPassword: String): Pair<String, String> {
+    val url = "${Global.url}/syc/modifyPassword.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+
+    val client = OkHttpClient()
+
+    // 创建请求体，包含用户名和密码
+    val formBody = FormBody.Builder()
+        .add("username", username)
+        .add("oldPassword", oldPassword)
+        .add("newPassword", newPassword)
+        .build()
+
+    Log.d("密码信息获取", url.toString())
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("密码信息获取", responseBody)
+            try {
+                val passwordInfo: PasswordInfo = Gson().fromJson(responseBody, PasswordInfo::class.java)
+                Pair(passwordInfo.status, passwordInfo.message)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
+    }
+}

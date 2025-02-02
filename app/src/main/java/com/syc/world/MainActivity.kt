@@ -135,6 +135,7 @@ import kotlin.system.exitProcess
 
 object Global {
 
+    const val NAME = "酸夜沉空间"
     var url = ""
     var username = ""
     var password = ""
@@ -228,12 +229,20 @@ object Global {
         _personSynopsisBeingViewed.value = value
     }
 
-    private val _personAddressBeingViewed = MutableStateFlow("")
-    val personAddressBeingViewed: StateFlow<String>
-        get() = _personAddressBeingViewed
+    private val _personRegisterAddressBeingViewed = MutableStateFlow("")
+    val personRegisterAddressBeingViewed: StateFlow<String>
+        get() = _personRegisterAddressBeingViewed
 
-    fun setPersonAddressBeingViewed(value: String) {
-        _personAddressBeingViewed.value = value
+    fun setPersonRegisterAddressBeingViewed(value: String) {
+        _personRegisterAddressBeingViewed.value = value
+    }
+
+    private val _personLoginAddressBeingViewed = MutableStateFlow("")
+    val personLoginAddressBeingViewed: StateFlow<String>
+        get() = _personLoginAddressBeingViewed
+
+    fun setPersonLoginAddressBeingViewed(value: String) {
+        _personLoginAddressBeingViewed.value = value
     }
 
     private val _personLastAccessTimeBeingViewed = MutableStateFlow("")
@@ -242,6 +251,22 @@ object Global {
 
     fun setPersonLastAccessTimeBeingViewed(value: String) {
         _personLastAccessTimeBeingViewed.value = value
+    }
+
+    private val _personStepCountBeingViewed = MutableStateFlow(-1)
+    val personStepCountBeingViewed: StateFlow<Int>
+        get() = _personStepCountBeingViewed
+
+    fun setPersonStepCountBeingViewed(value: Int) {
+        _personStepCountBeingViewed.value = value
+    }
+
+    private val _personLoginCountBeingViewed = MutableStateFlow(-1)
+    val personLoginCountBeingViewed: StateFlow<Int>
+        get() = _personLoginCountBeingViewed
+
+    fun setPersonLoginCountBeingViewed(value: Int) {
+        _personLoginCountBeingViewed.value = value
     }
 
 }

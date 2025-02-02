@@ -206,6 +206,40 @@ fun Person(
         var textNew by remember { mutableStateOf("") }
         var passwordHidden by remember { mutableStateOf(false) }
 
+        var isModifyPassword by remember { mutableStateOf(false) }
+
+        LaunchedEffect(isModifyPassword) {
+            if (isModifyPassword) {
+                if (textOld.trim().isNotEmpty() && textNew.trim().isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        val modifyPasswordResult = modifyPassword(Global.username, textOld, textNew)
+                        if (modifyPasswordResult.first == "error") {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "修改失败！原因：${modifyPasswordResult.second}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            textOld = ""
+                            textNew = ""
+                        } else if (modifyPasswordResult.first == "success"){
+                            Log.d("密码问题", "密码修改成功！")
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    modifyPasswordResult.second,
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            textOld = ""
+                            textNew = ""
+                        }
+                    }
+                }
+            }
+        }
+
         LaunchedEffect(isSynopsis) {
             if (isSynopsis) {
                 withContext(Dispatchers.IO) {
@@ -282,10 +316,10 @@ fun Person(
         AnimatedVisibility(
             visible = isShowEditPassword.value || isShowEditQQ.value || isShowAskExit.value || isShowEditSynopsis.value,
             enter = fadeIn(
-                animationSpec = tween(durationMillis = 200)
+                animationSpec = tween(durationMillis = 300)
             ),
             exit = fadeOut(
-                animationSpec = tween(durationMillis = 200)
+                animationSpec = tween(durationMillis = 300)
             )
         ) {
             Surface(
@@ -311,23 +345,23 @@ fun Person(
             enter = scaleIn(
                 initialScale = 0f,
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ) + slideInVertically(
                 initialOffsetY = { fullHeight -> fullHeight },
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ),
             exit = scaleOut(
                 targetScale = 0f,
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ) + slideOutVertically(
                 targetOffsetY = { fullHeight -> fullHeight },
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             )
         ) {
@@ -436,13 +470,12 @@ fun Person(
                                     if (textOld.trim().isNotEmpty() && textNew.trim()
                                             .isNotEmpty()
                                     ) {
+                                        isModifyPassword = true
                                         Toast.makeText(
                                             context,
-                                            "登录密码修改成功！",
+                                            "正在修改中...",
                                             Toast.LENGTH_SHORT
                                         ).show()
-                                        textOld = ""
-                                        textNew = ""
                                         Global.setIsShowEditPassword(false)
                                     } else {
                                         Toast.makeText(
@@ -471,23 +504,23 @@ fun Person(
             enter = scaleIn(
                 initialScale = 0f,
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ) + slideInVertically(
                 initialOffsetY = { fullHeight -> fullHeight },
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ),
             exit = scaleOut(
                 targetScale = 0f,
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ) + slideOutVertically(
                 targetOffsetY = { fullHeight -> fullHeight },
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             )
         ) {
@@ -585,23 +618,23 @@ fun Person(
             enter = scaleIn(
                 initialScale = 0f,
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ) + slideInVertically(
                 initialOffsetY = { fullHeight -> fullHeight },
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ),
             exit = scaleOut(
                 targetScale = 0f,
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ) + slideOutVertically(
                 targetOffsetY = { fullHeight -> fullHeight },
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             )
         ) {
@@ -690,23 +723,23 @@ fun Person(
             enter = scaleIn(
                 initialScale = 0f,
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ) + slideInVertically(
                 initialOffsetY = { fullHeight -> fullHeight },
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ),
             exit = scaleOut(
                 targetScale = 0f,
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             ) + slideOutVertically(
                 targetOffsetY = { fullHeight -> fullHeight },
                 animationSpec = tween(
-                    durationMillis = 300
+                    durationMillis = 500
                 )
             )
         ) {
@@ -761,6 +794,11 @@ fun Person(
                                         textOld = ""
                                         textNew = ""
                                         Global.setIsShowAskExit(false)
+                                        navController.navigate("Regin") {
+                                            popUpTo("loading") {
+                                                inclusive = true
+                                            }
+                                        }
                                     }) {
                                     Icon(
                                         Icons.Filled.Done,
@@ -866,7 +904,7 @@ fun MyselfInformation(ui: MutableState<Int>) {
                     val userInfoFirst = getUserInformation(userName)
                     if (isJson(userInfoFirst)) {
                         val userInfo = parseUserInfo(userInfoFirst)
-                        if (userInfo != null) {
+                        if (userInfo != null && userInfo.registerIp.isNotEmpty() && userInfo.loginIp.isNotEmpty()) {
                             synopsis = userInfo.synopsis
                             userQQ = userInfo.qq
                             loginCounts = userInfo.loginCount
@@ -905,14 +943,14 @@ fun MyselfInformation(ui: MutableState<Int>) {
                     .clip(CircleShape)
             )
         } else {
-        AsyncImage(
-            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${userQQ}&spec=640&img_type=jpg",
-            contentDescription = null,
-            modifier = Modifier
-                .size(imageSize)
-                .clip(CircleShape)
-        )
-            }
+            AsyncImage(
+                model = "https://q.qlogo.cn/headimg_dl?dst_uin=${userQQ}&spec=640&img_type=jpg",
+                contentDescription = null,
+                modifier = Modifier
+                    .size(imageSize)
+                    .clip(CircleShape)
+            )
+        }
         TextButton(
             modifier = Modifier.padding(top = 10.dp),
             onClick = {
