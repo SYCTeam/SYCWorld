@@ -1,8 +1,10 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.icu.text.SimpleDateFormat
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -41,6 +43,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -116,6 +119,25 @@ fun Home(
         ViewOthersPopup()
     }
 
+}
+
+fun openQQProfile(context: Context, qqNumber: String) {
+    // 构建 QQ 个人资料卡 URL
+    val url =
+        "mqqapi://card/show_pslcard?src_type=internal&version=1&uin=$qqNumber&card_type=person&source=qrcode"
+
+    // 创建 Intent
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+    // 如果设备上已安装 QQ 应用，跳转到个人资料卡页面
+    if (intent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(intent)
+    } else {
+        // 如果没有安装 QQ，提示用户安装 QQ 或者可以选择打开网页版
+        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://w.qq.com"))
+        context.startActivity(webIntent)
+    }
 }
 
 @Composable
@@ -354,14 +376,36 @@ fun ViewOthersPopup() {
                             }
                         }
                     }
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+                    val context = LocalContext.current
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
                             modifier = Modifier
-                                .padding(10.dp)
-                                .fillMaxWidth(),
+                                .padding(start = 10.dp, top = 5.dp, bottom = 10.dp)
+                                .weight(1f),
+                            onClick = {
+                                openQQProfile(context, personQQBeingViewed.value)
+                            }) {
+                            Icon(
+                                Icons.Filled.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "加个QQ",
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                            )
+                        }
+                        Button(
+                            modifier = Modifier
+                                .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 10.dp)
+                                .weight(1f),
                             onClick = {
                                 Global.setIsShowState(false)
                             }) {
@@ -1333,7 +1377,7 @@ fun StepRank() {
                             isRank1ReLoading = true
                             isRank2ReLoading = true
                             isRank3ReLoading = true
-                          delay(10000)
+                            delay(10000)
                         }
                     }
                 }
@@ -1551,7 +1595,8 @@ fun StepRank() {
                                     .isNotEmpty() && rank3Synopsis.trim()
                                     .isNotEmpty() && rank3RegisterAddress.trim()
                                     .isNotEmpty() && rank3RegisterAddress != "无" && rank3LoginAddress.trim()
-                                    .isNotEmpty() && rank3LastAccessTime.trim().isNotEmpty() && rank3StepCount != -1
+                                    .isNotEmpty() && rank3LastAccessTime.trim()
+                                    .isNotEmpty() && rank3StepCount != -1
                             ) {
                                 Global.setPersonNameBeingViewed(rank3Name)
                                 Global.setPersonSynopsisBeingViewed(rank3Synopsis)
