@@ -1,5 +1,5 @@
 [versions]
-gson = "2.10.1"
+gson = "2.11.0"
 agp = "8.8.0"
 coilNetworkOkhttp = "3.0.4"
 haze = "1.2.2"
@@ -10,14 +10,16 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.0"
-composeBom = "2025.01.00"
+composeBom = "2025.01.01"
 lottieCompose = "6.6.2"
-miuix = "0.3.3"
+miuix = "0.3.4"
 datastoreCoreAndroid = "1.1.2"
 datastorePreferencesCoreJvm = "1.1.2"
 datastorePreferences = "1.1.2"
-navigationCompose = "2.8.5"
+navigationCompose = "2.8.6"
 okhttp = "4.12.0"
+playServicesFitness = "21.2.0"
+playServicesLocation = "21.3.0"
 
 [libraries]
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
@@ -45,6 +47,8 @@ lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "
 miuix = { module = "top.yukonga.miuix.kmp:miuix", version.ref = "miuix" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+play-services-fitness = { module = "com.google.android.gms:play-services-fitness", version.ref = "playServicesFitness" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

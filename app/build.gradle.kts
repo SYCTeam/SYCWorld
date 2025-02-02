@@ -82,6 +82,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.play.services.fitness)
+    implementation(libs.play.services.location)
     implementation(libs.gson)
     implementation(libs.lottie.compose)
     implementation(libs.okhttp)
