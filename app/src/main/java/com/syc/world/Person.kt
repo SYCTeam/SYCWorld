@@ -115,6 +115,7 @@ fun Person(
             }
         }
     }
+
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             while (Global.url == "") {
@@ -207,6 +208,40 @@ fun Person(
         var passwordHidden by remember { mutableStateOf(false) }
 
         var isModifyPassword by remember { mutableStateOf(false) }
+        var isModifyQQ by remember { mutableStateOf(false) }
+
+
+        LaunchedEffect(isModifyQQ) {
+            if (isModifyQQ) {
+                if (textNew.trim().isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        val modifyPasswordResult = modifyQQ(Global.username, textNew)
+                        if (modifyPasswordResult.first == "error") {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "修改失败！原因：${modifyPasswordResult.second}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            textOld = ""
+                            textNew = ""
+                        } else if (modifyPasswordResult.first == "success"){
+                            Log.d("QQ问题", "QQ修改成功！")
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    modifyPasswordResult.second,
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            textOld = ""
+                            textNew = ""
+                        }
+                    }
+                }
+            }
+        }
 
         LaunchedEffect(isModifyPassword) {
             if (isModifyPassword) {
@@ -234,6 +269,11 @@ fun Person(
                             }
                             textOld = ""
                             textNew = ""
+                            navController.navigate("Regin") {
+                                popUpTo("loading") {
+                                    inclusive = true
+                                }
+                            }
                         }
                     }
                 }
@@ -586,10 +626,9 @@ fun Person(
                                 modifier = Modifier.padding(10.dp),
                                 onClick = {
                                     if (textNew.trim().isNotEmpty()) {
-                                        Toast.makeText(context, "QQ修改成功！", Toast.LENGTH_SHORT)
+                                        isModifyQQ = true
+                                        Toast.makeText(context, "正在修改中...", Toast.LENGTH_SHORT)
                                             .show()
-                                        textOld = ""
-                                        textNew = ""
                                         Global.setIsShowEditQQ(false)
                                     } else {
                                         Toast.makeText(

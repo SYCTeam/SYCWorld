@@ -66,7 +66,7 @@ data class IpResponse(
     val data: IpInfo
 )
 
-data class PasswordInfo(
+data class ModifyInfo(
     @SerializedName("status")
     val status: String,
     @SerializedName("message")
@@ -262,7 +262,7 @@ fun getAddressFromIp(ip: String): String {
                 try {
                     val ipResponse: IpResponse =
                         Gson().fromJson(responseString, IpResponse::class.java)
-                    return ipResponse.data.addr + " · " + ipResponse.data.province
+                    return ipResponse.data.addr + "·" + ipResponse.data.province
                 } catch (e: Exception) {
                     e.printStackTrace()
                     return "无"
@@ -409,7 +409,47 @@ fun modifyPassword(username: String, oldPassword: String, newPassword: String): 
             val responseBody = response.body?.string() ?: ""
             Log.d("密码信息获取", responseBody)
             try {
-                val passwordInfo: PasswordInfo = Gson().fromJson(responseBody, PasswordInfo::class.java)
+                val passwordInfo: ModifyInfo = Gson().fromJson(responseBody, ModifyInfo::class.java)
+                Pair(passwordInfo.status, passwordInfo.message)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
+    }
+}
+
+fun modifyQQ(username: String, newQQ: String): Pair<String, String> {
+    val url = "${Global.url}/syc/modifyQQ.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+
+    val client = OkHttpClient()
+
+    // 创建请求体
+    val formBody = FormBody.Builder()
+        .add("username", username)
+        .add("newQQ", newQQ)
+        .build()
+
+    Log.d("QQ信息获取", url.toString())
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("QQ信息获取", responseBody)
+            try {
+                val passwordInfo: ModifyInfo = Gson().fromJson(responseBody, ModifyInfo::class.java)
                 Pair(passwordInfo.status, passwordInfo.message)
             } catch (e: Exception) {
                 e.printStackTrace()
