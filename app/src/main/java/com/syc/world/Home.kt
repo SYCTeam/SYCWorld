@@ -377,49 +377,77 @@ fun ViewOthersPopup() {
                         }
                     }
                     val context = LocalContext.current
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            modifier = Modifier
-                                .padding(start = 10.dp, top = 5.dp, bottom = 10.dp)
-                                .weight(1f),
-                            onClick = {
-                                openQQProfile(context, personQQBeingViewed.value)
-                            }) {
-                            Icon(
-                                Icons.Filled.Person,
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.IconSize)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "加个QQ",
-                                textAlign = TextAlign.Center,
+                    if (personNameBeingViewed.value == Global.username) {
+                            Button(
                                 modifier = Modifier
-                            )
-                        }
-                        Button(
+                                    .fillMaxWidth()
+                                    .padding(10.dp),
+                                onClick = {
+                                    Global.setIsShowState(false)
+                                }) {
+                                Icon(
+                                    Icons.Filled.Done,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "我知道了",
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 15.sp,
+                                    modifier = Modifier,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                    } else {
+                        Row(
                             modifier = Modifier
-                                .padding(start = 10.dp, end = 10.dp, top = 5.dp, bottom = 10.dp)
-                                .weight(1f),
-                            onClick = {
-                                Global.setIsShowState(false)
-                            }) {
-                            Icon(
-                                Icons.Filled.Done,
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.IconSize)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "我知道了",
-                                textAlign = TextAlign.Center,
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
                                 modifier = Modifier
-                            )
+                                    .padding(top = 5.dp, bottom = 10.dp)
+                                    .weight(1f),
+                                onClick = {
+                                    openQQProfile(context, personQQBeingViewed.value)
+                                }) {
+                                Icon(
+                                    Icons.Filled.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "加个QQ",
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 15.sp,
+                                    modifier = Modifier,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Button(
+                                modifier = Modifier
+                                    .padding(start = 10.dp, top = 5.dp, bottom = 10.dp)
+                                    .weight(1f),
+                                onClick = {
+                                    Global.setIsShowState(false)
+                                }) {
+                                Icon(
+                                    Icons.Filled.Done,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "我知道了",
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 15.sp,
+                                    modifier = Modifier,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
@@ -1072,7 +1100,7 @@ fun StepRank() {
 
     LaunchedEffect(Unit) {
         while (true) {
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
                 stepCount = Global.stepCount
                 delay(500)
             }

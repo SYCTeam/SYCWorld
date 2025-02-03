@@ -763,6 +763,7 @@ fun RequestAllFilesAccessPermission(
 fun monitorStepCount(context: Context) {
     // 如果已有任务在运行，则不启动新的任务
     if (Global.monitorJob?.isActive == true) {
+        Log.d("步数问题", "步数监控正在尝试重复启动")
         return
     }
 
@@ -793,6 +794,7 @@ fun monitorStepCount(context: Context) {
                         return
                     }
                     Global.stepCount++
+                    Log.d("步数问题", "步数增加了一步")
                 }
                 Sensor.TYPE_STEP_COUNTER -> {
                     val currentStepCount = event.values[0].toInt()

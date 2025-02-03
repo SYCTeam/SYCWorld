@@ -31,12 +31,12 @@ class ForegroundService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val wakeLockRunnable = object : Runnable {
         override fun run() {
-            if (!isProcessRunning(applicationContext, "com.syc.world")) {
+            if (!isProcessRunning(applicationContext, "com.syc.world.MainProcess")) {
                 restartMainProcess()
             }
             handler.postDelayed(this, 5000) // 每 5 秒检查一次
             acquireWakeLock() // 重新获取 WakeLock
-            handler.postDelayed(this, 9 * 60 * 1000L) // 每 9 分钟重新获取一次，避免超时
+            handler.postDelayed(this, 3 * 60 * 1000L) // 每 3 分钟重新获取一次，避免超时
         }
     }
 
@@ -57,7 +57,7 @@ class ForegroundService : Service() {
             wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SYC:WakeLock")
         }
         if (wakeLock?.isHeld != true) {
-            wakeLock?.acquire(10 * 60 * 1000L) // 申请 10 分钟
+            wakeLock?.acquire(3 * 60 * 1000L) // 申请 3 分钟
         }
     }
 
@@ -73,7 +73,6 @@ class ForegroundService : Service() {
         super.onCreate()
         createNotificationChannel()
         acquireWakeLock()
-        handler.postDelayed(wakeLockRunnable, 9 * 60 * 1000L) // 定期重新申请 WakeLock
     }
 
     override fun onDestroy() {
@@ -108,70 +107,6 @@ class ForegroundService : Service() {
 
         startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
 
-        return START_STICKY
-    }
-
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
-
-    @SuppressLint("SdCardPath")
-    private fun buildForegroundNotification(text: String = "We are unstoppable."): Notification {
-        val channelId = "SYC"
-
-        val emptyIntent = Intent().apply {
-        }
-
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            emptyIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val name = readFile("/data/data/com.syc.world/files/username")
-
-        return NotificationCompat.Builder(this, channelId)
-            .setContentTitle(if (name != "error") name else "酸夜沉空间正在运行中")
-            .setContentText(text)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .build()
-    }
-
-
-    companion object
-}
-
-class MainProcessService : Service() {
-
-    @SuppressLint("ServiceCast")
-    fun isProcessRunning(context: Context, processName: String): Boolean {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val runningAppProcesses = activityManager.runningAppProcesses
-
-        for (process in runningAppProcesses) {
-            if (process.processName == processName) {
-                return true
-            }
-        }
-        return false
-    }
-
-    override fun onCreate() {
-        super.onCreate()
-        // 这里做一些初始化工作
-        Log.d("MainProcess", "Main process started.")
-        // 检测进程是否存在
-        if (!isProcessRunning(applicationContext, "com.syc.world")) {
-            // 启动 MainActivity
-            val intent = Intent(applicationContext, MainActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
-        }
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         var stepCount: String
         var currentTime: Long
         var lastExecutionTime: Long = 0
@@ -179,11 +114,13 @@ class MainProcessService : Service() {
 
         CoroutineScope(Dispatchers.IO).launch {
             stepCount = readFromFile(applicationContext, "stepCount")
-            Log.d("读取问题", stepCount)
+            Log.d("步数问题", stepCount)
             if (stepCount.trim().isNotEmpty() && stepCount.toIntOrNull() != null) {
                 Global.stepCount = stepCount.toInt()
+                Log.d("步数问题", "已经将文件中的步数更新，Global.stepCount: ${Global.stepCount}")
             }
             monitorStepCount(applicationContext)
+            Log.d("步数问题", "已启用步数监控")
         }
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -305,6 +242,81 @@ class MainProcessService : Service() {
                 delay(10000)
             }
         }
+
+        return START_STICKY
+    }
+
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
+
+    @SuppressLint("SdCardPath")
+    private fun buildForegroundNotification(text: String = "We are unstoppable."): Notification {
+        val channelId = "SYC"
+
+        val emptyIntent = Intent().apply {
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            emptyIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val name = readFile("/data/data/com.syc.world/files/username")
+
+        return NotificationCompat.Builder(this, channelId)
+            .setContentTitle(if (name != "error") name else "酸夜沉空间正在运行中")
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .build()
+    }
+
+
+    companion object
+}
+
+class MainProcessService : Service() {
+
+    @SuppressLint("ServiceCast")
+    fun isProcessRunning(context: Context, processName: String): Boolean {
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val runningAppProcesses = activityManager.runningAppProcesses
+
+        for (process in runningAppProcesses) {
+            if (process.processName == processName) {
+                return true
+            }
+        }
+        return false
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        // 这里做一些初始化工作
+        Log.d("MainProcess", "Main process started.")
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+
+        // 启动后台任务进行心跳检测
+        CoroutineScope(Dispatchers.IO).launch {
+            while (true) {
+                // 检测进程是否存在
+                if (!isProcessRunning(applicationContext, "com.syc.world.MainProcess")) {
+                    // 启动 MainActivity
+                    Intent(
+                        applicationContext,
+                        MainActivity::class.java
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                }
+                delay(5000)
+            }
+        }
+
         return START_STICKY
     }
 
