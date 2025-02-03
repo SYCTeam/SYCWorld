@@ -226,6 +226,7 @@ fun Person(
                             }
                             textOld = ""
                             textNew = ""
+                            isModifyQQ = false
                         } else if (modifyPasswordResult.first == "success"){
                             Log.d("QQ问题", "QQ修改成功！")
                             withContext(Dispatchers.Main) {
@@ -237,6 +238,7 @@ fun Person(
                             }
                             textOld = ""
                             textNew = ""
+                            isModifyQQ = false
                         }
                     }
                 }
@@ -258,6 +260,7 @@ fun Person(
                             }
                             textOld = ""
                             textNew = ""
+                            isModifyPassword = false
                         } else if (modifyPasswordResult.first == "success"){
                             Log.d("密码问题", "密码修改成功！")
                             withContext(Dispatchers.Main) {
@@ -269,9 +272,12 @@ fun Person(
                             }
                             textOld = ""
                             textNew = ""
-                            navController.navigate("Regin") {
-                                popUpTo("loading") {
-                                    inclusive = true
+                            isModifyPassword = false
+                            withContext(Dispatchers.Main) {
+                                navController.navigate("Regin") {
+                                    popUpTo("loading") {
+                                        inclusive = true
+                                    }
                                 }
                             }
                         }
@@ -511,11 +517,6 @@ fun Person(
                                             .isNotEmpty()
                                     ) {
                                         isModifyPassword = true
-                                        Toast.makeText(
-                                            context,
-                                            "正在修改中...",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
                                         Global.setIsShowEditPassword(false)
                                     } else {
                                         Toast.makeText(
@@ -627,8 +628,6 @@ fun Person(
                                 onClick = {
                                     if (textNew.trim().isNotEmpty()) {
                                         isModifyQQ = true
-                                        Toast.makeText(context, "正在修改中...", Toast.LENGTH_SHORT)
-                                            .show()
                                         Global.setIsShowEditQQ(false)
                                     } else {
                                         Toast.makeText(
