@@ -272,6 +272,31 @@ object Global {
         _personLoginCountBeingViewed.value = value
     }
 
+    private val _isShowChat = MutableStateFlow(false)
+    val isShowChat: StateFlow<Boolean>
+        get() = _isShowChat
+
+    fun setIsShowChat(value: Boolean) {
+        _isShowChat.value = value
+    }
+
+    private val _personNameBeingChat = MutableStateFlow("")
+    val personNameBeingChat: StateFlow<String>
+        get() = _personNameBeingChat
+
+    fun setPersonNameBeingChat(value: String) {
+        _personNameBeingChat.value = value
+    }
+
+    private val _unreadCountInChat = MutableStateFlow("")
+    val unreadCountInChat: StateFlow<String>
+        get() = _unreadCountInChat
+
+    fun setUnreadCountInChat(value: String) {
+        _unreadCountInChat.value = value
+    }
+
+
 }
 
 class MainActivity : ComponentActivity() {
@@ -1257,6 +1282,7 @@ fun AllHome(
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
             composable("PersonInfo") { PersonInfo(navController) }
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
+            composable("ChatUi") { ChatUi(navController) }
         }
     }
 }
