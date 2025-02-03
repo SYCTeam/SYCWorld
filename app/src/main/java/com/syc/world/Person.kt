@@ -221,7 +221,7 @@ fun Person(
                                 Toast.makeText(
                                     context,
                                     "修改失败！原因：${modifyPasswordResult.second}",
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_LONG
                                 ).show()
                             }
                             textOld = ""
@@ -233,7 +233,7 @@ fun Person(
                                 Toast.makeText(
                                     context,
                                     modifyPasswordResult.second,
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_LONG
                                 ).show()
                             }
                             textOld = ""
@@ -255,7 +255,7 @@ fun Person(
                                 Toast.makeText(
                                     context,
                                     "修改失败！原因：${modifyPasswordResult.second}",
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_LONG
                                 ).show()
                             }
                             textOld = ""
@@ -267,7 +267,7 @@ fun Person(
                                 Toast.makeText(
                                     context,
                                     modifyPasswordResult.second,
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_LONG
                                 ).show()
                             }
                             textOld = ""
@@ -302,7 +302,7 @@ fun Person(
                                 Toast.makeText(
                                     context,
                                     "简介修改成功！",
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_LONG
                                 )
                                     .show()
                             }
@@ -314,7 +314,7 @@ fun Person(
                                 Toast.makeText(
                                     context,
                                     parseSynopsisData(synopsis)?.message
-                                        ?: "未知错误，请稍后再试", Toast.LENGTH_SHORT
+                                        ?: "未知错误，请稍后再试", Toast.LENGTH_LONG
                                 )
                                     .show()
                             }
@@ -326,7 +326,7 @@ fun Person(
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 context,
-                                "未知错误，请稍后再试", Toast.LENGTH_SHORT
+                                "未知错误，请稍后再试", Toast.LENGTH_LONG
                             )
                                 .show()
                         }
@@ -522,7 +522,7 @@ fun Person(
                                         Toast.makeText(
                                             context,
                                             "请确保每项不为空！",
-                                            Toast.LENGTH_SHORT
+                                            Toast.LENGTH_LONG
                                         ).show()
                                     }
                                 }) {
@@ -633,7 +633,7 @@ fun Person(
                                         Toast.makeText(
                                             context,
                                             "请确保QQ号不为空！",
-                                            Toast.LENGTH_SHORT
+                                            Toast.LENGTH_LONG
                                         ).show()
                                     }
                                 }) {
@@ -738,7 +738,7 @@ fun Person(
                                         Toast.makeText(
                                             context,
                                             "请确保简介不为空！",
-                                            Toast.LENGTH_SHORT
+                                            Toast.LENGTH_LONG
                                         ).show()
                                     }
                                 }) {
@@ -827,7 +827,7 @@ fun Person(
                                 Button(
                                     modifier = Modifier.padding(10.dp),
                                     onClick = {
-                                        Toast.makeText(context, "已退出登录！", Toast.LENGTH_SHORT)
+                                        Toast.makeText(context, "已退出登录！", Toast.LENGTH_LONG)
                                             .show()
                                         textOld = ""
                                         textNew = ""

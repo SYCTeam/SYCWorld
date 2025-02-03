@@ -13,6 +13,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -66,7 +67,7 @@ data class IpResponse(
     val data: IpInfo
 )
 
-data class ModifyInfo(
+data class WebCommonInfo(
     @SerializedName("status")
     val status: String,
     @SerializedName("message")
@@ -248,37 +249,37 @@ fun getAddressFromIp(ip: String): String {
     val url = "https://zj.v.api.aa1.cn/api/ip-taobao/?ip=$ip"
 
 
-        val client = OkHttpClient()
+    val client = OkHttpClient()
 
-        val request = Request.Builder()
-            .url(url)
-            .build()
+    val request = Request.Builder()
+        .url(url)
+        .build()
 
-        try {
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                Log.d("IP问题", "访问成功")
-                val responseString = response.body?.string() ?: "无"
-                try {
-                    val ipResponse: IpResponse =
-                        Gson().fromJson(responseString, IpResponse::class.java)
-                    return ipResponse.data.addr + "·" + ipResponse.data.province
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    return "无"
-                }
-            } else {
+    try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            Log.d("IP问题", "访问成功")
+            val responseString = response.body?.string() ?: "无"
+            try {
+                val ipResponse: IpResponse =
+                    Gson().fromJson(responseString, IpResponse::class.java)
+                return ipResponse.data.addr + "·" + ipResponse.data.province
+            } catch (e: Exception) {
+                e.printStackTrace()
                 return "无"
             }
-        } catch (e: TimeoutCancellationException) {
-            return "无"
-        } catch (e: IOException) {
-            e.printStackTrace()
+        } else {
             return "无"
         }
+    } catch (e: TimeoutCancellationException) {
+        return "无"
+    } catch (e: IOException) {
+        e.printStackTrace()
+        return "无"
+    }
 }
 
-fun modifySynopsis(username: String, password: String,synopsis: String): String {
+fun modifySynopsis(username: String, password: String, synopsis: String): String {
     val url = "${Global.url}/syc/synopsis.php".toHttpUrlOrNull() ?: return "Error: Invalid URL"
 
     val client = OkHttpClient()
@@ -311,7 +312,7 @@ fun modifySynopsis(username: String, password: String,synopsis: String): String 
     }
 }
 
-fun modifyStepCount(username: String, password: String,stepCount: String): String {
+fun modifyStepCount(username: String, password: String, stepCount: String): String {
     val url = "${Global.url}/syc/stepCount.php".toHttpUrlOrNull() ?: return "Error: Invalid URL"
 
     val client = OkHttpClient()
@@ -383,8 +384,15 @@ suspend fun getRank(): List<RankInfo> {
     }
 }
 
-fun modifyPassword(username: String, oldPassword: String, newPassword: String): Pair<String, String> {
-    val url = "${Global.url}/syc/modifyPassword.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+fun modifyPassword(
+    username: String,
+    oldPassword: String,
+    newPassword: String
+): Pair<String, String> {
+    val url = "${Global.url}/syc/modifyPassword.php".toHttpUrlOrNull() ?: return Pair(
+        "Error",
+        "Invalid URL"
+    )
 
     val client = OkHttpClient()
 
@@ -409,7 +417,8 @@ fun modifyPassword(username: String, oldPassword: String, newPassword: String): 
             val responseBody = response.body?.string() ?: ""
             Log.d("密码信息获取", responseBody)
             try {
-                val passwordInfo: ModifyInfo = Gson().fromJson(responseBody, ModifyInfo::class.java)
+                val passwordInfo: WebCommonInfo =
+                    Gson().fromJson(responseBody, WebCommonInfo::class.java)
                 Pair(passwordInfo.status, passwordInfo.message)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -425,7 +434,8 @@ fun modifyPassword(username: String, oldPassword: String, newPassword: String): 
 }
 
 fun modifyQQ(username: String, newQQ: String): Pair<String, String> {
-    val url = "${Global.url}/syc/modifyQQ.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+    val url =
+        "${Global.url}/syc/modifyQQ.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
 
     val client = OkHttpClient()
 
@@ -449,7 +459,8 @@ fun modifyQQ(username: String, newQQ: String): Pair<String, String> {
             val responseBody = response.body?.string() ?: ""
             Log.d("QQ信息获取", responseBody)
             try {
-                val passwordInfo: ModifyInfo = Gson().fromJson(responseBody, ModifyInfo::class.java)
+                val passwordInfo: WebCommonInfo =
+                    Gson().fromJson(responseBody, WebCommonInfo::class.java)
                 Pair(passwordInfo.status, passwordInfo.message)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -463,3 +474,56 @@ fun modifyQQ(username: String, newQQ: String): Pair<String, String> {
         Pair("error", e.message ?: "Unknown error")
     }
 }
+
+fun mail(qq: String, username: String): Pair<String, String> {
+
+    // 构建GET请求的URL
+    val url = ("http://api.mmp.cc/api/mail?" +
+            "email=3760453912@qq.com" +  // 发信人邮箱
+            "&key=raxdahlhoccucfhc" +  // 邮箱授权码（可以填默认值或者通过其他方式获取）
+            "&mail=${qq}@qq.com" +  // 收件人邮箱
+            "&title=${username}邀请你上线酸夜沉空间" +  // 邮件标题
+            "&name=${username}" +  // 发信人昵称
+            "&text=火速前往酸夜沉空间吧！")
+
+    // 增加超时时间设置
+    val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    // 设置模拟浏览器请求头
+    val request = Request.Builder()
+        .url(url)
+        .get()  // 使用GET方法
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("邮箱信息获取", responseBody)
+            try {
+                val passwordInfo: WebCommonInfo =
+                    Gson().fromJson(responseBody, WebCommonInfo::class.java)
+                // 返回状态和信息
+                Pair(passwordInfo.status, passwordInfo.message)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // 如果解析失败，返回"error"状态和信息
+                Pair("error", "Failed to parse response")
+            }
+        } else {
+            // 如果请求失败，返回"error"状态和信息
+            Pair("error", "Request failed")
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        // 捕获异常并返回"error"状态和信息
+        Pair("error", "IOException occurred")
+    }
+}
+
+
+

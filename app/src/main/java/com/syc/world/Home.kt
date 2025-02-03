@@ -17,7 +17,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -42,6 +44,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
@@ -142,6 +145,9 @@ fun openQQProfile(context: Context, qqNumber: String) {
 
 @Composable
 fun ViewOthersPopup() {
+    val context = LocalContext.current
+    var isSendMailAnimation by remember { mutableStateOf(false) }
+    var isSendMail by remember { mutableStateOf(false) }
     val isShowState = Global.isShowState.collectAsState()
     val personNameBeingViewed = Global.personNameBeingViewed.collectAsState()
     val personQQBeingViewed = Global.personQQBeingViewed.collectAsState()
@@ -177,6 +183,45 @@ fun ViewOthersPopup() {
             color = Color.Black
         ) {
 
+        }
+    }
+
+    LaunchedEffect(isShowState.value) {
+        if (isShowState.value) {
+            delay(500)
+            isSendMailAnimation = true
+        } else {
+            isSendMailAnimation = false
+        }
+    }
+
+    LaunchedEffect(isSendMail) {
+        if (isSendMail) {
+            delay(500)
+            isSendMailAnimation = false
+            withContext(Dispatchers.IO) {
+                val mailResult = mail(personQQBeingViewed.value, Global.username)
+                if (mailResult.first == "success") {
+                    isSendMail = false
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            "您的邀请已发出！",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    isSendMail = false
+                    Log.d("邮箱问题", mailResult.second)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            "邀请失败，请稍后再试。",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
         }
     }
 
@@ -262,14 +307,51 @@ fun ViewOthersPopup() {
                                 }
                             }
                             if (!personIsOnlineBeingViewed.value) {
-                                Text(
-                                    text = "${personLastAccessTimeBeingViewed.value}在线",
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    fontSize = 15.sp,
-                                    color = Color.LightGray,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${personLastAccessTimeBeingViewed.value}在线",
+                                        modifier = Modifier,
+                                        fontSize = 15.sp,
+                                        color = Color.LightGray,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    AnimatedVisibility(
+                                        visible = isSendMailAnimation,
+                                        enter = fadeIn(
+                                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                        ) + slideInHorizontally(
+                                            initialOffsetX = { it + 200 },
+                                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                        ),
+                                        exit = fadeOut(
+                                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                        ) + slideOutHorizontally(
+                                            targetOffsetX = { it + 200 },
+                                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                        )
+                                    ) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .padding(start = 10.dp)
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .clickable {
+                                                    isSendMail = true
+                                                }
+                                        ) {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.Send,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(ButtonDefaults.IconSize)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                             Text(
                                 text = "\" ${personSynopsisBeingViewed.value} \"",
@@ -376,29 +458,29 @@ fun ViewOthersPopup() {
                             }
                         }
                     }
-                    val context = LocalContext.current
+
                     if (personNameBeingViewed.value == Global.username) {
-                            Button(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(10.dp),
-                                onClick = {
-                                    Global.setIsShowState(false)
-                                }) {
-                                Icon(
-                                    Icons.Filled.Done,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(ButtonDefaults.IconSize)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = "我知道了",
-                                    textAlign = TextAlign.Center,
-                                    fontSize = 15.sp,
-                                    modifier = Modifier,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                        Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            onClick = {
+                                Global.setIsShowState(false)
+                            }) {
+                            Icon(
+                                Icons.Filled.Done,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "我知道了",
+                                textAlign = TextAlign.Center,
+                                fontSize = 15.sp,
+                                modifier = Modifier,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     } else {
                         Row(
                             modifier = Modifier
@@ -1288,7 +1370,7 @@ fun StepRank() {
                             if (isJson(userInfoFirst)) {
                                 Log.d("Rank1Data", "Rank1Data是Json数据")
                                 val userInfo = parseUserInfo(userInfoFirst)
-                                if (userInfo != null && userInfo.registerIp.isNotEmpty()) {
+                                if (userInfo != null && userInfo.registerIp.isNotEmpty() && userInfo.synopsis.isNotEmpty() && userInfo.loginCount.isNotEmpty() && userInfo.online.isNotEmpty() && userInfo.qq.isNotEmpty() && userInfo.stepCount.isNotEmpty() && userInfo.username.isNotEmpty()) {
                                     Log.d("Rank1Data", "开始写入变量")
                                     rank1Synopsis = userInfo.synopsis
                                     rank1RegisterAddress = getAddressFromIp(userInfo.registerIp)
@@ -1328,7 +1410,7 @@ fun StepRank() {
                             if (isJson(userInfoFirst)) {
                                 Log.d("Rank2Data", "Rank2Data是Json数据")
                                 val userInfo = parseUserInfo(userInfoFirst)
-                                if (userInfo != null && userInfo.registerIp.isNotEmpty()) {
+                                if (userInfo != null && userInfo.registerIp.isNotEmpty() && userInfo.synopsis.isNotEmpty() && userInfo.loginCount.isNotEmpty() && userInfo.online.isNotEmpty() && userInfo.qq.isNotEmpty() && userInfo.stepCount.isNotEmpty() && userInfo.username.isNotEmpty()) {
                                     Log.d("Rank2Data", "开始写入变量")
                                     rank2Synopsis = userInfo.synopsis
                                     rank2RegisterAddress = getAddressFromIp(userInfo.registerIp)
@@ -1368,7 +1450,7 @@ fun StepRank() {
                             if (isJson(userInfoFirst)) {
                                 Log.d("Rank3Data", "Rank3Data是Json数据")
                                 val userInfo = parseUserInfo(userInfoFirst)
-                                if (userInfo != null && userInfo.registerIp.isNotEmpty()) {
+                                if (userInfo != null && userInfo.registerIp.isNotEmpty() && userInfo.synopsis.isNotEmpty() && userInfo.loginCount.isNotEmpty() && userInfo.online.isNotEmpty() && userInfo.qq.isNotEmpty() && userInfo.stepCount.isNotEmpty() && userInfo.username.isNotEmpty()) {
                                     Log.d("Rank3Data", "开始写入变量")
                                     rank3Synopsis = userInfo.synopsis
                                     rank3RegisterAddress = getAddressFromIp(userInfo.registerIp)
@@ -1446,7 +1528,7 @@ fun StepRank() {
                                 Toast.makeText(
                                     context,
                                     "信息正在获取中，请重新点击！",
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_LONG
                                 ).show()
                                 isRank2ReLoading = true
                             }
@@ -1548,7 +1630,7 @@ fun StepRank() {
                                 Toast.makeText(
                                     context,
                                     "信息正在获取中，请重新点击！",
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_LONG
                                 ).show()
                                 isRank1ReLoading = true
                             }
@@ -1640,7 +1722,7 @@ fun StepRank() {
                                 Toast.makeText(
                                     context,
                                     "信息正在获取中，请重新点击！",
-                                    Toast.LENGTH_SHORT
+                                    Toast.LENGTH_LONG
                                 ).show()
                                 isRank3ReLoading = true
                             }
