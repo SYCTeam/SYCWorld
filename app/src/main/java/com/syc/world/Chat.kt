@@ -150,6 +150,7 @@ enum class GroupType {
 
 // 群组数据类
 data class ChatMessage(
+    val isShowTime: Boolean,
     val chatName: String,
     val sender: SenderType,
     val senderQQ: String,
@@ -171,105 +172,127 @@ fun ChatMessage(message: ChatMessage) {
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     val personNameBeingChat = Global.personNameBeingChat.collectAsState()
     if (personNameBeingChat.value == message.chatName) {
-        if (message.sender == SenderType.Others) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 10.dp, bottom = 15.dp),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Column(
+            modifier = Modifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (message.isShowTime) {
                 Box(
                     modifier = Modifier
-                        .fillMaxHeight(),
+                        .fillMaxWidth()
+                        .padding(bottom = 25.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    AsyncImage(
-                        model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(45.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                    Text(
+                        text = transToString(message.sendTime),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier,
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color.Gray
                     )
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(start = 10.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxHeight(),
-                        color = if (isDarkMode) Color(0xFF313131) else Color.White
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = message.message,
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier
-                                    .padding(10.dp)
-                                    .fillMaxHeight()
-                            )
-                        }
-                    }
                 }
             }
-        } else if (message.sender == SenderType.Me) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 15.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
+            if (message.sender == SenderType.Others) {
+                Row(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(end = 10.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, bottom = 15.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
+                    Box(
                         modifier = Modifier
                             .fillMaxHeight(),
-                        color = if (isDarkMode) Color(0xFF313131) else Color.White
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
+                        AsyncImage(
+                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(45.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(start = 10.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
                             modifier = Modifier
                                 .fillMaxHeight(),
-                            contentAlignment = Alignment.Center
+                            color = if (isDarkMode) Color(0xFF313131) else Color.White
                         ) {
-                            Text(
-                                text = message.message,
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center,
+                            Box(
                                 modifier = Modifier
-                                    .padding(10.dp)
-                                    .fillMaxHeight()
-                            )
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = message.message,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .fillMaxHeight()
+                                )
+                            }
                         }
                     }
                 }
-                Box(
+            } else if (message.sender == SenderType.Me) {
+                Row(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(end = 10.dp),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(bottom = 15.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AsyncImage(
-                        model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
-                        contentDescription = null,
+                    Box(
                         modifier = Modifier
-                            .size(45.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                    )
+                            .fillMaxHeight()
+                            .padding(end = 10.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxHeight(),
+                            color = if (isDarkMode) Color(0xFF313131) else Color.White
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = message.message,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .fillMaxHeight()
+                                )
+                            }
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(end = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(45.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                    }
                 }
             }
         }
@@ -496,7 +519,7 @@ fun ChatUi(navController: NavController) {
                                             .width(25.dp)
                                             .height(25.dp)
                                             .clip(CircleShape),
-                                        color = Color.LightGray
+                                        color = if (isDarkMode) Color(0xFF242424) else Color.LightGray
                                     ) {
                                         Box(
                                             modifier = Modifier
@@ -575,6 +598,7 @@ fun ChatUi(navController: NavController) {
             }
             val chatMessage = listOf(
                 ChatMessage(
+                    true,
                     "酸奶",
                     SenderType.Me,
                     "1640432",
@@ -582,6 +606,7 @@ fun ChatUi(navController: NavController) {
                     1738590703
                 ),
                 ChatMessage(
+                    false,
                     "酸奶",
                     SenderType.Others,
                     "3383787570",
@@ -589,6 +614,7 @@ fun ChatUi(navController: NavController) {
                     1738590743
                 ),
                 ChatMessage(
+                    false,
                     "酸奶",
                     SenderType.Me,
                     "1640432",
@@ -596,6 +622,7 @@ fun ChatUi(navController: NavController) {
                     1738590743
                 ),
                 ChatMessage(
+                    false,
                     "酸奶",
                     SenderType.Others,
                     "3383787570",
@@ -603,6 +630,7 @@ fun ChatUi(navController: NavController) {
                     1738590743
                 ),
                 ChatMessage(
+                    false,
                     "酸奶",
                     SenderType.Me,
                     "1640432",
@@ -610,6 +638,7 @@ fun ChatUi(navController: NavController) {
                     1738590743
                 ),
                 ChatMessage(
+                    true,
                     "陌生人",
                     SenderType.Others,
                     "10001",
@@ -617,6 +646,7 @@ fun ChatUi(navController: NavController) {
                     1738590743
                 ),
                 ChatMessage(
+                    true,
                     "沉莫",
                     SenderType.Others,
                     "940580064",
@@ -625,7 +655,10 @@ fun ChatUi(navController: NavController) {
                 ),
             )
 
-            LazyColumn {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
                 items(chatMessage) { message ->
                     ChatMessage(message)
                 }
