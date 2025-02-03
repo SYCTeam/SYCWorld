@@ -4,6 +4,8 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
+import com.syc.world.Global.password
+import com.syc.world.Global.username
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
@@ -525,5 +527,45 @@ fun mail(qq: String, username: String): Pair<String, String> {
     }
 }
 
+fun postMoment(username: String, password: String, content: String): Pair<String, String> {
+    val url =
+        "${Global.url}/syc/post.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
 
+    val client = OkHttpClient()
+
+    // 创建请求体
+    val formBody = FormBody.Builder()
+        .add("username", username)
+        .add("password", password)
+        .add("content",content)
+        .build()
+
+    Log.d("发布动态", url.toString())
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            try {
+                val passwordInfo: WebCommonInfo =
+                    Gson().fromJson(responseBody, WebCommonInfo::class.java)
+                Pair(passwordInfo.status, passwordInfo.message)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
+    }
+}
 

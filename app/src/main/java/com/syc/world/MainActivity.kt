@@ -107,6 +107,7 @@ import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalPager
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar
@@ -114,6 +115,8 @@ import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextButtonColors
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.getWindowSize
@@ -1253,6 +1256,7 @@ fun AllHome(
             }
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
             composable("PersonInfo") { PersonInfo(navController) }
+            composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
         }
     }
 }
@@ -1330,6 +1334,17 @@ fun Main(
         }
     }
     Scaffold(modifier = modifier.fillMaxSize(),
+        floatingActionButton = {
+            if (pagerState.currentPage == 2) {
+                TextButton(
+                    "发布",
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
+                    onClick = {
+                        navController.navigate("Publish_Dynamic")
+                    }
+                )
+            }
+        },
         bottomBar = {
             NavigationBar(
                 items = items,
