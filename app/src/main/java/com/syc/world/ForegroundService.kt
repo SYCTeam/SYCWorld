@@ -36,7 +36,7 @@ class ForegroundService : Service() {
             }
             handler.postDelayed(this, 5000) // 每 5 秒检查一次
             acquireWakeLock() // 重新获取 WakeLock
-            handler.postDelayed(this, 3 * 60 * 1000L) // 每 3 分钟重新获取一次，避免超时
+            handler.postDelayed(this, 10 * 60 * 1000L) // 每 10 分钟重新获取一次，避免超时
         }
     }
 
@@ -57,7 +57,7 @@ class ForegroundService : Service() {
             wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SYC:WakeLock")
         }
         if (wakeLock?.isHeld != true) {
-            wakeLock?.acquire(3 * 60 * 1000L) // 申请 3 分钟
+            wakeLock?.acquire(10 * 60 * 1000L) // 申请 10 分钟
         }
     }
 

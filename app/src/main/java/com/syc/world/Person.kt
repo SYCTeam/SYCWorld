@@ -923,7 +923,7 @@ fun MyselfInformation(ui: MutableState<Int>) {
             val userInfoFirst = getUserInformation(userName)
             if (isJson(userInfoFirst)) {
                 val userInfo = parseUserInfo(userInfoFirst)
-                if (userInfo != null) {
+                if (userInfo != null && userInfo.registerIp.isNotEmpty() && userInfo.synopsis.isNotEmpty() && userInfo.loginCount.isNotEmpty() && userInfo.online.isNotEmpty() && userInfo.qq.isNotEmpty() && userInfo.stepCount.isNotEmpty() && userInfo.username.isNotEmpty()) {
                     synopsis = userInfo.synopsis
                     userQQ = userInfo.qq
                     loginCounts = userInfo.loginCount
@@ -942,7 +942,7 @@ fun MyselfInformation(ui: MutableState<Int>) {
                     val userInfoFirst = getUserInformation(userName)
                     if (isJson(userInfoFirst)) {
                         val userInfo = parseUserInfo(userInfoFirst)
-                        if (userInfo != null && userInfo.registerIp.isNotEmpty() && userInfo.loginIp.isNotEmpty()) {
+                        if (userInfo != null && userInfo.registerIp.isNotEmpty() && userInfo.synopsis.isNotEmpty() && userInfo.loginCount.isNotEmpty() && userInfo.online.isNotEmpty() && userInfo.qq.isNotEmpty() && userInfo.stepCount.isNotEmpty() && userInfo.username.isNotEmpty()) {
                             synopsis = userInfo.synopsis
                             userQQ = userInfo.qq
                             loginCounts = userInfo.loginCount
