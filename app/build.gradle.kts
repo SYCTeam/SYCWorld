@@ -82,6 +82,9 @@ android {
 }
 
 dependencies {
+    implementation("com.mikepenz:multiplatform-markdown-renderer-code:0.30.0")
+    implementation("com.mikepenz:multiplatform-markdown-renderer-coil2:0.30.0")
+    implementation("com.mikepenz:multiplatform-markdown-renderer-android:0.30.0")
     implementation(libs.play.services.fitness)
     implementation(libs.play.services.location)
     implementation(libs.gson)

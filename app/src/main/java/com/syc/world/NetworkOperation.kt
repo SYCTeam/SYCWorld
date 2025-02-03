@@ -477,6 +477,45 @@ fun modifyQQ(username: String, newQQ: String): Pair<String, String> {
     }
 }
 
+fun getPost(sort: String = "random"): Pair<String, String> {
+    val url =
+        "${Global.url}/syc/checkPost.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+
+    val client = OkHttpClient()
+
+    // 创建请求体
+    val formBody = FormBody.Builder()
+        .add("sortOrder", sort)
+        .add("postId","0")
+        .build()
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            try {
+                val passwordInfo: WebCommonInfo =
+                    Gson().fromJson(responseBody, WebCommonInfo::class.java)
+                Pair(passwordInfo.status, passwordInfo.message)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
+    }
+}
+
 fun mail(qq: String, username: String): Pair<String, String> {
 
     // 构建GET请求的URL

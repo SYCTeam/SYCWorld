@@ -15,6 +15,7 @@ import androidx.compose.animation.with
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,12 +49,32 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.mikepenz.markdown.coil2.Coil2ImageTransformerImpl
+import com.mikepenz.markdown.compose.Markdown
+import com.mikepenz.markdown.compose.components.CurrentComponentsBridge.text
+import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeBlock
+import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeFence
+import com.mikepenz.markdown.compose.extendedspans.ExtendedSpans
+import com.mikepenz.markdown.compose.extendedspans.RoundedCornerSpanPainter
+import com.mikepenz.markdown.compose.extendedspans.SquigglyUnderlineSpanPainter
+import com.mikepenz.markdown.compose.extendedspans.rememberSquigglyUnderlineAnimator
+import com.mikepenz.markdown.model.DefaultMarkdownColors
+import com.mikepenz.markdown.model.DefaultMarkdownTypography
+import com.mikepenz.markdown.model.MarkdownColors
+import com.mikepenz.markdown.model.MarkdownTypography
+import com.mikepenz.markdown.model.markdownExtendedSpans
+import dev.snipme.highlights.Highlights
+import dev.snipme.highlights.model.SyntaxThemes
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.LazyColumn
@@ -87,32 +109,30 @@ fun Moments(
                 topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
             ) {
                 item {
+                    LaunchedEffect(Unit) {
+                        withContext(Dispatchers.IO) {
+                            val postlist = getPost()
+                            println(postlist.first+"aaa"+postlist.second)
+                        }
+                    }
+                    LaunchedEffect(selectedTab.intValue) {
+                        withContext(Dispatchers.IO) {
+                            val postlist = if (selectedTab.intValue == 0) {
+                                getPost()
+                            } else if (selectedTab.intValue == 0) {
+                                getPost("latest")
+                            } else {
+                                getPost("hot")
+                            }
+                            println(postlist.second+"aaa")
+                        }
+                    }
+
                     MomentsItem(
                         1737276065842,
                         "小夜",
                         "印度",
-                        """晋太元中，武陵人捕鱼为业。缘溪行，忘路之远近。忽逢桃花林，夹岸数百步，中无杂树，芳草鲜美，落英缤纷。渔人甚异之，复前行，欲穷其林。
-
-　　林尽水源，便得一山，山有小口，仿佛若有光。便舍船，从口入。初极狭，才通人。复行数十步，豁然开朗。土地平旷，屋舍俨然，有良田、美池、桑竹之属。阡陌交通，鸡犬相闻。其中往来种作，男女衣着，悉如外人。黄发垂髫，并怡然自乐。
-
-　　见渔人，乃大惊，问所从来。具答之。便要还家，设酒杀鸡作食。村中闻有此人，咸来问讯。自云先世避秦时乱，率妻子邑人来此绝境，不复出焉，遂与外人间隔。问今是何世，乃不知有汉，无论魏晋。此人一一为具言所闻，皆叹惋。余人各复延至其家，皆出酒食。停数日，辞去。此中人语云：“不足为外人道也。”(间隔 一作：隔绝)
-
-　　既出，得其船，便扶向路，处处志之。及郡下，诣太守，说如此。太守即遣人随其往，寻向所志，遂迷，不复得路。
-
-　　南阳刘子骥，高尚士也，闻之，欣然规往。未果，寻病终。后遂无问津者。""",
-                        listOf(
-                            "https://i0.hdslb.com/bfs/article/784edad5f3775aa4e1bf1830e06082226751172.jpg@1192w.avif",
-                            "https://i0.hdslb.com/bfs/new_dyn/e0e409e9f92431db26c380d5b24a5e311177593795.jpg@1192w.avif",
-                            "https://i0.hdslb.com/bfs/new_dyn/d6ab97bf5efa3d0ef680f2def0bc811d1521704887.jpg@1192w.avif",
-                            "https://i0.hdslb.com/bfs/new_dyn/c0b9cc727841a7e5a50ef818548cae5b1521704887.jpg@1192w.avif",
-                            "https://i0.hdslb.com/bfs/article/784edad5f3775aa4e1bf1830e06082226751172.jpg@1192w.avif",
-                            "https://i0.hdslb.com/bfs/new_dyn/e0e409e9f92431db26c380d5b24a5e311177593795.jpg@1192w.avif",
-                            "https://i0.hdslb.com/bfs/new_dyn/d6ab97bf5efa3d0ef680f2def0bc811d1521704887.jpg@1192w.avif",
-                            "https://i0.hdslb.com/bfs/new_dyn/e0e409e9f92431db26c380d5b24a5e311177593795.jpg@1192w.avif",
-                            "https://i0.hdslb.com/bfs/article/784edad5f3775aa4e1bf1830e06082226751172.jpg@1192w.avif",
-                            "https://i0.hdslb.com/bfs/new_dyn/c0b9cc727841a7e5a50ef818548cae5b1521704887.jpg@1192w.avif",
-
-                            ),
+                        "111",
                         0,
                         0,
                         0,
@@ -130,6 +150,98 @@ fun Moments(
     }
 }
 
+@Composable
+fun markdownTypography1(
+    h1: TextStyle = MaterialTheme.typography.displayLarge.copy(
+        fontSize = 26.sp,
+        lineHeight = 32.sp
+    ),
+    h2: TextStyle = MaterialTheme.typography.displayMedium.copy(
+        fontSize = 23.sp,
+        lineHeight = 28.sp
+    ),
+    h3: TextStyle = MaterialTheme.typography.displaySmall.copy(
+        fontSize = 20.sp,
+        lineHeight = 24.sp
+    ),
+    h4: TextStyle = MaterialTheme.typography.headlineMedium.copy(
+        fontSize = 18.sp,
+        lineHeight = 22.sp
+    ),
+    h5: TextStyle = MaterialTheme.typography.headlineSmall.copy(
+        fontSize = 16.sp,
+        lineHeight = 20.sp
+    ),
+    h6: TextStyle = MaterialTheme.typography.titleLarge.copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    text: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 16.sp,
+        lineHeight = 20.sp
+    ),
+    code: TextStyle = MaterialTheme.typography.bodyMedium.copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    inlineCode: TextStyle = text,
+    quote: TextStyle = MaterialTheme.typography.bodyMedium.plus(
+        SpanStyle(fontStyle = FontStyle.Italic)
+    ).copy(
+        fontSize = 16.sp,
+        lineHeight = 20.sp
+    ),
+    paragraph: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 16.sp,
+        lineHeight = 20.sp
+    ),
+    ordered: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 16.sp,
+        lineHeight = 20.sp
+    ),
+    bullet: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 16.sp,
+        lineHeight = 20.sp
+    ),
+    list: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 16.sp,
+        lineHeight = 20.sp
+    ),
+    link: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 16.sp,
+        lineHeight = 20.sp,
+        fontWeight = FontWeight.Bold,
+        textDecoration = TextDecoration.Underline
+    ),
+): MarkdownTypography = DefaultMarkdownTypography(
+    h1 = h1, h2 = h2, h3 = h3, h4 = h4, h5 = h5, h6 = h6,
+    text = text, quote = quote, code = code, inlineCode = inlineCode, paragraph = paragraph,
+    ordered = ordered, bullet = bullet, list = list, link = link,
+)
+
+@Composable
+fun markdownColor(
+    text: Color = MiuixTheme.colorScheme.onBackground,
+    codeText: Color = MiuixTheme.colorScheme.onBackground,
+    inlineCodeText: Color = codeText,
+    linkText: Color = text,
+    codeBackground: Color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.1f),
+    inlineCodeBackground: Color = codeBackground,
+    dividerColor: Color = MaterialTheme.colorScheme.outlineVariant,
+    tableText: Color = text,
+    tableBackground: Color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.02f),
+): MarkdownColors = DefaultMarkdownColors(
+    text = text,
+    codeText = codeText,
+    inlineCodeText = inlineCodeText,
+    linkText = linkText,
+    codeBackground = codeBackground,
+    inlineCodeBackground = inlineCodeBackground,
+    dividerColor = dividerColor,
+    tableText = tableText,
+    tableBackground = tableBackground,
+)
+
 @OptIn(ExperimentalAnimationApi::class)
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
@@ -138,7 +250,6 @@ fun MomentsItem(
     author: String,
     ipAddress: String,
     elements: String,
-    pic: List<String> = emptyList(),
     zan: Int,
     message: Int,
     share: Int,
@@ -248,8 +359,8 @@ fun MomentsItem(
         }
         Column(modifier = Modifier
             .padding(horizontal = 12.dp)
-            .offset(y = (-10).dp)) {
-            Text(
+            .offset(y = (0).dp)) {
+            /*Text(
                 text = buildAnnotatedString {
                     // 添加基础文本
                     append(elements.take(90))
@@ -264,8 +375,46 @@ fun MomentsItem(
                     }
                 },
                 fontSize = 16.sp,
+            )*/
+            val highlightsBuilder =
+                Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
+            val pattern = Regex("!\\[Image]\\(([^)]+)\\)")
+            Markdown(
+                elements.replace(pattern, "").take(90)+if (elements.length > 90) "..." else "",
+                colors = markdownColor(),
+                extendedSpans = markdownExtendedSpans {
+                    val animator = rememberSquigglyUnderlineAnimator()
+                    remember {
+                        ExtendedSpans(
+                            RoundedCornerSpanPainter(),
+                            SquigglyUnderlineSpanPainter(animator = animator)
+                        )
+                    }
+                },
+                components = markdownComponents(
+                    codeBlock = {
+                        MarkdownHighlightedCodeBlock(
+                            it.content,
+                            it.node,
+                            highlightsBuilder
+                        )
+                    },
+                    codeFence = {
+                        MarkdownHighlightedCodeFence(
+                            it.content,
+                            it.node,
+                            highlightsBuilder
+                        )
+                    },
+                ),
+                imageTransformer = Coil2ImageTransformerImpl,
+                typography = markdownTypography1()
             )
-            if (pic.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            val pic = pattern.findAll(elements)
+                .mapNotNull { it.groups[1]?.value }
+                .toList()
+            if (pic.size != 0) {
                 if (pic.size == 1) {
                     AsyncImage(
                         model = pic[0],
