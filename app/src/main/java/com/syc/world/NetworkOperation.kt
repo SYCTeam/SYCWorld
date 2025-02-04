@@ -69,6 +69,24 @@ data class IpResponse(
     val data: IpInfo
 )
 
+data class PostResponse(
+    @SerializedName("status") val status: String,
+    @SerializedName("posts") val posts: List<Post>
+)
+
+data class Post(
+    @SerializedName("username") val username: String,
+    @SerializedName("content") val content: String,
+    @SerializedName("timestamp") val timestamp: Long,
+    @SerializedName("ip") val ip: String,
+    @SerializedName("likes") val likes: Int,
+    @SerializedName("comments") val comments: Int,
+    @SerializedName("shares") val shares: Int,
+    @SerializedName("views") val views: Int,
+    @SerializedName("postId") val postId: Int,
+    @SerializedName("qq") val qq: Long
+)
+
 data class WebCommonInfo(
     @SerializedName("status")
     val status: String,
@@ -477,45 +495,6 @@ fun modifyQQ(username: String, newQQ: String): Pair<String, String> {
     }
 }
 
-fun getPost(sort: String = "random"): Pair<String, String> {
-    val url =
-        "${Global.url}/syc/checkPost.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
-
-    val client = OkHttpClient()
-
-    // 创建请求体
-    val formBody = FormBody.Builder()
-        .add("sortOrder", sort)
-        .add("postId","0")
-        .build()
-
-    // 构建请求
-    val request = Request.Builder()
-        .url(url)
-        .post(formBody)
-        .build()
-
-    return try {
-        val response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            val responseBody = response.body?.string() ?: ""
-            try {
-                val passwordInfo: WebCommonInfo =
-                    Gson().fromJson(responseBody, WebCommonInfo::class.java)
-                Pair(passwordInfo.status, passwordInfo.message)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Pair("error", "Parsing error")
-            }
-        } else {
-            Pair("error", response.message)
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        Pair("error", e.message ?: "Unknown error")
-    }
-}
-
 fun mail(qq: String, username: String): Pair<String, String> {
 
     // 构建GET请求的URL
@@ -565,7 +544,6 @@ fun mail(qq: String, username: String): Pair<String, String> {
         Pair("error", "IOException occurred")
     }
 }
-
 fun postMoment(username: String, password: String, content: String): Pair<String, String> {
     val url =
         "${Global.url}/syc/post.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
@@ -608,3 +586,41 @@ fun postMoment(username: String, password: String, content: String): Pair<String
     }
 }
 
+fun getPost(sort: String = "random"): Pair<String, List<Post>> {
+    val url =
+        "${Global.url}/syc/checkPost.php".toHttpUrlOrNull() ?: return Pair("Error", emptyList())
+
+    val client = OkHttpClient()
+
+    // 创建请求体
+    val formBody = FormBody.Builder()
+        .add("orderBy", sort)
+        .add("postId","0")
+        .build()
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            try {
+                val postResponse: PostResponse = Gson().fromJson(responseBody, PostResponse::class.java)
+                // Assuming PostResponse has a field `posts` that holds a list of Post objects
+                Pair(postResponse.status, postResponse.posts)  // Return the list of posts
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", emptyList())  // Return an empty list in case of parsing error
+            }
+        } else {
+            Pair("error", emptyList())  // Return an empty list in case of unsuccessful response
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", emptyList())  // Return an empty list in case of IOException
+    }
+}

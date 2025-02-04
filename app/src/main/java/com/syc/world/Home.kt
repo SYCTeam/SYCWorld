@@ -620,6 +620,12 @@ fun transToString(time: Long): String {
     return formatter.format(date)
 }
 
+@SuppressLint("SimpleDateFormat", "WeekBasedYear")
+fun transToString1(time: Long): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    return formatter.format(Date(time))
+}
+
 /*
 // 通过字符串转化为时间戳
 @SuppressLint("SimpleDateFormat", "WeekBasedYear")

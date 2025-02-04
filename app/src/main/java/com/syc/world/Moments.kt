@@ -105,39 +105,38 @@ fun Moments(
             ) {
                 selectedTab.intValue = it
             }
+            val postlist = remember { mutableStateListOf(emptyList<Post>()) }
+            LaunchedEffect(selectedTab.intValue) {
+                withContext(Dispatchers.IO) {
+
+                    postlist.clear()
+                    val post = getPost(when (selectedTab.intValue) {
+                        0 -> "random"
+                        1 -> "latest"
+                        2 -> "hot"
+                        else -> "random"
+                    }).second
+                    postlist.add(post)
+                }
+            }
             LazyColumn(
                 topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
             ) {
+                items(postlist.size) {
+                    for (post in postlist[it]) {
+                        MomentsItem(
+                            time = (post.timestamp.toString()+"000").toLong(),
+                            author = post.username,
+                            ipAddress = post.ip,
+                            elements = post.content,
+                            zan = post.likes,
+                            message = post.comments,
+                            share = post.shares,
+                            authorQQ = post.qq
+                        )
+                    }
+                }
                 item {
-                    LaunchedEffect(Unit) {
-                        withContext(Dispatchers.IO) {
-                            val postlist = getPost()
-                            println(postlist.first+"aaa"+postlist.second)
-                        }
-                    }
-                    LaunchedEffect(selectedTab.intValue) {
-                        withContext(Dispatchers.IO) {
-                            val postlist = if (selectedTab.intValue == 0) {
-                                getPost()
-                            } else if (selectedTab.intValue == 0) {
-                                getPost("latest")
-                            } else {
-                                getPost("hot")
-                            }
-                            println(postlist.second+"aaa")
-                        }
-                    }
-
-                    MomentsItem(
-                        1737276065842,
-                        "小夜",
-                        "印度",
-                        "111",
-                        0,
-                        0,
-                        0,
-                        1640432
-                    )
                     Spacer(
                         Modifier.height(
                             WindowInsets.navigationBars.asPaddingValues()
@@ -292,7 +291,7 @@ fun MomentsItem(
     }
     Card(
         modifier = Modifier
-            .padding(vertical = 12.dp, horizontal = 6.dp)
+            .padding(vertical = 6.dp, horizontal = 6.dp)
             .fillMaxWidth()
     ) {
         Row(
@@ -342,7 +341,7 @@ fun MomentsItem(
                         }
                     ) { targetState ->
                         Text(
-                            text = if (targetState) timeAgo else transToString(time),
+                            text = if (targetState) timeAgo else transToString1(time),
                             fontSize = 12.sp,
                             color = Color.Gray,
                             style = TextStyle(fontStyle = FontStyle.Normal)
@@ -380,7 +379,7 @@ fun MomentsItem(
                 Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
             val pattern = Regex("!\\[Image]\\(([^)]+)\\)")
             Markdown(
-                elements.replace(pattern, "").take(90)+if (elements.length > 90) "..." else "",
+                elements.replace(pattern, "").take(90)+if (elements.replace(pattern, "").length > 90) "..." else "",
                 colors = markdownColor(),
                 extendedSpans = markdownExtendedSpans {
                     val animator = rememberSquigglyUnderlineAnimator()
