@@ -1,6 +1,8 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -44,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -132,7 +135,8 @@ fun Moments(
                             zan = post.likes,
                             message = post.comments,
                             share = post.shares,
-                            authorQQ = post.qq
+                            authorQQ = post.qq,
+                            postId = post.postId
                         )
                     }
                 }
@@ -252,7 +256,8 @@ fun MomentsItem(
     zan: Int,
     message: Int,
     share: Int,
-    authorQQ: Long
+    authorQQ: Long,
+    postId: Int
 ) {
     val timestamp = remember { System.currentTimeMillis() }
     val diffInMillis = timestamp - time
@@ -326,8 +331,7 @@ fun MomentsItem(
                 Text(
                     text = author,
                     modifier = Modifier.offset(y = 3.dp),
-                    fontSize = 15.sp,
-                    style = TextStyle(fontStyle = FontStyle.Italic)
+                    fontSize = 15.sp
                 )
                 var isTimeAgo by remember { mutableStateOf(true) }
                 Row(
@@ -882,15 +886,67 @@ fun MomentsItem(
             }
         }
         Row(modifier = Modifier.height(52.dp)) {
-            val zanok = remember { mutableStateOf(false) }
+            val zanok = remember { mutableStateOf(0) }
+            val context = LocalContext.current
+            val zansave = remember { mutableStateOf(zan.toString()) }
+            LaunchedEffect(zanok.value) {
+                if (zanok.value == 1) {
+                    withContext(Dispatchers.IO) {
+                        val post = addlike(
+                            username = Global.username,
+                            password = Global.password,
+                            postId = postId.toString(),
+                        )
+                        if (post.first != "success") {
+                            Log.d("点赞问题", post.second)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "点赞失败，原因：${post.second}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            zanok.value = 2
+                        } else {
+                            zansave.value = post.second
+                        }
+                    }
+                }
+            }
+            val zanno = remember { mutableStateOf(false) }
+            LaunchedEffect(zanno.value) {
+                if (zanok.value == 0 && zanno.value == true) {
+                    withContext(Dispatchers.IO) {
+                        val post = cancellike(
+                            username = Global.username,
+                            password = Global.password,
+                            postId = postId.toString(),
+                        )
+                        if (post.first != "success") {
+                            Log.d("点赞问题", post.second)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "取消点赞失败，原因：${post.second}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            zanok.value = 2
+                        }
+                        zanno.value = false
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .clickable { zanok.value = !zanok.value }) {
+                    .clickable {
+                        zanno.value = true
+                        if (zanok.value == 0 ) zanok.value = 1 else if (zanok.value != 0) zanok.value = 0 }) {
                 val animatedColor = animateColorAsState(
-                    targetValue = if (zanok.value) MiuixTheme.colorScheme.primaryVariant else Color.Gray,
+                    targetValue = if (zanok.value != 0) MiuixTheme.colorScheme.primaryVariant else Color.Gray,
                     animationSpec = tween(durationMillis = 300) // 动画时长为300ms
                 )
 
@@ -900,9 +956,8 @@ fun MomentsItem(
                     modifier = Modifier.size(18.dp),
                     colorFilter = ColorFilter.tint(animatedColor.value)
                 )
-                val zansave = remember { mutableIntStateOf(zan) }
                 Text(
-                    (zansave.intValue + (if (zanok.value) +1 else +0)).toString(),
+                    zansave.value,
                     modifier = Modifier
                         .padding(start = 5.dp)
                         .offset(y = 1.dp),

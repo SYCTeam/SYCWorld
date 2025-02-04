@@ -94,6 +94,17 @@ data class WebCommonInfo(
     val message: String
 )
 
+data class actionInfo(
+    @SerializedName("status")
+    val status: String,
+    @SerializedName("message")
+    val message: String,
+    @SerializedName("postId")
+    val postId: Int,
+    @SerializedName("newLikesCount")
+    val newLikesCount: Int
+)
+
 data class IpInfo(
     // 接口中的 "QUERY_IP" 对应用户的IP地址
     @SerializedName("QUERY_IP")
@@ -544,6 +555,7 @@ fun mail(qq: String, username: String): Pair<String, String> {
         Pair("error", "IOException occurred")
     }
 }
+
 fun postMoment(username: String, password: String, content: String): Pair<String, String> {
     val url =
         "${Global.url}/syc/post.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
@@ -622,5 +634,88 @@ fun getPost(sort: String = "random"): Pair<String, List<Post>> {
     } catch (e: IOException) {
         e.printStackTrace()
         Pair("error", emptyList())  // Return an empty list in case of IOException
+    }
+}
+
+fun addlike(username: String, password: String, postId: String): Pair<String, String> {
+    val url =
+        "${Global.url}/syc/postAction.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+
+    val client = OkHttpClient()
+
+    // 创建请求体
+    val formBody = FormBody.Builder()
+        .add("username", username)
+        .add("password",password)
+        .add("postId",postId)
+        .add("action","like")
+        .build()
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            try {
+                val actionInfo: actionInfo =
+                    Gson().fromJson(responseBody, actionInfo::class.java)
+                Pair(actionInfo.status, if (actionInfo.status != "success") actionInfo.message else actionInfo.newLikesCount.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
+    }
+}
+
+fun cancellike(username: String, password: String, postId: String): Pair<String, String> {
+    val url =
+        "${Global.url}/syc/postAction.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+
+    val client = OkHttpClient()
+
+    // 创建请求体
+    val formBody = FormBody.Builder()
+        .add("username", username)
+        .add("password",password)
+        .add("postId",postId)
+        .add("action","like")
+        .add("isCancel","true")
+        .build()
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            try {
+                val actionInfo: actionInfo =
+                    Gson().fromJson(responseBody, actionInfo::class.java)
+                Pair(actionInfo.status, if (actionInfo.status != "success") actionInfo.message else actionInfo.newLikesCount.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
     }
 }
