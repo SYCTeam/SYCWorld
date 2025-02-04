@@ -1,5 +1,6 @@
 package com.syc.world
 
+import android.annotation.SuppressLint
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -7,8 +8,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -50,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -72,6 +74,7 @@ fun Chat(
     navController: NavController
 ) {
     Global.setUnreadCountInChat("4")
+
     // 模拟的群组数据
     val chatGroups = listOf(
         ChatGroup(
@@ -272,7 +275,7 @@ fun ChatMessage(message: ChatMessage) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxHeight(),
-                            color = Color(0xFF7acaa0)
+                            color = Color(0xFF95EC69)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -311,6 +314,7 @@ fun ChatMessage(message: ChatMessage) {
 }
 
 // 群组项展示
+@SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun ChatGroupItem(navController: NavController, group: ChatGroup) {
     var imageChange by remember { mutableStateOf(false) }
@@ -349,7 +353,10 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
         ) {
             Row(
                 modifier = Modifier
-                    .clickable {
+                     .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
                         Global.setPersonNameBeingChat(group.chatName)
                         Global.setIsShowChat(true)
                         navController.navigate("ChatUi")
@@ -471,6 +478,7 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
 }
 
 // 聊天界面
+@SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun ChatUi(navController: NavController) {
     val context = LocalContext.current
@@ -529,7 +537,10 @@ fun ChatUi(navController: NavController) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable {
+                             .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
                                 Global.setIsShowChat(false)
                                 navController.popBackStack()
                             },
@@ -618,7 +629,10 @@ fun ChatUi(navController: NavController) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable {
+                             .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
                                 // 点击事件
                             },
                         contentAlignment = Alignment.CenterEnd
@@ -723,7 +737,7 @@ fun ChatUi(navController: NavController) {
                     contentAlignment = Alignment.CenterStart
                 ) {
                     val maxWidth =
-                        if (text.trim().isNotEmpty()) maxWidth * 0.5f else maxWidth * 0.6f
+                        if (text.trim().isNotEmpty()) maxWidth * 0.5f else maxWidth * 0.7f
 
                     val textFieldSize by animateDpAsState(
                         targetValue = if (textFieldChange) maxWidth else 0.dp,
@@ -750,21 +764,21 @@ fun ChatUi(navController: NavController) {
 
                         TextField(
                             modifier = Modifier
-                                .background(Color.Black)
+                                .height(50.dp)
                                 .width(textFieldSize),
                             value = text,
                             onValueChange = { newText -> text = newText },
                             textStyle = TextStyle(
-                                fontSize = 20.sp,
-                                color = Color.White
+                                fontSize = 15.sp,
+                                color = if (isDarkMode) Color.White else Color.Black
                             ),  // 设置文字颜色为白色
                             colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF2d2d2d),
-                                unfocusedContainerColor = Color(0xFF2d2d2d),
-                                cursorColor = Color(0xFF7acaa0),
+                                focusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
+                                unfocusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
+                                cursorColor = Color(0xFF95EC69),
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color(0xFF7acaa0),
+                                focusedIndicatorColor = Color(0xFF95EC69),
                                 unfocusedIndicatorColor = Color.White
                             )
                         )
@@ -772,8 +786,8 @@ fun ChatUi(navController: NavController) {
 
                         Surface(
                             modifier = Modifier
-                                .clip(CircleShape)
-                                .weight(0.1f),
+                                .weight(0.1f)
+                                .clip(CircleShape),
                             color = Color.Transparent
                         ) {
                             Icon(
@@ -781,7 +795,10 @@ fun ChatUi(navController: NavController) {
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(30.dp)
-                                    .clickable {
+                                     .clickable(
+                            indication = null,
+                            interactionSource = MutableInteractionSource()
+                        ) {
 
                                     },
                                 tint = if (isDarkMode) Color.White else Color.Black
@@ -792,23 +809,24 @@ fun ChatUi(navController: NavController) {
                             val buttonSize by animateDpAsState(
                                 targetValue = if (buttonChange) 80.dp else 0.dp,
                                 animationSpec = tween(
-                                    durationMillis = 500,
+                                    durationMillis = 300,
                                 )
                             )
 
                             Button(
                                 modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
                                     .height(40.dp)
                                     .width(buttonSize),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF7acaa0),
+                                    containerColor = Color(0xFF07C160),
                                     contentColor = Color.White
                                 ),
+                                shape = RectangleShape,
                                 onClick = {
                                     text = ""
                                 }
                             ) {
-
                                 AnimatedVisibility(
                                     visible = isSendButtonVisible,
                                     enter = fadeIn(
@@ -833,6 +851,154 @@ fun ChatUi(navController: NavController) {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@SuppressLint("UnrememberedMutableInteractionSource")
+@Composable
+fun ChatSettings(navController: NavController) {
+    val context = LocalContext.current
+    val isDarkMode =
+        context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    val personNameBeingChat = Global.personNameBeingChat.collectAsState()
+    val unreadCountInChat = Global.unreadCountInChat.collectAsState()
+
+    Scaffold {
+        Column(
+            modifier = Modifier
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                    .height(50.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .offset(x = 10.dp)
+                        .clip(CircleShape),
+                    color = Color.Transparent
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(
+                                indication = null,
+                                interactionSource = MutableInteractionSource()
+                            ) {
+                                Global.setIsShowChat(false)
+                                navController.popBackStack()
+                            },
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(end = 5.dp)
+                                .fillMaxHeight(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(40.dp),
+                                tint = if (isDarkMode) Color.White else Color.Black
+                            )
+
+                            if (unreadCountInChat.value.toIntOrNull() != null) {
+                                if (unreadCountInChat.value.toInt() > 0) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .width(25.dp)
+                                            .height(25.dp)
+                                            .clip(CircleShape),
+                                        color = if (isDarkMode) Color(0xFF242424) else Color.LightGray
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = unreadCountInChat.value,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                modifier = Modifier
+                                                    .fillMaxHeight()
+                                                    .fillMaxWidth(),
+                                                textAlign = TextAlign.Center,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Box(
+                    modifier = when {
+                        unreadCountInChat.value.toIntOrNull() != null && unreadCountInChat.value.toInt() > 0 -> {
+                            Modifier
+                                .fillMaxHeight()
+                                .width(200.dp)
+                                .offset(x = -(15.dp))
+                        }
+
+                        else -> {
+                            Modifier
+                                .fillMaxHeight()
+                                .width(200.dp)
+                                .offset(x = -(3.dp))
+                        }
+                    },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = personNameBeingChat.value,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier,
+                        textAlign = TextAlign.Center,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .offset(x = -(20).dp)
+                        .clip(CircleShape),
+                    color = Color.Transparent
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(
+                                indication = null,
+                                interactionSource = MutableInteractionSource()
+                            ) {
+                                // 点击事件
+                            },
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.more),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .size(20.dp),
+                            tint = if (isDarkMode) Color.White else Color.Black
+                        )
                     }
                 }
             }

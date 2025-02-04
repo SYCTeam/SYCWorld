@@ -1283,6 +1283,7 @@ fun AllHome(
             composable("PersonInfo") { PersonInfo(navController) }
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
             composable("ChatUi") { ChatUi(navController) }
+            composable("ChatSettings") { ChatSettings(navController) }
         }
     }
 }
