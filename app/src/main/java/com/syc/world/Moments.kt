@@ -306,6 +306,14 @@ fun MomentsItem(
                 modifier = Modifier
                     .size(32.dp)
                     .offset(x = 5.dp)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 15.dp,
+                            topEnd = 15.dp,
+                            bottomStart = 15.dp,
+                            bottomEnd = 15.dp
+                        )
+                    )
             )
             Image(
                 modifier = Modifier
@@ -432,8 +440,7 @@ fun MomentsItem(
                 }
                 if (pic.size == 2) {
                     Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(165.dp)) {
+                        .fillMaxWidth()) {
                         // 第一张图片
                         Box(
                             modifier = Modifier
@@ -471,8 +478,7 @@ fun MomentsItem(
                 }
                 if (pic.size == 3) {
                     Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(105.dp)) {
+                        .fillMaxWidth()) {
                         // 第一张图片
                         Box(
                             modifier = Modifier
@@ -524,8 +530,7 @@ fun MomentsItem(
                 }
                 if (pic.size == 4 || pic.size == 5) {
                     Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(165.dp)) {
+                        .fillMaxWidth()) {
                         // 第一张图片
                         Box(
                             modifier = Modifier
@@ -567,10 +572,9 @@ fun MomentsItem(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(165.dp)) {
+                        .fillMaxWidth()) {
                         // 第一张图片
                         Box(
                             modifier = Modifier
@@ -608,8 +612,7 @@ fun MomentsItem(
                 }
                 if (pic.size == 6 || pic.size == 7 || pic.size == 8) {
                     Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(105.dp)) {
+                        .fillMaxWidth()) {
                         // 第一张图片
                         Box(
                             modifier = Modifier
@@ -667,8 +670,7 @@ fun MomentsItem(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(105.dp)) {
+                        .fillMaxWidth()) {
                         // 第一张图片
                         Box(
                             modifier = Modifier
@@ -720,8 +722,7 @@ fun MomentsItem(
                 }
                 if (pic.size >= 9) {
                     Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(105.dp)) {
+                        .fillMaxWidth()) {
                         // 第一张图片
                         Box(
                             modifier = Modifier
@@ -779,8 +780,7 @@ fun MomentsItem(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(105.dp)) {
+                        .fillMaxWidth()) {
                         // 第一张图片
                         Box(
                             modifier = Modifier
@@ -829,8 +829,7 @@ fun MomentsItem(
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(105.dp)) {
+                        .fillMaxWidth()) {
                         // 第一张图片
                         Box(
                             modifier = Modifier
