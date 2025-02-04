@@ -1,5 +1,6 @@
 package com.syc.world
 
+import android.content.res.Configuration
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -29,7 +30,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,6 +52,7 @@ import kotlinx.coroutines.delay
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.Text
 
 @Composable
 fun Chat(
@@ -75,7 +77,7 @@ fun Chat(
             "联系人",
             "陌生人",
             "你们的项目会开源吗？",
-            GroupType.Internal,
+            GroupType.External,
             "下午6:22",
             1
         ),
@@ -84,7 +86,7 @@ fun Chat(
             "联系人",
             "沉莫",
             "下午好啊小夜",
-            GroupType.External,
+            GroupType.Internal,
             "下午4:18",
             0
         ),
@@ -105,9 +107,9 @@ fun Chat(
             GroupType.External,
             "下午3:48",
             0
-        ),
-
         )
+
+    )
 
     Scaffold {
         LazyColumn(
@@ -118,7 +120,7 @@ fun Chat(
                 HorizontalDivider(
                     modifier = Modifier
                         .fillMaxWidth(),
-                    thickness = 0.5.dp,
+                    thickness = 0.1.dp,
                     color = Color.LightGray
                 )
             }
@@ -144,6 +146,157 @@ data class ChatGroup(
 enum class GroupType {
     Internal, // 内部群
     External  // 外部群
+}
+
+// 群组数据类
+data class ChatMessage(
+    val isShowTime: Boolean,
+    val chatName: String,
+    val sender: SenderType,
+    val senderQQ: String,
+    val message: String,
+    val sendTime: Long
+)
+
+// 群组类型
+enum class SenderType {
+    Me, // 自己
+    Others  // 他人
+}
+
+// 单条消息样式
+@Composable
+fun ChatMessage(message: ChatMessage) {
+    val context = LocalContext.current
+    val isDarkMode =
+        context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    val personNameBeingChat = Global.personNameBeingChat.collectAsState()
+    if (personNameBeingChat.value == message.chatName) {
+        Column(
+            modifier = Modifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (message.isShowTime) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 25.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = transToString(message.sendTime),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier,
+                        overflow = TextOverflow.Ellipsis,
+                        color = Color.Gray
+                    )
+                }
+            }
+            if (message.sender == SenderType.Others) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, bottom = 15.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(45.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(start = 10.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxHeight(),
+                            color = if (isDarkMode) Color(0xFF313131) else Color.White
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = message.message,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .fillMaxHeight()
+                                )
+                            }
+                        }
+                    }
+                }
+            } else if (message.sender == SenderType.Me) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 15.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(end = 10.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxHeight(),
+                            color = if (isDarkMode) Color(0xFF313131) else Color.White
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = message.message,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .fillMaxHeight()
+                                )
+                            }
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(end = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(45.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 // 群组项展示
@@ -266,7 +419,6 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                             modifier = Modifier
                                 .padding(bottom = 5.dp),
                             overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
                             text = group.content,
@@ -300,7 +452,7 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 75.dp),
-            thickness = 0.5.dp,
+            thickness = 0.1.dp,
             color = Color.LightGray
         )
     }
@@ -310,6 +462,9 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
 // 聊天界面
 @Composable
 fun ChatUi(navController: NavController) {
+    val context = LocalContext.current
+    val isDarkMode =
+        context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     val personNameBeingChat = Global.personNameBeingChat.collectAsState()
     val unreadCountInChat = Global.unreadCountInChat.collectAsState()
     Scaffold {
@@ -353,7 +508,8 @@ fun ChatUi(navController: NavController) {
                                 Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                 contentDescription = null,
                                 modifier = Modifier
-                                    .size(40.dp)
+                                    .size(40.dp),
+                                tint = if (isDarkMode) Color.White else Color.Black
                             )
 
                             if (unreadCountInChat.value.toIntOrNull() != null) {
@@ -363,7 +519,7 @@ fun ChatUi(navController: NavController) {
                                             .width(25.dp)
                                             .height(25.dp)
                                             .clip(CircleShape),
-                                        color = Color.LightGray
+                                        color = if (isDarkMode) Color(0xFF242424) else Color.LightGray
                                     ) {
                                         Box(
                                             modifier = Modifier
@@ -377,8 +533,7 @@ fun ChatUi(navController: NavController) {
                                                     .fillMaxHeight()
                                                     .fillMaxWidth(),
                                                 textAlign = TextAlign.Center,
-                                                overflow = TextOverflow.Ellipsis,
-                                                color = MaterialTheme.colorScheme.onBackground
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                     }
@@ -396,6 +551,7 @@ fun ChatUi(navController: NavController) {
                                 .width(200.dp)
                                 .offset(x = -(15.dp))
                         }
+
                         else -> {
                             Modifier
                                 .fillMaxHeight()
@@ -410,8 +566,7 @@ fun ChatUi(navController: NavController) {
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier,
                         textAlign = TextAlign.Center,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onBackground
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -435,9 +590,77 @@ fun ChatUi(navController: NavController) {
                             contentDescription = null,
                             modifier = Modifier
                                 .padding(10.dp)
-                                .size(20.dp)
+                                .size(20.dp),
+                            tint = if (isDarkMode) Color.White else Color.Black
                         )
                     }
+                }
+            }
+            val chatMessage = listOf(
+                ChatMessage(
+                    true,
+                    "酸奶",
+                    SenderType.Me,
+                    "1640432",
+                    "在吗？",
+                    1738590703
+                ),
+                ChatMessage(
+                    false,
+                    "酸奶",
+                    SenderType.Others,
+                    "3383787570",
+                    "怎么了？",
+                    1738590743
+                ),
+                ChatMessage(
+                    false,
+                    "酸奶",
+                    SenderType.Me,
+                    "1640432",
+                    "你现在在干嘛呢？",
+                    1738590743
+                ),
+                ChatMessage(
+                    false,
+                    "酸奶",
+                    SenderType.Others,
+                    "3383787570",
+                    "我在写\"Moments.kt\"界面。",
+                    1738590743
+                ),
+                ChatMessage(
+                    false,
+                    "酸奶",
+                    SenderType.Me,
+                    "1640432",
+                    "加油！！！",
+                    1738590743
+                ),
+                ChatMessage(
+                    true,
+                    "陌生人",
+                    SenderType.Others,
+                    "10001",
+                    "你们的项目会开源吗？",
+                    1738590743
+                ),
+                ChatMessage(
+                    true,
+                    "沉莫",
+                    SenderType.Others,
+                    "940580064",
+                    "下午好啊小夜",
+                    1738590743
+                ),
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                items(chatMessage) { message ->
+                    ChatMessage(message)
                 }
             }
         }
