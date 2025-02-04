@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.Button
@@ -59,6 +61,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -495,6 +498,7 @@ fun ChatUi(navController: NavController) {
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     val personNameBeingChat = Global.personNameBeingChat.collectAsState()
     val unreadCountInChat = Global.unreadCountInChat.collectAsState()
+    val chatSelection1 = Global.chatSelection1.collectAsState()
     var textFieldChange by remember { mutableStateOf(false) }
     var buttonChange by remember { mutableStateOf(false) }
 
@@ -768,27 +772,59 @@ fun ChatUi(navController: NavController) {
                             tint = if (isDarkMode) Color.White else Color.Black
                         )
 
-                        TextField(
-                            modifier = Modifier
-                                .height(50.dp)
-                                .width(textFieldSize),
-                            value = text,
-                            onValueChange = { newText -> text = newText },
-                            textStyle = TextStyle(
-                                fontSize = 15.sp,
-                                lineHeight = 22.sp,
-                                color = if (isDarkMode) Color.White else Color.Black
-                            ),  // 设置文字颜色为白色
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
-                                unfocusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
-                                cursorColor = Color(0xFF95EC69),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color(0xFF95EC69),
-                                unfocusedIndicatorColor = Color.White
+                        if (chatSelection1.value) {
+                            TextField(
+                                modifier = Modifier
+                                    .height(50.dp)
+                                    .width(textFieldSize),
+                                value = text,
+                                onValueChange = { newText -> text = newText },
+                                textStyle = TextStyle(
+                                    fontSize = 15.sp,
+                                    lineHeight = 22.sp,
+                                    color = if (isDarkMode) Color.White else Color.Black
+                                ),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
+                                    unfocusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
+                                    cursorColor = Color(0xFF95EC69),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color(0xFF95EC69),
+                                    unfocusedIndicatorColor = Color.White
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        text = ""
+                                    }
+                                ),
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    imeAction = ImeAction.Done
+                                )
                             )
-                        )
+                        } else {
+                            TextField(
+                                modifier = Modifier
+                                    .height(50.dp)
+                                    .width(textFieldSize),
+                                value = text,
+                                onValueChange = { newText -> text = newText },
+                                textStyle = TextStyle(
+                                    fontSize = 15.sp,
+                                    lineHeight = 22.sp,
+                                    color = if (isDarkMode) Color.White else Color.Black
+                                ),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
+                                    unfocusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
+                                    cursorColor = Color(0xFF95EC69),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color(0xFF95EC69),
+                                    unfocusedIndicatorColor = Color.White
+                                )
+                            )
+                        }
 
 
                         Surface(
@@ -884,7 +920,9 @@ fun ChatSettings(navController: NavController) {
         ) {
             Row(
                 modifier = Modifier
-                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                    .padding(
+                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                    )
                     .height(50.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1021,7 +1059,7 @@ fun Selection(ordinal: Int, painter: Painter, description: String) {
                     3 -> chatSelection3.value
                     else -> false
                 },
-                        onCheckedChange = {
+                onCheckedChange = {
                     if (ordinal == 1) {
                         Global.setChatSelection1(!chatSelection1.value)
                     } else if (ordinal == 2) {
