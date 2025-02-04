@@ -288,12 +288,44 @@ object Global {
         _personNameBeingChat.value = value
     }
 
+    private val _personQQBeingChat = MutableStateFlow("")
+    val personQQBeingChat: StateFlow<String>
+        get() = _personQQBeingChat
+
+    fun setPersonQQBeingChat(value: String) {
+        _personQQBeingChat.value = value
+    }
+
     private val _unreadCountInChat = MutableStateFlow("")
     val unreadCountInChat: StateFlow<String>
         get() = _unreadCountInChat
 
     fun setUnreadCountInChat(value: String) {
         _unreadCountInChat.value = value
+    }
+
+    private val _chatSelection1 = MutableStateFlow(false)
+    val chatSelection1: StateFlow<Boolean>
+        get() = _chatSelection1
+
+    fun setChatSelection1(value: Boolean) {
+        _chatSelection1.value = value
+    }
+
+    private val _chatSelection2 = MutableStateFlow(false)
+    val chatSelection2: StateFlow<Boolean>
+        get() = _chatSelection2
+
+    fun setChatSelection2(value: Boolean) {
+        _chatSelection2.value = value
+    }
+
+    private val _chatSelection3 = MutableStateFlow(false)
+    val chatSelection3: StateFlow<Boolean>
+        get() = _chatSelection3
+
+    fun setChatSelection3(value: Boolean) {
+        _chatSelection3.value = value
     }
 
 
