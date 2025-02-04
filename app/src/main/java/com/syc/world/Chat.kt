@@ -1,12 +1,17 @@
 package com.syc.world
 
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,10 +31,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,9 +52,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
@@ -261,7 +272,7 @@ fun ChatMessage(message: ChatMessage) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxHeight(),
-                            color = if (isDarkMode) Color(0xFF313131) else Color.White
+                            color = Color(0xFF7acaa0)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -463,10 +474,37 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
 @Composable
 fun ChatUi(navController: NavController) {
     val context = LocalContext.current
+    var text by remember { mutableStateOf("") }
+    var driveText by remember { mutableStateOf(false) }
+    var isSendButtonVisible by remember { mutableStateOf(false) }
     val isDarkMode =
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     val personNameBeingChat = Global.personNameBeingChat.collectAsState()
     val unreadCountInChat = Global.unreadCountInChat.collectAsState()
+    var textFieldChange by remember { mutableStateOf(false) }
+    var buttonChange by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(200)
+        textFieldChange = true
+    }
+
+    LaunchedEffect(text) {
+        if (text.trim().isNotEmpty()) {
+            driveText = true
+            delay(200)
+            buttonChange = true
+            delay(300)
+            isSendButtonVisible = true
+        } else {
+            delay(200)
+            isSendButtonVisible = false
+            buttonChange = false
+            delay(400)
+            driveText = false
+        }
+    }
+
     Scaffold {
         Column(
             modifier = Modifier
@@ -655,12 +693,147 @@ fun ChatUi(navController: NavController) {
                 ),
             )
 
+
+
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxSize(),
             ) {
                 items(chatMessage) { message ->
                     ChatMessage(message)
+                }
+            }
+
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxSize(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Surface(
+                modifier = Modifier
+                    .height(80.dp)
+                    .fillMaxWidth(),
+                color = if (isDarkMode) Color(0xFF252525) else Color(0xFFeeeeee)
+            ) {
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    val maxWidth =
+                        if (text.trim().isNotEmpty()) maxWidth * 0.5f else maxWidth * 0.6f
+
+                    val textFieldSize by animateDpAsState(
+                        targetValue = if (textFieldChange) maxWidth else 0.dp,
+                        animationSpec = tween(
+                            durationMillis = 1000,
+                            easing = FastOutSlowInEasing
+                        )
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 10.dp, end = 10.dp),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.text_input),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .weight(0.1f),
+                            tint = if (isDarkMode) Color.White else Color.Black
+                        )
+
+                        TextField(
+                            modifier = Modifier
+                                .background(Color.Black)
+                                .width(textFieldSize),
+                            value = text,
+                            onValueChange = { newText -> text = newText },
+                            textStyle = TextStyle(
+                                fontSize = 20.sp,
+                                color = Color.White
+                            ),  // 设置文字颜色为白色
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color(0xFF2d2d2d),
+                                unfocusedContainerColor = Color(0xFF2d2d2d),
+                                cursorColor = Color(0xFF7acaa0),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedIndicatorColor = Color(0xFF7acaa0),
+                                unfocusedIndicatorColor = Color.White
+                            )
+                        )
+
+
+                        Surface(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .weight(0.1f),
+                            color = Color.Transparent
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.emotion),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clickable {
+
+                                    },
+                                tint = if (isDarkMode) Color.White else Color.Black
+                            )
+                        }
+                        if (driveText) {
+
+                            val buttonSize by animateDpAsState(
+                                targetValue = if (buttonChange) 80.dp else 0.dp,
+                                animationSpec = tween(
+                                    durationMillis = 500,
+                                )
+                            )
+
+                            Button(
+                                modifier = Modifier
+                                    .height(40.dp)
+                                    .width(buttonSize),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF7acaa0),
+                                    contentColor = Color.White
+                                ),
+                                onClick = {
+                                    text = ""
+                                }
+                            ) {
+
+                                AnimatedVisibility(
+                                    visible = isSendButtonVisible,
+                                    enter = fadeIn(
+                                        animationSpec = tween(durationMillis = 1000)
+                                    ),
+                                    exit = fadeOut(
+                                        animationSpec = tween(durationMillis = 1000)
+                                    )
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "发送",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
