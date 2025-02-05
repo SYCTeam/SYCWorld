@@ -159,7 +159,7 @@ fun Moments(
                                 ipAddress = post.ip,
                                 elements = post.content,
                                 zan = post.likes,
-                                message = post.comments,
+                                message = post.commentsCount,
                                 share = post.shares,
                                 authorQQ = post.qq,
                                 postId = post.postId,
