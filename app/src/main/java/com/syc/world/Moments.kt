@@ -120,7 +120,7 @@ fun Moments(
                         1 -> "latest"
                         2 -> "hot"
                         else -> "random"
-                    }).second
+                    }, username = Global.username, password = Global.password).second
                     postlist.add(post)
                 }
             }

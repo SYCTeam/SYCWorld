@@ -598,7 +598,7 @@ fun postMoment(username: String, password: String, content: String): Pair<String
     }
 }
 
-fun getPost(sort: String = "random"): Pair<String, List<Post>> {
+fun getPost(sort: String = "random",postId: String = "0",username: String,password: String): Pair<String, List<Post>> {
     val url =
         "${Global.url}/syc/checkPost.php".toHttpUrlOrNull() ?: return Pair("Error", emptyList())
 
@@ -608,6 +608,8 @@ fun getPost(sort: String = "random"): Pair<String, List<Post>> {
     val formBody = FormBody.Builder()
         .add("orderBy", sort)
         .add("postId","0")
+        .add("username",username)
+        .add("password",password)
         .build()
 
     // 构建请求
