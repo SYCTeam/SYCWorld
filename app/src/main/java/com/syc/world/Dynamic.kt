@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -50,11 +52,16 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
@@ -80,6 +87,7 @@ import dev.snipme.highlights.model.SyntaxThemes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -102,6 +110,10 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     val author = remember { mutableStateOf("") }
     val ipAddress = remember { mutableStateOf("") }
     val elements = remember { mutableStateOf("") }
+    val view = remember { mutableStateOf("") }
+    val message = remember { mutableStateOf(0) }
+    val like = remember { mutableStateOf(0) }
+    val share = remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val post = getPost("latest", postId = postId.toString(), username = Global.username, password = Global.password).second
@@ -111,6 +123,10 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 author.value = post[0].username
                 ipAddress.value = getIpaddress(post[0].ip).second
                 elements.value = post[0].content
+                view.value = post[0].views.toString()
+                message.value = post[0].comments
+                like.value = post[0].likes
+                share.value = post[0].shares
             }
         }
     }
@@ -121,7 +137,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
             modifier = Modifier.hazeEffect(
                 state = hazeState,
                 style = hazeStyle
-            ),
+            ).background(CardDefaults.DefaultColor()).fillMaxWidth(),
             scrollBehavior = TopAppBarState,
             navigationIcon = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -146,10 +162,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                     .size(32.dp)
                                     .clip(
                                         RoundedCornerShape(
-                                            topStart = 15.dp,
-                                            topEnd = 15.dp,
-                                            bottomStart = 15.dp,
-                                            bottomEnd = 15.dp
+                                            20.dp
                                         )
                                     )
                             )
@@ -192,8 +205,8 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                 }
                                 Text(
                                     text = author.value,
-                                    modifier = Modifier.offset(y = 3.dp),
-                                    fontSize = 15.sp
+                                    modifier = Modifier.offset(y = 0.dp),
+                                    fontSize = 16.sp
                                 )
                                 var isTimeAgo by remember { mutableStateOf(true) }
                                 Row(
@@ -201,7 +214,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .clickable { isTimeAgo = !isTimeAgo }
-                                        .padding(top = 3.dp)
+                                        .padding(top = 1.5.dp)
                                 ) {
                                     AnimatedContent(
                                         targetState = isTimeAgo,
@@ -221,14 +234,6 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                             style = TextStyle(fontStyle = FontStyle.Normal)
                                         )
                                     }
-                                    AnimatedVisibility(ipAddress.value != "") {
-                                        Text(
-                                            text = " | IP地址: ${ipAddress.value}",
-                                            fontSize = 13.sp,
-                                            color = Color.Gray,
-                                            style = TextStyle(fontStyle = FontStyle.Normal)
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -239,25 +244,42 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     }, bottomBar = {
         Row(
             modifier = Modifier
-                .height(48.dp)
                 .fillMaxWidth()
-                .drawBehind {
-                    val shadowHeight = 4.dp.toPx()
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.2f),
-                                Color.Transparent
-                            ),
-                            startY = 0f,
-                            endY = shadowHeight
-                        ),
-                        topLeft = Offset(0f, -shadowHeight),
-                        size = Size(size.width, shadowHeight)
-                    )
-                }
+                .height(48.dp+WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+                .shadow(elevation = 4.dp, shape = RectangleShape, spotColor = Color.Gray)
                 .background(CardDefaults.DefaultColor())
-        ) { /* 内容 */ }
+        ) {
+            Column(modifier = Modifier.fillMaxHeight().weight(1.2f).padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())) {
+                Card(modifier = Modifier.padding(start = 12.dp).padding(vertical = 7.dp).fillMaxSize(), color = MiuixTheme.colorScheme.background.copy(alpha = 0.2f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Image(painter = painterResource(R.drawable.write), contentDescription = null, modifier = Modifier.padding(start = 9.dp).size(16.dp))
+                        Text(
+                            text = "说说你的看法",
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(start = 2.dp)
+                        )
+                    }
+                }
+            }
+            Row(modifier = Modifier.fillMaxHeight().weight(0.8f).padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())) {
+                Row(modifier = Modifier.weight(1f).fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Image(painter = painterResource(R.drawable.message), contentDescription = null, modifier = Modifier.size(18.dp).offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
+                    Text(text = message.value.toString(), fontSize = 9.sp, color = Color.Gray, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
+                }
+                Row(modifier = Modifier.weight(1f).fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Image(painter = painterResource(R.drawable.zan0), contentDescription = null, modifier = Modifier.size(18.dp).offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
+                    Text(text = like.value.toString(), fontSize = 9.sp, color = Color.Gray, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
+                }
+                Row(modifier = Modifier.weight(1f).fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Image(painter = painterResource(R.drawable.shares), contentDescription = null, modifier = Modifier.size(18.dp).offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
+                    Text(text = share.value.toString(), fontSize = 9.sp, color = Color.Gray, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
+                }
+            }
+        }
     }) { padding ->
         LazyColumn(
             contentPadding = PaddingValues(top = padding.calculateTopPadding()),
@@ -267,14 +289,14 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 .hazeSource(state = hazeState),
         ) {
             item {
-                Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxSize().background(CardDefaults.DefaultColor())) {
                     val highlightsBuilder =
                         Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
                     AnimatedVisibility(elements.value != "") {
                         Column {
                             Markdown(
                                 elements.value,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize().padding(16.dp),
                                 colors = markdownColor(),
                                 extendedSpans = markdownExtendedSpans {
                                     val animator = rememberSquigglyUnderlineAnimator()
@@ -306,8 +328,26 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                             )
                         }
                     }
+                    Row(modifier = Modifier.padding(16.dp)) {
+                        AnimatedVisibility(ipAddress.value != "") {
+                            Text(
+                                text = "发布于 ${ipAddress.value}",
+                                fontSize = 13.sp,
+                                color = Color.Gray,
+                                style = TextStyle(fontStyle = FontStyle.Normal)
+                            )
+                        }
+                        AnimatedVisibility(view.value != "") {
+                            Text(
+                                text = " · ${view.value}浏览",
+                                fontSize = 13.sp,
+                                color = Color.Gray,
+                                style = TextStyle(fontStyle = FontStyle.Normal)
+                            )
+                        }
+                    }
                 }
-                Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()))
+                Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()+48.dp))
             }
         }
     }

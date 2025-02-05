@@ -88,7 +88,9 @@ data class Post(
     @SerializedName("shares") val shares: Int,
     @SerializedName("views") val views: Int,
     @SerializedName("postId") val postId: Int,
-    @SerializedName("qq") val qq: Long
+    @SerializedName("qq") val qq: Long,
+    @SerializedName("isLiked") val islike: Boolean,
+    @SerializedName("online") val online: Boolean
 )
 
 data class WebCommonInfo(

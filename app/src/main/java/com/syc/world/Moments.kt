@@ -164,7 +164,9 @@ fun Moments(
                                 authorQQ = post.qq,
                                 postId = post.postId,
                                 morepostId = postId,
-                                navController = navController
+                                navController = navController,
+                                islike = post.islike,
+                                online = post.online
                             )
                         }
                     }
@@ -287,7 +289,9 @@ fun MomentsItem(
     authorQQ: Long,
     postId: Int,
     morepostId: MutableState<Int>,
-    navController: NavController
+    navController: NavController,
+    islike: Boolean,
+    online: Boolean
 ) {
     val timestamp = remember { System.currentTimeMillis() }
     val diffInMillis = timestamp - time
@@ -358,7 +362,7 @@ fun MomentsItem(
                 modifier = Modifier
                     .size(10.dp)
                     .offset(x = (-5).dp, y = 10.dp),
-                painter = painterResource(id = R.drawable.point_green),
+                painter = painterResource(id = if (online) R.drawable.point_green else R.drawable.point_gray),
                 contentDescription = null
             )
             Column(modifier = Modifier.padding(start = 5.dp)) {
@@ -920,11 +924,12 @@ fun MomentsItem(
             }
         }
         Row(modifier = Modifier.height(52.dp)) {
-            val zanok = remember { mutableStateOf(false) }
+            val zanok = remember { mutableStateOf(islike) }
             val context = LocalContext.current
             val zansave = remember { mutableStateOf(zan.toString()) }
+            val zan = remember { mutableStateOf(false) }
             LaunchedEffect(zanok.value) {
-                if (zanok.value) {
+                if (zanok.value && zan.value) {
                     withContext(Dispatchers.IO) {
                         val post = addlike(
                             username = Global.username,
@@ -943,12 +948,13 @@ fun MomentsItem(
                         } else {
                             zansave.value = (zansave.value.toInt()+1).toString()
                         }
+                        zan.value = false
                     }
                 }
             }
             val zanno = remember { mutableStateOf(false) }
             LaunchedEffect(zanno.value) {
-                if (zanno.value) {
+                if (zanno.value && zan.value) {
                     withContext(Dispatchers.IO) {
                         val post = cancellike(
                             username = Global.username,
@@ -969,6 +975,7 @@ fun MomentsItem(
                             zansave.value = (zansave.value.toInt()-1).toString()
                         }
                         zanno.value = false
+                        zan.value = false
                     }
                 }
             }
@@ -979,7 +986,8 @@ fun MomentsItem(
                     .fillMaxHeight()
                     .clickable {
                         if (zanok.value) zanno.value = true
-                        zanok.value = !zanok.value }) {
+                        zanok.value = !zanok.value
+                    zan.value = !zan.value}) {
                 val animatedColor = animateColorAsState(
                     targetValue = if (zanok.value) MiuixTheme.colorScheme.primaryVariant else Color.Gray,
                     animationSpec = tween(durationMillis = 300) // 动画时长为300ms
