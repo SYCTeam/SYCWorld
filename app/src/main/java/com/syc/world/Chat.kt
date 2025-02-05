@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -740,25 +741,26 @@ fun ChatUi(navController: NavController) {
         LaunchedEffect(text) {
             withContext(Dispatchers.IO) {
                 while (true) {
+                    val newLineCount = text.split("\n").size
+
+                    lineCount = newLineCount.coerceAtMost(4)
+
                     if (text.length > lineCount * 11) {
-                        lineCount = (text.length / 11) + 1
-                    } else if (text.length <= (lineCount - 1) * 11) {
                         lineCount = (text.length / 11) + 1
                     }
 
-                    if (lineCount > 4) {
-                        lineCount = 4
-                    }
+                    lineCount = lineCount.coerceAtMost(4)
 
                     delay(500)
                 }
             }
         }
 
+
         val textFieldHeight by animateDpAsState(
             targetValue = if (lineCount == 1) 50.dp else (50.dp + (lineCount - 1) * 25.dp),
             animationSpec = tween(
-                durationMillis = 1000,
+                durationMillis = 500,
                 easing = FastOutSlowInEasing
             )
         )
@@ -842,7 +844,9 @@ fun ChatUi(navController: NavController) {
                                     .width(textFieldWidth)
                                     .height(textFieldHeight),
                                 value = text,
-                                onValueChange = { newText -> text = newText },
+                                onValueChange = { newText ->
+                                    text = newText
+                                },
                                 textStyle = TextStyle(
                                     fontSize = 15.sp,
                                     lineHeight = 22.sp,
@@ -944,6 +948,20 @@ fun ChatSettings(navController: NavController) {
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     val personNameBeingChat = Global.personNameBeingChat.collectAsState()
     val personQQBeingChat = Global.personQQBeingChat.collectAsState()
+
+    val chatSelection1 = Global.chatSelection1.collectAsState()
+    val chatSelection2 = Global.chatSelection2.collectAsState()
+    val chatSelection3 = Global.chatSelection3.collectAsState()
+
+    data class Selection(
+        val isEnterToSendMessage: Boolean,
+        val isCloseMessageReminder: Boolean,
+        val isPinChat: Boolean
+    )
+
+    LaunchedEffect(Unit) {
+        Gson().toJson(Selection(chatSelection1.value, chatSelection2.value,chatSelection3.value))
+    }
 
     Scaffold {
         Column(
@@ -1164,6 +1182,7 @@ fun SelectionWithoutButton(operation: () -> Unit, painter: Painter, description:
     val context = LocalContext.current
     val isDarkMode =
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()

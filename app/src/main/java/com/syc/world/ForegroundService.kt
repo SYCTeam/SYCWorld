@@ -66,7 +66,7 @@ class ForegroundService : Service() {
                 Log.d("进程问题", "守护进程已掉线")
                 restartRescueProcess()
             }
-            handler.postDelayed(this, 5000) // 每 5 秒检查一次
+            handler.postDelayed(this, 1000) // 每 1 秒检查一次
             acquireWakeLock() // 重新获取 WakeLock
             handler.postDelayed(this, 10 * 60 * 1000L) // 每 10 分钟重新获取一次，避免超时
         }
@@ -392,7 +392,7 @@ class ForegroundService : Service() {
                                         withContext(Dispatchers.Main) {
                                             Toast.makeText(
                                                 applicationContext,
-                                                "登录失败，请重启软件！",
+                                                "登录失败，请让我再试N次！",
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
@@ -453,7 +453,7 @@ class RescueProcessService : Service() {
                 Log.d("进程问题", "前台服务已掉线")
                 restartForegroundServiceProcess()
             }
-            handler.postDelayed(this, 5000) // 每 5 秒检查一次
+            handler.postDelayed(this, 1000) // 每 1 秒检查一次
         }
     }
 
