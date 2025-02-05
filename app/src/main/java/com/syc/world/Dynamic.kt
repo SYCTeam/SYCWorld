@@ -1,8 +1,10 @@
 package com.syc.world
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -116,6 +118,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     val like = remember { mutableStateOf(0) }
     val share = remember { mutableStateOf(0) }
     val comment = remember { mutableListOf(emptyList<comments>()) }
+    val zanok = remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val post = getPost("latest", postId = postId.toString(), username = Global.username, password = Global.password).second
@@ -130,6 +133,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 like.value = post[0].likes
                 share.value = post[0].shares
                 comment.add(post[0].comments)
+                zanok.value = post[0].islike
             }
         }
     }
@@ -285,6 +289,60 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                     }
                 }
             }
+
+            val context = LocalContext.current
+            val zan = remember { mutableStateOf(false) }
+            LaunchedEffect(zanok.value) {
+                if (zanok.value && zan.value) {
+                    withContext(Dispatchers.IO) {
+                        val post = addlike(
+                            username = Global.username,
+                            password = Global.password,
+                            postId = postId.toString(),
+                        )
+                        if (post.first != "success") {
+                            Log.d("点赞问题", post.second)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "点赞失败，原因：${post.second}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        } else {
+                            like.value = like.value+1
+                        }
+                        zan.value = false
+                    }
+                }
+            }
+            val zanno = remember { mutableStateOf(false) }
+            LaunchedEffect(zanno.value) {
+                if (zanno.value && zan.value) {
+                    withContext(Dispatchers.IO) {
+                        val post = cancellike(
+                            username = Global.username,
+                            password = Global.password,
+                            postId = postId.toString(),
+                        )
+                        if (post.first != "success") {
+                            Log.d("点赞问题", post.second)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "取消点赞失败，原因：${post.second}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            zanok.value = true
+                        } else {
+                            like.value = like.value-1
+                        }
+                        zanno.value = false
+                        zan.value = false
+                    }
+                }
+            }
             Row(modifier = Modifier
                 .fillMaxHeight()
                 .weight(0.8f)
@@ -299,13 +357,21 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                         .offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
                     Text(text = message.value.toString(), fontSize = 9.sp, color = Color.Gray, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
                 }
+                val animatedColor = animateColorAsState(
+                    targetValue = if (zanok.value) MiuixTheme.colorScheme.primaryVariant else Color.Gray,
+                    animationSpec = tween(durationMillis = 300) // 动画时长为300ms
+                )
                 Row(modifier = Modifier
                     .weight(1f)
+                    .clickable {
+                        if (zanok.value) zanno.value = true
+                        zanok.value = !zanok.value
+                        zan.value = !zan.value}
                     .fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                     Image(painter = painterResource(R.drawable.zan0), contentDescription = null, modifier = Modifier
                         .size(18.dp)
-                        .offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
-                    Text(text = like.value.toString(), fontSize = 9.sp, color = Color.Gray, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
+                        .offset(x = 1.5.dp),colorFilter = ColorFilter.tint(animatedColor.value))
+                    Text(text = like.value.toString(), fontSize = 9.sp, color = animatedColor.value, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
                 }
                 Row(modifier = Modifier
                     .weight(1f)
@@ -381,7 +447,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                         AnimatedVisibility(view.value != "") {
                             Text(
                                 text = " · ${view.value}浏览",
-                                fontSize = 15.sp,
+                                fontSize = 13.sp,
                                 color = Color.Gray,
                                 style = TextStyle(fontStyle = FontStyle.Normal)
                             )
