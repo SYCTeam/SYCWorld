@@ -65,7 +65,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import coil3.compose.AsyncImage
-import com.mikepenz.markdown.coil2.Coil2ImageTransformerImpl
+import com.mikepenz.markdown.coil3.Coil3ImageTransformerImpl
 import com.mikepenz.markdown.compose.Markdown
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeBlock
@@ -452,7 +452,7 @@ fun MomentsItem(
                         )
                     },
                 ),
-                imageTransformer = Coil2ImageTransformerImpl,
+                imageTransformer = Coil3ImageTransformerImpl,
                 typography = markdownTypography1()
             )
             Spacer(modifier = Modifier.height(10.dp))

@@ -24,7 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.mikepenz.markdown.coil2.Coil2ImageTransformerImpl
+import com.mikepenz.markdown.coil3.Coil3ImageTransformerImpl
 import com.mikepenz.markdown.compose.Markdown
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeBlock
@@ -112,40 +112,41 @@ fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeStat
                         )
                     }
                     AnimatedVisibility(selectedTab.intValue == 1) {
-                        val highlightsBuilder =
-                            Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
-                        Markdown(
-                            element.value,
-                            colors = markdownColor(),
-                            extendedSpans = markdownExtendedSpans {
-                                val animator = rememberSquigglyUnderlineAnimator()
-                                remember {
-                                    ExtendedSpans(
-                                        RoundedCornerSpanPainter(),
-                                        SquigglyUnderlineSpanPainter(animator = animator)
-                                    )
-                                }
-                            },
-                            components = markdownComponents(
-                                codeBlock = {
-                                    MarkdownHighlightedCodeBlock(
-                                        it.content,
-                                        it.node,
-                                        highlightsBuilder
-                                    )
+                        Column(modifier = Modifier.padding(6.dp)) {
+                            val highlightsBuilder =
+                                Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
+                            Markdown(
+                                element.value,
+                                colors = markdownColor(),
+                                extendedSpans = markdownExtendedSpans {
+                                    val animator = rememberSquigglyUnderlineAnimator()
+                                    remember {
+                                        ExtendedSpans(
+                                            RoundedCornerSpanPainter(),
+                                            SquigglyUnderlineSpanPainter(animator = animator)
+                                        )
+                                    }
                                 },
-                                codeFence = {
-                                    MarkdownHighlightedCodeFence(
-                                        it.content,
-                                        it.node,
-                                        highlightsBuilder
-                                    )
-                                },
-                            ),
-                            modifier = Modifier.padding(6.dp),
-                            imageTransformer = Coil2ImageTransformerImpl,
-                            typography = markdownTypography1()
-                        )
+                                components = markdownComponents(
+                                    codeBlock = {
+                                        MarkdownHighlightedCodeBlock(
+                                            it.content,
+                                            it.node,
+                                            highlightsBuilder
+                                        )
+                                    },
+                                    codeFence = {
+                                        MarkdownHighlightedCodeFence(
+                                            it.content,
+                                            it.node,
+                                            highlightsBuilder
+                                        )
+                                    },
+                                ),
+                                imageTransformer = Coil3ImageTransformerImpl,
+                                typography = markdownTypography1()
+                            )
+                        }
                     }
                     val send = remember { mutableStateOf(false) }
                     val context = LocalContext.current
