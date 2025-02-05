@@ -1373,7 +1373,7 @@ fun StepRank() {
                 // 获取排行榜第1的用户的信息
                 LaunchedEffect(isRank1ReLoading) {
                     withContext(Dispatchers.IO) {
-                        while (isRank1ReLoading && rank.isNotEmpty()) {
+                        while (isRank1ReLoading && rank.isNotEmpty() && rank.size > 1) {
                             Log.d("Rank1Data", "开始重新获取Rank1的信息...")
                             val userInfoFirst = getUserInformation(rank[0].username)
                             Log.d("Rank1Data", userInfoFirst)
@@ -1439,7 +1439,7 @@ fun StepRank() {
                 // 获取排行榜第2的用户的信息
                 LaunchedEffect(isRank2ReLoading) {
                     withContext(Dispatchers.IO) {
-                        while (isRank2ReLoading && rank.isNotEmpty()) {
+                        while (isRank2ReLoading && rank.isNotEmpty() && rank.size > 2) {
                             Log.d("rank2Data", "开始重新获取rank2的信息...")
                             val userInfoFirst = getUserInformation(rank[1].username)
                             Log.d("rank2Data", userInfoFirst)
@@ -1505,7 +1505,7 @@ fun StepRank() {
                 // 获取排行榜第3的用户的信息
                 LaunchedEffect(isRank3ReLoading) {
                     withContext(Dispatchers.IO) {
-                        while (isRank3ReLoading && rank.isNotEmpty()) {
+                        while (isRank3ReLoading && rank.isNotEmpty() && rank.size > 3) {
                             Log.d("Rank3Data", "开始重新获取Rank3的信息...")
                             val userInfoFirst = getUserInformation(rank[2].username)
                             Log.d("Rank3Data", userInfoFirst)

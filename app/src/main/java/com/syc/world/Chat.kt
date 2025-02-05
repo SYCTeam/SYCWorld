@@ -80,12 +80,31 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 
+data class Selection(
+    val isEnterToSendMessage: Boolean,
+    val isCloseMessageReminder: Boolean,
+    val isPinChat: Boolean
+)
+
 @Composable
 fun Chat(
     topAppBarScrollBehavior: ScrollBehavior,
     padding: PaddingValues,
     navController: NavController
 ) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+
+        withContext(Dispatchers.IO) {
+            val selectionJson = readFromFile(context, "ChatSettings/chatSettings.json")
+            if (selectionJson.isNotEmpty() && isJson(selectionJson)) {
+                val gsonResult = Gson().fromJson(selectionJson, Selection::class.java)
+                Global.setChatSelection1(gsonResult.isEnterToSendMessage)
+                Global.setChatSelection2(gsonResult.isCloseMessageReminder)
+                Global.setChatSelection3(gsonResult.isPinChat)
+            }
+        }
+    }
     Global.setUnreadCountInChat("4")
 
     // 模拟的群组数据
@@ -195,6 +214,7 @@ enum class SenderType {
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun ChatGroupItem(navController: NavController, group: ChatGroup) {
+    var isNavigate by remember { mutableStateOf(false) }
     var imageChange by remember { mutableStateOf(false) }
     val imageSize by animateDpAsState(
         targetValue = if (imageChange) 60.dp else 50.dp,
@@ -235,9 +255,12 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                         indication = null,
                         interactionSource = MutableInteractionSource()
                     ) {
-                        Global.setPersonNameBeingChat(group.chatName)
-                        Global.setIsShowChat(true)
-                        navController.navigate("ChatUi")
+                        if (!isNavigate) {
+                            Global.setPersonNameBeingChat(group.chatName)
+                            Global.setIsShowChat(true)
+                            navController.navigate("ChatUi")
+                            isNavigate = true
+                        }
                     }
                     .padding(start = 5.dp)
                     .fillMaxSize(),
@@ -953,14 +976,19 @@ fun ChatSettings(navController: NavController) {
     val chatSelection2 = Global.chatSelection2.collectAsState()
     val chatSelection3 = Global.chatSelection3.collectAsState()
 
-    data class Selection(
-        val isEnterToSendMessage: Boolean,
-        val isCloseMessageReminder: Boolean,
-        val isPinChat: Boolean
-    )
-
-    LaunchedEffect(Unit) {
-        Gson().toJson(Selection(chatSelection1.value, chatSelection2.value,chatSelection3.value))
+    LaunchedEffect(chatSelection1.value, chatSelection2.value, chatSelection3.value) {
+        withContext(Dispatchers.IO) {
+            val selectionJson = Gson().toJson(
+                Selection(
+                    chatSelection1.value,
+                    chatSelection2.value,
+                    chatSelection3.value
+                )
+            )
+            if (isJson(selectionJson)) {
+                writeToFile(context, "ChatSettings", "chatSettings.json", selectionJson)
+            }
+        }
     }
 
     Scaffold {

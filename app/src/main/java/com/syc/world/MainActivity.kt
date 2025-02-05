@@ -360,7 +360,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 withContext(Dispatchers.IO) {
                     while (true) {
-                        writeToFile(context, "isLogin", isLogin.value.toString())
+                        writeToFile(context, "isLogin", "/", isLogin.value.toString())
                         delay(500)
                     }
                 }
@@ -531,9 +531,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-fun writeToFile(context: Context, filename: String, content: String) {
-    // 获取文件路径
-    val file = File(context.filesDir, filename)
+fun writeToFile(context: Context, child: String, filename: String, content: String) {
+    val dir = File(context.filesDir, child)
+
+    if (!dir.exists()) {
+        dir.mkdirs()
+    }
+
+    val file = File(dir, filename)
 
     FileOutputStream(file).use { fos ->
         OutputStreamWriter(fos).use { writer ->
@@ -541,6 +546,7 @@ fun writeToFile(context: Context, filename: String, content: String) {
         }
     }
 }
+
 
 fun readFromFile(context: Context, filename: String): String {
     // 获取文件路径
@@ -915,7 +921,7 @@ fun monitorStepCount(context: Context) {
         try {
             while (isActive) {
                 withContext(Dispatchers.Main) {
-                    writeToFile(context, "stepCount", ForegroundService.GlobalForForegroundService.stepCount.toString())
+                    writeToFile(context, "stepCount", "/", ForegroundService.GlobalForForegroundService.stepCount.toString())
                 }
                 delay(500)
             }
