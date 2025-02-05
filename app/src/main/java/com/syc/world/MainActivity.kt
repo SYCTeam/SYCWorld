@@ -1318,7 +1318,7 @@ fun AllHome(
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
             composable("ChatUi") { ChatUi(navController) }
             composable("ChatSettings") { ChatSettings(navController) }
-            composable("Dynamic") { Dynamic(navController,postId.intValue) }
+            composable("Dynamic") { Dynamic(navController,postId.intValue,hazeState,hazeStyle) }
         }
     }
 }

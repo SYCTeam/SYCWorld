@@ -4,8 +4,6 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
-import com.syc.world.Global.password
-import com.syc.world.Global.username
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
@@ -14,6 +12,7 @@ import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
@@ -607,7 +606,7 @@ fun getPost(sort: String = "random",postId: String = "0",username: String,passwo
     // 创建请求体
     val formBody = FormBody.Builder()
         .add("orderBy", sort)
-        .add("postId","0")
+        .add("postId",postId)
         .add("username",username)
         .add("password",password)
         .build()
@@ -622,6 +621,7 @@ fun getPost(sort: String = "random",postId: String = "0",username: String,passwo
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
             val responseBody = response.body?.string() ?: ""
+            Log.d("帖子问题", responseBody)
             try {
                 val postResponse: PostResponse = Gson().fromJson(responseBody, PostResponse::class.java)
                 // Assuming PostResponse has a field `posts` that holds a list of Post objects
@@ -709,6 +709,57 @@ fun cancellike(username: String, password: String, postId: String): Pair<String,
                 val actionInfo: actionInfo =
                     Gson().fromJson(responseBody, actionInfo::class.java)
                 Pair(actionInfo.status, if (actionInfo.status != "success") actionInfo.message else actionInfo.newLikesCount.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
+    }
+}
+
+fun getIpaddress(ip: String): Pair<String, String> {
+    val url =
+        "https://api.ip77.net/ip2/v4/".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+
+    val client = OkHttpClient()
+
+    // 创建请求体
+    val formBody = FormBody.Builder()
+        .add("ip", ip)
+        .build()
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            try {
+                val data = JSONObject(responseBody).getJSONObject("data")
+                val location = buildString {
+                    if (data.getString("country") != "中国") {
+                        append(data.getString("country"))
+                        append(" ")
+                    }
+                    append(data.getString("province"))
+                    if (data.getString("city") != data.getString("province") || data.getString("city") != "") {
+                        append(data.getString("city"))
+                        if (data.getString("district") != "") {
+                            append(data.getString("district"))
+                        }
+                        if (data.getString("street") != "") append(data.getString("street"))
+                    }
+                }
+                Pair("success", location)
             } catch (e: Exception) {
                 e.printStackTrace()
                 Pair("error", "Parsing error")
