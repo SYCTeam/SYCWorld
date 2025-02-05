@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -49,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,9 +68,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -729,6 +734,34 @@ fun ChatUi(navController: NavController) {
             }
 
         }
+
+        var lineCount by remember { mutableIntStateOf(1) }
+
+        LaunchedEffect(text) {
+            withContext(Dispatchers.IO) {
+                while (true) {
+                    if (text.length > lineCount * 11) {
+                        lineCount = (text.length / 11) + 1
+                    } else if (text.length <= (lineCount - 1) * 11) {
+                        lineCount = (text.length / 11) + 1
+                    }
+
+                    if (lineCount > 4) {
+                        lineCount = 4
+                    }
+
+                    delay(500)
+                }
+            }
+        }
+
+        val textFieldHeight by animateDpAsState(
+            targetValue = if (lineCount == 1) 50.dp else (50.dp + (lineCount - 1) * 25.dp),
+            animationSpec = tween(
+                durationMillis = 1000,
+                easing = FastOutSlowInEasing
+            )
+        )
         Row(
             modifier = Modifier
                 .fillMaxSize(),
@@ -737,7 +770,7 @@ fun ChatUi(navController: NavController) {
         ) {
             Surface(
                 modifier = Modifier
-                    .height(80.dp)
+                    .height(textFieldHeight + 30.dp)
                     .fillMaxWidth(),
                 color = if (isDarkMode) Color(0xFF252525) else Color(0xFFeeeeee)
             ) {
@@ -746,10 +779,11 @@ fun ChatUi(navController: NavController) {
                         .fillMaxHeight(),
                     contentAlignment = Alignment.CenterStart
                 ) {
+
                     val maxWidth =
                         if (text.trim().isNotEmpty()) maxWidth * 0.5f else maxWidth * 0.7f
 
-                    val textFieldSize by animateDpAsState(
+                    val textFieldWidth by animateDpAsState(
                         targetValue = if (textFieldChange) maxWidth else 0.dp,
                         animationSpec = tween(
                             durationMillis = 1000,
@@ -775,8 +809,8 @@ fun ChatUi(navController: NavController) {
                         if (chatSelection1.value) {
                             TextField(
                                 modifier = Modifier
-                                    .height(50.dp)
-                                    .width(textFieldSize),
+                                    .width(textFieldWidth)
+                                    .height(textFieldHeight),
                                 value = text,
                                 onValueChange = { newText -> text = newText },
                                 textStyle = TextStyle(
@@ -805,8 +839,8 @@ fun ChatUi(navController: NavController) {
                         } else {
                             TextField(
                                 modifier = Modifier
-                                    .height(50.dp)
-                                    .width(textFieldSize),
+                                    .width(textFieldWidth)
+                                    .height(textFieldHeight),
                                 value = text,
                                 onValueChange = { newText -> text = newText },
                                 textStyle = TextStyle(
@@ -873,10 +907,10 @@ fun ChatUi(navController: NavController) {
                                 AnimatedVisibility(
                                     visible = isSendButtonVisible,
                                     enter = fadeIn(
-                                        animationSpec = tween(durationMillis = 700)
+                                        animationSpec = tween(durationMillis = 300)
                                     ),
                                     exit = fadeOut(
-                                        animationSpec = tween(durationMillis = 700)
+                                        animationSpec = tween(durationMillis = 300)
                                     )
                                 ) {
                                     Box(
@@ -915,8 +949,8 @@ fun ChatSettings(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize(),
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.Top
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Row(
                 modifier = Modifier
@@ -980,110 +1014,149 @@ fun ChatSettings(navController: NavController) {
                 }
             }
 
-            Row(
+            LazyColumn(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 20.dp, bottom = 20.dp),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
             ) {
-                Box(
-                    modifier = Modifier
-                        .padding(start = 10.dp, end = 20.dp),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Avatar(personQQBeingChat.value, personNameBeingChat.value)
-                }
-                Box(
-                    modifier = Modifier
-                        .offset(y = -(11.dp)),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.add),
-                        contentDescription = null,
+                item {
+                    Row(
                         modifier = Modifier
-                            .size(55.dp),
-                        tint = Color.LightGray
+                            .fillMaxWidth()
+                            .padding(top = 20.dp, bottom = 20.dp),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .padding(start = 10.dp, end = 20.dp),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Avatar(personQQBeingChat.value, personNameBeingChat.value)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .offset(y = -(11.dp)),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.add),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(55.dp),
+                                tint = Color.LightGray
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Selection(1, painterResource(R.drawable.message_tip), "回车键发送消息", true)
+                    Selection(2, painterResource(R.drawable.without_disturb), "消息免打扰", true)
+                    Selection(3, painterResource(R.drawable.top), "置顶聊天", false)
+                    Spacer(modifier = Modifier.height(20.dp))
+                    SelectionWithoutButton(
+                        { println("用户点击了投诉") },
+                        painterResource(R.drawable.complaints),
+                        "投诉"
                     )
                 }
             }
-            Selection(1, painterResource(R.drawable.message_tip), "回车键发送消息")
-            Selection(2, painterResource(R.drawable.message_tip), "消息免打扰")
-            Selection(3, painterResource(R.drawable.message_tip), "置顶聊天")
-            SelectionWithoutButton(
-                { println("用户点击了投诉") },
-                painterResource(R.drawable.complaints),
-                "投诉"
-            )
         }
     }
 }
 
 @Composable
-fun Selection(ordinal: Int, painter: Painter, description: String) {
+fun Selection(ordinal: Int, painter: Painter, description: String, isDivider: Boolean) {
+    val context = LocalContext.current
+    val isDarkMode =
+        context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     val chatSelection1 = Global.chatSelection1.collectAsState()
     val chatSelection2 = Global.chatSelection2.collectAsState()
     val chatSelection3 = Global.chatSelection3.collectAsState()
-    Row(
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 15.dp),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(start = 1.dp, end = 1.dp)
+            .height(55.dp),
+        color = if (isDarkMode) Color(0xFF1c1c1c) else Color.White
     ) {
-        Icon(
-            painter = painter,
-            contentDescription = null,
+        Column(
             modifier = Modifier
-                .size(ButtonDefaults.IconSize),
-            tint = Color.LightGray
-        )
-        Text(
-            text = description,
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .padding(start = 10.dp)
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 15.dp),
-            contentAlignment = Alignment.CenterEnd
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Switch(
-                checked = when (ordinal) {
-                    1 -> chatSelection1.value
-                    2 -> chatSelection2.value
-                    3 -> chatSelection3.value
-                    else -> false
-                },
-                onCheckedChange = {
-                    if (ordinal == 1) {
-                        Global.setChatSelection1(!chatSelection1.value)
-                    } else if (ordinal == 2) {
-                        Global.setChatSelection2(!chatSelection2.value)
-                    } else if (ordinal == 3) {
-                        Global.setChatSelection3(!chatSelection3.value)
-                    }
-                },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFF07C160),
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = Color.LightGray
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 15.dp),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painter,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(ButtonDefaults.IconSize)
+                        .padding(top = 4.dp),
+                    tint = Color.LightGray
                 )
-            )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .padding(start = 10.dp, top = 4.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 15.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Switch(
+                        checked = when (ordinal) {
+                            1 -> chatSelection1.value
+                            2 -> chatSelection2.value
+                            3 -> chatSelection3.value
+                            else -> false
+                        },
+                        onCheckedChange = {
+                            when (ordinal) {
+                                1 -> {
+                                    Global.setChatSelection1(!chatSelection1.value)
+                                }
+
+                                2 -> {
+                                    Global.setChatSelection2(!chatSelection2.value)
+                                }
+
+                                3 -> {
+                                    Global.setChatSelection3(!chatSelection3.value)
+                                }
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF07C160),
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color.LightGray
+                        )
+                    )
+                }
+            }
+            if (isDivider) {
+                HorizontalDivider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 40.dp, top = 4.dp),
+                    thickness = 0.1.dp,
+                    color = Color.LightGray
+                )
+            }
         }
     }
-    HorizontalDivider(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 40.dp, top = 5.dp),
-        thickness = 0.1.dp,
-        color = Color.LightGray
-    )
 }
 
 @Composable
@@ -1094,9 +1167,9 @@ fun SelectionWithoutButton(operation: () -> Unit, painter: Painter, description:
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 10.dp)
-            .height(50.dp)
-            .clip(CircleShape)
+            .padding(start = 1.dp, end = 1.dp, bottom = 10.dp)
+            .height(55.dp),
+        color = if (isDarkMode) Color(0xFF1c1c1c) else Color.White
     ) {
         Row(
             modifier = Modifier

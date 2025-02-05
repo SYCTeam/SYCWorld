@@ -1055,6 +1055,19 @@ fun StepRank() {
     var isFirstRun by remember { mutableStateOf(false) }
     var isFirstFlushed by remember { mutableStateOf(true) }
 
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            while (true) {
+                stepCount =
+                    if (readFromFile(context, "stepCount").toIntOrNull() != null) readFromFile(
+                        context,
+                        "stepCount"
+                    ).toInt() else 0
+                delay(500)
+            }
+        }
+    }
+
     LaunchedEffect(isLoading) {
         if (Global.username.trim().isNotEmpty()) {
             while (isLoading) {
@@ -1183,15 +1196,6 @@ fun StepRank() {
             isRank1ReLoading = true
             isRank2ReLoading = true
             isRank3ReLoading = true
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            withContext(Dispatchers.Main) {
-                stepCount = Global.stepCount
-                delay(500)
-            }
         }
     }
 
@@ -1387,24 +1391,27 @@ fun StepRank() {
                                 ) {
 
                                     Log.d("Rank1Data", "开始写入变量")
-                                    rank1Synopsis = userInfo1.synopsis // 防止 userInfo1.synopsis 为 null
+                                    rank1Synopsis =
+                                        userInfo1.synopsis // 防止 userInfo1.synopsis 为 null
                                     rank1RegisterAddress = getAddressFromIp(userInfo1.registerIp)
                                     rank1LoginAddress = getAddressFromIp(userInfo1.loginIp)
                                     rank1IsOnline = userInfo1.online == "在线"
                                     rank1LastAccessTime = getTimeAgo(userInfo1.lastAccessTime)
 
                                     // 防止空值转化为整数
-                                    rank1StepCount = if (userInfo1.stepCount.toIntOrNull() != null) {
-                                        userInfo1.stepCount.toInt()
-                                    } else {
-                                        -1 // 或者设置一个默认值
-                                    }
+                                    rank1StepCount =
+                                        if (userInfo1.stepCount.toIntOrNull() != null) {
+                                            userInfo1.stepCount.toInt()
+                                        } else {
+                                            -1 // 或者设置一个默认值
+                                        }
 
-                                    rank1LoginCount = if (userInfo1.loginCount.toIntOrNull() != null) {
-                                        userInfo1.loginCount.toInt()
-                                    } else {
-                                        0 // 或者设置一个默认值
-                                    }
+                                    rank1LoginCount =
+                                        if (userInfo1.loginCount.toIntOrNull() != null) {
+                                            userInfo1.loginCount.toInt()
+                                        } else {
+                                            0 // 或者设置一个默认值
+                                        }
 
                                     // 这里确保所有的字段都已正确赋值
                                     if (rank1Name.trim().isNotEmpty() &&
@@ -1415,7 +1422,8 @@ fun StepRank() {
                                         rank1LoginAddress.trim().isNotEmpty() &&
                                         rank1LastAccessTime.trim().isNotEmpty() &&
                                         rank1StepCount != -1 &&
-                                        rank1LoginCount != -1) {
+                                        rank1LoginCount != -1
+                                    ) {
 
                                         isRank1ReLoading = false
                                         break
@@ -1449,24 +1457,27 @@ fun StepRank() {
                                 ) {
 
                                     Log.d("rank2Data", "开始写入变量")
-                                    rank2Synopsis = userInfo2.synopsis // 防止 userInfo.synopsis 为 null
+                                    rank2Synopsis =
+                                        userInfo2.synopsis // 防止 userInfo.synopsis 为 null
                                     rank2RegisterAddress = getAddressFromIp(userInfo2.registerIp)
                                     rank2LoginAddress = getAddressFromIp(userInfo2.loginIp)
                                     rank2IsOnline = userInfo2.online == "在线"
                                     rank2LastAccessTime = getTimeAgo(userInfo2.lastAccessTime)
 
                                     // 防止空值转化为整数
-                                    rank2StepCount = if (userInfo2.stepCount.toIntOrNull() != null) {
-                                        userInfo2.stepCount.toInt()
-                                    } else {
-                                        -1
-                                    }
+                                    rank2StepCount =
+                                        if (userInfo2.stepCount.toIntOrNull() != null) {
+                                            userInfo2.stepCount.toInt()
+                                        } else {
+                                            -1
+                                        }
 
-                                    rank2LoginCount = if (userInfo2.loginCount.toIntOrNull() != null) {
-                                        userInfo2.loginCount.toInt()
-                                    } else {
-                                        0 // 或者设置一个默认值
-                                    }
+                                    rank2LoginCount =
+                                        if (userInfo2.loginCount.toIntOrNull() != null) {
+                                            userInfo2.loginCount.toInt()
+                                        } else {
+                                            0 // 或者设置一个默认值
+                                        }
 
                                     // 这里确保所有的字段都已正确赋值
                                     if (rank2Name.trim().isNotEmpty() &&
@@ -1477,7 +1488,8 @@ fun StepRank() {
                                         rank2LoginAddress.trim().isNotEmpty() &&
                                         rank2LastAccessTime.trim().isNotEmpty() &&
                                         rank2StepCount != -1 &&
-                                        rank2LoginCount != -1) {
+                                        rank2LoginCount != -1
+                                    ) {
 
                                         isRank2ReLoading = false
                                         break
@@ -1511,24 +1523,27 @@ fun StepRank() {
                                 ) {
 
                                     Log.d("Rank3Data", "开始写入变量")
-                                    rank3Synopsis = userInfo3.synopsis // 防止 userInfo3.synopsis 为 null
+                                    rank3Synopsis =
+                                        userInfo3.synopsis // 防止 userInfo3.synopsis 为 null
                                     rank3RegisterAddress = getAddressFromIp(userInfo3.registerIp)
                                     rank3LoginAddress = getAddressFromIp(userInfo3.loginIp)
                                     rank3IsOnline = userInfo3.online == "在线"
                                     rank3LastAccessTime = getTimeAgo(userInfo3.lastAccessTime)
 
                                     // 防止空值转化为整数
-                                    rank3StepCount = if (userInfo3.stepCount.toIntOrNull() != null) {
-                                        userInfo3.stepCount.toInt()
-                                    } else {
-                                        -1 // 或者设置一个默认值
-                                    }
+                                    rank3StepCount =
+                                        if (userInfo3.stepCount.toIntOrNull() != null) {
+                                            userInfo3.stepCount.toInt()
+                                        } else {
+                                            -1 // 或者设置一个默认值
+                                        }
 
-                                    rank3LoginCount = if (userInfo3.loginCount.toIntOrNull() != null) {
-                                        userInfo3.loginCount.toInt()
-                                    } else {
-                                        0 // 或者设置一个默认值
-                                    }
+                                    rank3LoginCount =
+                                        if (userInfo3.loginCount.toIntOrNull() != null) {
+                                            userInfo3.loginCount.toInt()
+                                        } else {
+                                            0 // 或者设置一个默认值
+                                        }
 
                                     // 这里确保所有的字段都已正确赋值
                                     if (rank3Name.trim().isNotEmpty() &&
@@ -1539,7 +1554,8 @@ fun StepRank() {
                                         rank3LoginAddress.trim().isNotEmpty() &&
                                         rank3LastAccessTime.trim().isNotEmpty() &&
                                         rank3StepCount != -1 &&
-                                        rank3LoginCount != -1) {
+                                        rank3LoginCount != -1
+                                    ) {
 
                                         isRank3ReLoading = false
                                         break

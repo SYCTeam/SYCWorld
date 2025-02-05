@@ -342,8 +342,12 @@ class MainActivity : ComponentActivity() {
 
 
             // 前台服务，启动！！！
-            val serviceIntent = Intent(this, ForegroundService::class.java)
-            startForegroundService(serviceIntent)
+            val service1Intent = Intent(this, ForegroundService::class.java)
+            startForegroundService(service1Intent)
+
+            // 守护进程，启动！！！
+            val service2Intent = Intent(this, RescueProcessService::class.java)
+            startForegroundService(service2Intent)
 
             var showBodySensorsPermissionDialog by remember { mutableStateOf(false) }
             var showActivityRecognitionPermissionDialog by remember { mutableStateOf(false) }

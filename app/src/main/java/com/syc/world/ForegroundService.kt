@@ -31,8 +31,13 @@ class ForegroundService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val wakeLockRunnable = object : Runnable {
         override fun run() {
+            Log.d("进程问题", "前台服务正在运行")
             if (!isProcessRunning(applicationContext, "com.syc.world.MainProcess")) {
-                restartMainProcess()
+                Log.d("进程问题", "主进程已掉线")
+            }
+            if (!isProcessRunning(applicationContext, "com.syc.world.RescueProcessService")) {
+                Log.d("进程问题", "守护进程已掉线")
+                restartRescueProcess()
             }
             handler.postDelayed(this, 5000) // 每 5 秒检查一次
             acquireWakeLock() // 重新获取 WakeLock
@@ -72,7 +77,8 @@ class ForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        acquireWakeLock()
+        // 启动 wakeLockRunnable
+        handler.post(wakeLockRunnable)
     }
 
     override fun onDestroy() {
@@ -94,10 +100,11 @@ class ForegroundService : Service() {
         return false
     }
 
-    private fun restartMainProcess() {
+    private fun restartRescueProcess() {
         // 重启主进程
-        val intent = Intent(this, MainProcessService::class.java)
+        val intent = Intent(this, RescueProcessService::class.java)
         startService(intent)
+        Log.d("进程问题", "已尝试启动MainProcessService")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -130,7 +137,7 @@ class ForegroundService : Service() {
                     nextExecutionTime -= 1 * 60 * 1000
                     createStepCountNotification(
                         applicationContext,
-                        "步数：${Global.stepCount}",
+                        "步数: ${Global.stepCount}",
                         "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。"
                     )
                     if (nextExecutionTime <= 0) {
@@ -278,7 +285,7 @@ class ForegroundService : Service() {
     companion object
 }
 
-class MainProcessService : Service() {
+class RescueProcessService : Service() {
 
     @SuppressLint("ServiceCast")
     fun isProcessRunning(context: Context, processName: String): Boolean {
@@ -293,30 +300,25 @@ class MainProcessService : Service() {
         return false
     }
 
+    private fun restartForegroundServiceProcess() {
+        val intent = Intent(this, ForegroundService::class.java)
+        startService(intent)
+        Log.d("进程问题", "已尝试启动前台服务")
+    }
+
     override fun onCreate() {
         super.onCreate()
-        // 这里做一些初始化工作
-        Log.d("MainProcess", "Main process started.")
+        Log.d("进程问题", "MainProcessService started.")
+
+
+        if (!isProcessRunning(applicationContext, "com.syc.world.ForegroundService")) {
+            Log.d("进程问题", "前台服务已掉线")
+            restartForegroundServiceProcess()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-
-        // 启动后台任务进行心跳检测
-        CoroutineScope(Dispatchers.IO).launch {
-            while (true) {
-                // 检测进程是否存在
-                if (!isProcessRunning(applicationContext, "com.syc.world.MainProcess")) {
-                    // 启动 MainActivity
-                    Intent(
-                        applicationContext,
-                        MainActivity::class.java
-                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(intent)
-                }
-                delay(5000)
-            }
-        }
-
+        // 服务启动时调用 MainActivity
         return START_STICKY
     }
 
@@ -326,6 +328,6 @@ class MainProcessService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d("MainProcess", "Main process stopped.")
+        Log.d("进程问题", "守护进程被摧毁")
     }
 }
