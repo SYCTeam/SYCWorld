@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.mikepenz.markdown.coil2.Coil2ImageTransformerImpl
+import com.mikepenz.markdown.coil3.Coil3ImageTransformerImpl
 import com.mikepenz.markdown.compose.Markdown
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeBlock
@@ -237,38 +237,40 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                     val highlightsBuilder =
                         Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
                     AnimatedVisibility(elements.value != "") {
-                        Markdown(
-                            elements.value,
-                            modifier = Modifier.fillMaxSize(),
-                            colors = markdownColor(),
-                            extendedSpans = markdownExtendedSpans {
-                                val animator = rememberSquigglyUnderlineAnimator()
-                                remember {
-                                    ExtendedSpans(
-                                        RoundedCornerSpanPainter(),
-                                        SquigglyUnderlineSpanPainter(animator = animator)
-                                    )
-                                }
-                            },
-                            components = markdownComponents(
-                                codeBlock = {
-                                    MarkdownHighlightedCodeBlock(
-                                        it.content,
-                                        it.node,
-                                        highlightsBuilder
-                                    )
+                        Column {
+                            Markdown(
+                                elements.value,
+                                modifier = Modifier.fillMaxSize(),
+                                colors = markdownColor(),
+                                extendedSpans = markdownExtendedSpans {
+                                    val animator = rememberSquigglyUnderlineAnimator()
+                                    remember {
+                                        ExtendedSpans(
+                                            RoundedCornerSpanPainter(),
+                                            SquigglyUnderlineSpanPainter(animator = animator)
+                                        )
+                                    }
                                 },
-                                codeFence = {
-                                    MarkdownHighlightedCodeFence(
-                                        it.content,
-                                        it.node,
-                                        highlightsBuilder
-                                    )
-                                },
-                            ),
-                            imageTransformer = Coil2ImageTransformerImpl,
-                            typography = markdownTypography1()
-                        )
+                                components = markdownComponents(
+                                    codeBlock = {
+                                        MarkdownHighlightedCodeBlock(
+                                            it.content,
+                                            it.node,
+                                            highlightsBuilder
+                                        )
+                                    },
+                                    codeFence = {
+                                        MarkdownHighlightedCodeFence(
+                                            it.content,
+                                            it.node,
+                                            highlightsBuilder
+                                        )
+                                    },
+                                ),
+                                imageTransformer = Coil3ImageTransformerImpl,
+                                typography = markdownTypography1()
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()))
