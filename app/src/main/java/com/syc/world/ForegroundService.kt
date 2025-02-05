@@ -16,7 +16,6 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.runtime.remember
 import androidx.core.app.NotificationCompat
 import com.syc.world.ForegroundService.GlobalForForegroundService.isLogin
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +35,6 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.util.regex.Pattern
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.system.exitProcess
 
 // 使用前台服务以保持后台运行
 

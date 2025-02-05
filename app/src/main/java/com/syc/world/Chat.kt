@@ -828,7 +828,7 @@ fun ChatUi(navController: NavController) {
                                     unfocusedIndicatorColor = Color.White
                                 ),
                                 keyboardActions = KeyboardActions(
-                                    onDone = {
+                                    onSend = {
                                         text = ""
                                     }
                                 ),
