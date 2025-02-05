@@ -4,8 +4,6 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentScope
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -13,7 +11,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.with
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,32 +33,40 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import coil3.compose.AsyncImage
 import com.mikepenz.markdown.coil2.Coil2ImageTransformerImpl
 import com.mikepenz.markdown.compose.Markdown
-import com.mikepenz.markdown.compose.components.CurrentComponentsBridge.text
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeBlock
 import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeFence
@@ -79,14 +84,11 @@ import dev.snipme.highlights.model.SyntaxThemes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.concurrent.TimeUnit
 
@@ -94,12 +96,13 @@ import java.util.concurrent.TimeUnit
 fun Moments(
     topAppBarScrollBehavior: ScrollBehavior,
     padding: PaddingValues,
+    postId: MutableState<Int>,
     navController: NavController
 ) {
     Scaffold() {
         Column(modifier = Modifier.padding(PaddingValues(top = padding.calculateTopPadding()))) {
             val tabTexts = listOf("默认", "最新", "热度")
-            val selectedTab = remember { mutableIntStateOf(0) }
+            val selectedTab = rememberSaveable { mutableIntStateOf(0) }
             TabRow(
                 tabs = tabTexts,
                 selectedTabIndex = selectedTab.intValue,
@@ -111,7 +114,6 @@ fun Moments(
             val postlist = remember { mutableStateListOf(emptyList<Post>()) }
             LaunchedEffect(selectedTab.intValue) {
                 withContext(Dispatchers.IO) {
-
                     postlist.clear()
                     val post = getPost(when (selectedTab.intValue) {
                         0 -> "random"
@@ -122,31 +124,58 @@ fun Moments(
                     postlist.add(post)
                 }
             }
-            LazyColumn(
-                topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
-            ) {
-                items(postlist.size) {
-                    for (post in postlist[it]) {
-                        MomentsItem(
-                            time = (post.timestamp.toString()+"000").toLong(),
-                            author = post.username,
-                            ipAddress = post.ip,
-                            elements = post.content,
-                            zan = post.likes,
-                            message = post.comments,
-                            share = post.shares,
-                            authorQQ = post.qq,
-                            postId = post.postId
+            if (postlist.size == 0) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center) // 内容居中
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally // 水平居中
+                    ) {
+                        // 圆形进度条
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(50.dp), // 设置进度条的大小
+                            color = MiuixTheme.colorScheme.primary, // 进度条颜色
+                            strokeWidth = 6.dp // 进度条宽度
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "加载中...",
                         )
                     }
                 }
-                item {
-                    Spacer(
-                        Modifier.height(
-                            WindowInsets.navigationBars.asPaddingValues()
-                                .calculateBottomPadding() + 65.dp
+            } else {
+                LazyColumn(
+                    topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
+                ) {
+                    items(postlist.size) {
+                        for (post in postlist[it]) {
+                            MomentsItem(
+                                time = (post.timestamp.toString()+"000").toLong(),
+                                author = post.username,
+                                ipAddress = post.ip,
+                                elements = post.content,
+                                zan = post.likes,
+                                message = post.comments,
+                                share = post.shares,
+                                authorQQ = post.qq,
+                                postId = post.postId,
+                                morepostId = postId,
+                                navController = navController
+                            )
+                        }
+                    }
+                    item {
+                        Spacer(
+                            Modifier.height(
+                                WindowInsets.navigationBars.asPaddingValues()
+                                    .calculateBottomPadding() + 65.dp
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -245,7 +274,6 @@ fun markdownColor(
     tableBackground = tableBackground,
 )
 
-@OptIn(ExperimentalAnimationApi::class)
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun MomentsItem(
@@ -257,7 +285,9 @@ fun MomentsItem(
     message: Int,
     share: Int,
     authorQQ: Long,
-    postId: Int
+    postId: Int,
+    morepostId: MutableState<Int>,
+    navController: NavController
 ) {
     val timestamp = remember { System.currentTimeMillis() }
     val diffInMillis = timestamp - time
@@ -298,6 +328,10 @@ fun MomentsItem(
         modifier = Modifier
             .padding(vertical = 6.dp, horizontal = 6.dp)
             .fillMaxWidth()
+            .clickable {
+                morepostId.value = postId
+                navController.navigate("Dynamic")
+            }
     ) {
         Row(
             modifier = Modifier
@@ -886,11 +920,11 @@ fun MomentsItem(
             }
         }
         Row(modifier = Modifier.height(52.dp)) {
-            val zanok = remember { mutableStateOf(0) }
+            val zanok = remember { mutableStateOf(false) }
             val context = LocalContext.current
             val zansave = remember { mutableStateOf(zan.toString()) }
             LaunchedEffect(zanok.value) {
-                if (zanok.value == 1) {
+                if (zanok.value) {
                     withContext(Dispatchers.IO) {
                         val post = addlike(
                             username = Global.username,
@@ -906,16 +940,15 @@ fun MomentsItem(
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
-                            zanok.value = 2
                         } else {
-                            zansave.value = post.second
+                            zansave.value = (zansave.value.toInt()+1).toString()
                         }
                     }
                 }
             }
             val zanno = remember { mutableStateOf(false) }
             LaunchedEffect(zanno.value) {
-                if (zanok.value == 0 && zanno.value == true) {
+                if (zanno.value) {
                     withContext(Dispatchers.IO) {
                         val post = cancellike(
                             username = Global.username,
@@ -931,7 +964,9 @@ fun MomentsItem(
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
-                            zanok.value = 2
+                            zanok.value = true
+                        } else {
+                            zansave.value = (zansave.value.toInt()-1).toString()
                         }
                         zanno.value = false
                     }
@@ -943,10 +978,10 @@ fun MomentsItem(
                     .weight(1f)
                     .fillMaxHeight()
                     .clickable {
-                        zanno.value = true
-                        if (zanok.value == 0 ) zanok.value = 1 else if (zanok.value != 0) zanok.value = 0 }) {
+                        if (zanok.value) zanno.value = true
+                        zanok.value = !zanok.value }) {
                 val animatedColor = animateColorAsState(
-                    targetValue = if (zanok.value != 0) MiuixTheme.colorScheme.primaryVariant else Color.Gray,
+                    targetValue = if (zanok.value) MiuixTheme.colorScheme.primaryVariant else Color.Gray,
                     animationSpec = tween(durationMillis = 300) // 动画时长为300ms
                 )
 

@@ -1273,6 +1273,7 @@ fun AllHome(
     }
 
     Column {
+        val postId = remember { mutableIntStateOf(0) }
         NavHost(navController = navController, startDestination = "loading", enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { windowWidth },
@@ -1308,7 +1309,8 @@ fun AllHome(
                     navController,
                     colorMode = colorMode,
                     hazeState,
-                    hazeStyle
+                    hazeStyle,
+                    postId = postId
                 )
             }
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
@@ -1316,6 +1318,7 @@ fun AllHome(
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
             composable("ChatUi") { ChatUi(navController) }
             composable("ChatSettings") { ChatSettings(navController) }
+            composable("Dynamic") { Dynamic(navController,postId.intValue) }
         }
     }
 }
@@ -1355,7 +1358,8 @@ fun Main(
     navController: NavController,
     colorMode: MutableState<Int>,
     hazeState: HazeState,
-    hazeStyle: HazeStyle
+    hazeStyle: HazeStyle,
+    postId: MutableState<Int>
 ) {
     val topAppBarScrollBehavior0 =
         MiuixScrollBehavior(top.yukonga.miuix.kmp.basic.rememberTopAppBarState())
@@ -1452,7 +1456,8 @@ fun Main(
                 topAppBarScrollBehaviorList = topAppBarScrollBehaviorList,
                 padding = padding,
                 navController = navController,
-                colorMode = colorMode
+                colorMode = colorMode,
+                postId = postId
             )
         }
     }
@@ -1465,7 +1470,8 @@ fun AppHorizontalPager(
     topAppBarScrollBehaviorList: List<ScrollBehavior>,
     padding: PaddingValues,
     navController: NavController,
-    colorMode: MutableState<Int>
+    colorMode: MutableState<Int>,
+    postId: MutableState<Int>
 ) {
     HorizontalPager(
         modifier = modifier,
@@ -1488,7 +1494,8 @@ fun AppHorizontalPager(
                 2 -> Moments(
                     topAppBarScrollBehavior = topAppBarScrollBehaviorList[2],
                     padding = padding,
-                    navController = navController
+                    navController = navController,
+                    postId = postId
                 )
 
                 else -> Person(
