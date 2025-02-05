@@ -16,17 +16,46 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.runtime.remember
 import androidx.core.app.NotificationCompat
+import com.syc.world.ForegroundService.GlobalForForegroundService.isLogin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
+import java.io.InputStreamReader
+import java.util.regex.Pattern
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.system.exitProcess
 
 // 使用前台服务以保持后台运行
 
 class ForegroundService : Service() {
+    object GlobalForForegroundService {
+        var url = ""
+        var username = ""
+        var password = ""
+        var stepCount = 0
+
+        private val _isLogin = MutableStateFlow(false)
+        val isLogin: StateFlow<Boolean>
+            get() = _isLogin
+
+        fun setIsLogin(value: Boolean) {
+            _isLogin.value = value
+        }
+
+    }
     private var wakeLock: PowerManager.WakeLock? = null
     private val handler = Handler(Looper.getMainLooper())
     private val wakeLockRunnable = object : Runnable {
@@ -44,6 +73,118 @@ class ForegroundService : Service() {
             handler.postDelayed(this, 10 * 60 * 1000L) // 每 10 分钟重新获取一次，避免超时
         }
     }
+
+    private fun readFromFileForForegroundService(context: Context, filename: String): String {
+        // 获取文件路径
+        val file = File(context.filesDir, filename)
+
+        return if (file.exists()) {
+            // 使用 FileInputStream 和 InputStreamReader 来读取文件内容
+            FileInputStream(file).use { fis ->
+                InputStreamReader(fis).use { reader ->
+                    reader.readText() // 读取所有内容并返回
+                }
+            }
+        } else {
+            "" // 如果文件不存在，返回空字符串，或根据需要返回其他值
+        }
+    }
+
+    private suspend fun getUrlForForegroundService(): String {
+        val url = "https://sharechain.qq.com/93bd306d9c78bc6c4bc469c43c086cb6"
+
+        return withContext(Dispatchers.IO) {
+            val client = OkHttpClient()
+            val request = Request.Builder().url(url).build()
+
+            try {
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string() ?: "【URL】http://xyc.okc.today【URL】"
+                    val pattern = Pattern.compile("【URL】(.*?)【URL】", Pattern.DOTALL)
+                    val matcher = pattern.matcher(responseBody)
+
+                    if (matcher.find()) {
+                        matcher.group(1) ?: "http://xyc.okc.today"
+                    } else {
+                        "http://xyc.okc.today"
+                    }
+                } else {
+                    "http://xyc.okc.today"
+                }
+            } catch (e: IOException) {
+                e.printStackTrace()
+                "http://xyc.okc.today"
+            } catch (e: CancellationException) {
+                "http://xyc.okc.today"
+            }
+        }
+    }
+
+
+    private fun loginForForegroundService(username: String, password: String): String {
+        val url = "${Global.url}/syc/login.php".toHttpUrlOrNull() ?: return "Error: Invalid URL"
+
+        val client = OkHttpClient()
+
+        // 创建请求体，包含用户名和密码
+        val formBody = FormBody.Builder()
+            .add("username", username)
+            .add("password", password)
+            .build()
+
+        // 构建请求
+        val request = Request.Builder()
+            .url(url)
+            .post(formBody)
+            .build()
+
+        return try {
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: ""
+                Log.d("信息获取", responseBody)
+                responseBody
+            } else {
+                "Error: ${response.message}"
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            "Error: ${e.message}"
+        }
+    }
+
+
+    private fun checkUserOnlineForForegroundService(username: String): String {
+        val url = "${GlobalForForegroundService.url}/syc/keepAlive.php"
+
+        val client = OkHttpClient()
+
+        val formBody = FormBody.Builder()
+            .add("username", username)
+            .build()
+
+        val request = Request.Builder()
+            .url(url)
+            .post(formBody)
+            .build()
+
+        return try {
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: ""
+                Log.d("在线状态", responseBody)
+                responseBody
+            } else {
+                "Error"
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            "Error"
+        }
+    }
+
+
 
     private fun createNotificationChannel() {
         val channelId = "SYC"
@@ -103,7 +244,7 @@ class ForegroundService : Service() {
     private fun restartRescueProcess() {
         // 重启主进程
         val intent = Intent(this, RescueProcessService::class.java)
-        startService(intent)
+        startForegroundService(intent)
         Log.d("进程问题", "已尝试启动MainProcessService")
     }
 
@@ -120,11 +261,30 @@ class ForegroundService : Service() {
         var nextExecutionTime = 5 * 60 * 1000
 
         CoroutineScope(Dispatchers.IO).launch {
-            stepCount = readFromFile(applicationContext, "stepCount")
+            while (true) {
+                if (readFromFileForForegroundService(applicationContext, "isLogin") == "true") {
+                    GlobalForForegroundService.setIsLogin(readFromFileForForegroundService(applicationContext, "isLogin").toBooleanStrict())
+                } else if (readFromFileForForegroundService(applicationContext, "isLogin") == "false") {
+                    GlobalForForegroundService.setIsLogin(readFromFileForForegroundService(applicationContext, "isLogin").toBooleanStrict())
+                }
+                val readUsernameResult = readFromFileForForegroundService(applicationContext, "username")
+                if (readUsernameResult.trim().isNotEmpty()) {
+                    GlobalForForegroundService.username = readUsernameResult
+                }
+                val readPasswordResult = readFromFileForForegroundService(applicationContext, "username")
+                if (readPasswordResult.trim().isNotEmpty()) {
+                    GlobalForForegroundService.password = readPasswordResult
+                }
+                delay(500)
+            }
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            stepCount = readFromFileForForegroundService(applicationContext, "stepCount")
             Log.d("步数问题", stepCount)
             if (stepCount.trim().isNotEmpty() && stepCount.toIntOrNull() != null) {
-                Global.stepCount = stepCount.toInt()
-                Log.d("步数问题", "已经将文件中的步数更新，Global.stepCount: ${Global.stepCount}")
+                GlobalForForegroundService.stepCount = stepCount.toInt()
+                Log.d("步数问题", "已经将文件中的步数更新，GlobalForForegroundService.stepCount: ${GlobalForForegroundService.stepCount}")
             }
             monitorStepCount(applicationContext)
             Log.d("步数问题", "已启用步数监控")
@@ -132,12 +292,12 @@ class ForegroundService : Service() {
 
         CoroutineScope(Dispatchers.IO).launch {
             while (true) {
-                if (Global.isLogin.value) {
+                if (isLogin.value) {
                     delay(1 * 60 * 1000)
                     nextExecutionTime -= 1 * 60 * 1000
                     createStepCountNotification(
                         applicationContext,
-                        "步数: ${Global.stepCount}",
+                        "步数: ${GlobalForForegroundService.stepCount}",
                         "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。"
                     )
                     if (nextExecutionTime <= 0) {
@@ -154,23 +314,23 @@ class ForegroundService : Service() {
         CoroutineScope(Dispatchers.IO).launch {
             Log.d("提交问题", "已启动步数提交线程")
             while (true) {
-                if (Global.isLogin.value) {
+                if (isLogin.value) {
                     currentTime = System.currentTimeMillis()
                     if (currentTime - lastExecutionTime >= 5 * 60 * 1000) { // 5 分钟
                         Log.d(
                             "提交问题",
-                            "已符合步数提交时间\n用户名: ${Global.username}, 用户密码: ${Global.password}, 步数: ${Global.stepCount}"
+                            "已符合步数提交时间\n用户名: ${GlobalForForegroundService.username}, 用户密码: ${GlobalForForegroundService.password}, 步数: ${GlobalForForegroundService.stepCount}"
                         )
                         // 每5分钟提交一次步数
                         withContext(Dispatchers.IO) {
-                            if (Global.username.trim().isNotEmpty() && Global.password.trim()
-                                    .isNotEmpty() && Global.stepCount.toString().trim().isNotEmpty()
+                            if (GlobalForForegroundService.username.trim().isNotEmpty() && GlobalForForegroundService.password.trim()
+                                    .isNotEmpty() && GlobalForForegroundService.stepCount.toString().trim().isNotEmpty()
                             ) {
                                 Log.d("提交问题", "开始提交步数...")
                                 result = modifyStepCount(
-                                    Global.username,
-                                    Global.password,
-                                    Global.stepCount.toString()
+                                    GlobalForForegroundService.username,
+                                    GlobalForForegroundService.password,
+                                    GlobalForForegroundService.stepCount.toString()
                                 )
                                 nextExecutionTime = 5 * 60 * 1000
                                 Log.d("提交问题", result)
@@ -186,11 +346,11 @@ class ForegroundService : Service() {
 
         // 启动后台任务进行心跳检测
         CoroutineScope(Dispatchers.IO).launch {
-            while (Global.url == "") {
+            while (GlobalForForegroundService.url == "") {
                 withContext(Dispatchers.IO) {
-                    Global.url = getUrl()
+                    GlobalForForegroundService.url = getUrlForForegroundService()
                 }
-                if (Global.url != "" && Global.url.contains("http")) {
+                if (GlobalForForegroundService.url != "" && GlobalForForegroundService.url.contains("http")) {
                     break
                 }
                 delay(2000)
@@ -198,23 +358,23 @@ class ForegroundService : Service() {
             while (true) {
                 createStepCountNotification(
                     applicationContext,
-                    "步数：${Global.stepCount}",
+                    "步数：${GlobalForForegroundService.stepCount}",
                     "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。"
                 )
-                if (Global.isLogin.value && Global.url != "" && Global.url.contains("http")) {
-                    if (Global.username.trim().isNotEmpty()) {
+                if (isLogin.value && GlobalForForegroundService.url != "" && GlobalForForegroundService.url.contains("http")) {
+                    if (GlobalForForegroundService.username.trim().isNotEmpty()) {
                         withContext(Dispatchers.IO) {
-                            if (checkUserOnline(username = Global.username).contains("success")) {
+                            if (checkUserOnlineForForegroundService(username = GlobalForForegroundService.username).contains("success")) {
                                 /*withContext(Dispatchers.Main) {
                                     Toast.makeText(
                                         applicationContext,
-                                        "后台：心跳成功！\n步数：${Global.stepCount}",
+                                        "后台：心跳成功！\n步数：${GlobalForForegroundService.stepCount}",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }*/
                             } else {
                                 withContext(Dispatchers.IO) {
-                                    val loginResponse = login(Global.username, Global.password)
+                                    val loginResponse = loginForForegroundService(GlobalForForegroundService.username, GlobalForForegroundService.password)
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(
                                             applicationContext,
@@ -239,12 +399,13 @@ class ForegroundService : Service() {
                                             ).show()
                                         }
                                         delay(1000)
-                                        exitProcess(0)
                                     }
                                 }
                             }
                         }
                     }
+                } else {
+                    Log.d("在线状态", "未登录或域名不完整, isLogin.value: ${isLogin.value}, GlobalForForegroundService.url: ${GlobalForForegroundService.url}")
                 }
                 delay(10000)
             }
@@ -286,6 +447,17 @@ class ForegroundService : Service() {
 }
 
 class RescueProcessService : Service() {
+    private val handler = Handler(Looper.getMainLooper())
+    private val startRun = object : Runnable {
+        override fun run() {
+            Log.d("进程问题", "守护进程正在运行")
+            if (!isProcessRunning(applicationContext, "com.syc.world.ForegroundService")) {
+                Log.d("进程问题", "前台服务已掉线")
+                restartForegroundServiceProcess()
+            }
+            handler.postDelayed(this, 5000) // 每 5 秒检查一次
+        }
+    }
 
     @SuppressLint("ServiceCast")
     fun isProcessRunning(context: Context, processName: String): Boolean {
@@ -302,7 +474,7 @@ class RescueProcessService : Service() {
 
     private fun restartForegroundServiceProcess() {
         val intent = Intent(this, ForegroundService::class.java)
-        startService(intent)
+        startForegroundService(intent)
         Log.d("进程问题", "已尝试启动前台服务")
     }
 
@@ -310,15 +482,11 @@ class RescueProcessService : Service() {
         super.onCreate()
         Log.d("进程问题", "MainProcessService started.")
 
-
-        if (!isProcessRunning(applicationContext, "com.syc.world.ForegroundService")) {
-            Log.d("进程问题", "前台服务已掉线")
-            restartForegroundServiceProcess()
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // 服务启动时调用 MainActivity
+        handler.post(startRun)
+
         return START_STICKY
     }
 
@@ -328,6 +496,7 @@ class RescueProcessService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        handler.removeCallbacks(startRun)
         Log.d("进程问题", "守护进程被摧毁")
     }
 }

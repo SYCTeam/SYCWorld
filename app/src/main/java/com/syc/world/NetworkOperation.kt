@@ -28,6 +28,10 @@ fun isJson(jsonString: String): Boolean {
 }
 
 fun parseUserInfo(json: String): UserInfo? {
+    if (json.isBlank()) {
+        throw IllegalArgumentException("JSON input cannot be empty or blank.")
+    }
+
     val gson = Gson()
     return try {
         gson.fromJson(json, UserInfo::class.java)
@@ -36,6 +40,7 @@ fun parseUserInfo(json: String): UserInfo? {
         null
     }
 }
+
 
 fun parseSynopsisData(json: String): SynopsisData? {
     val gson = Gson()

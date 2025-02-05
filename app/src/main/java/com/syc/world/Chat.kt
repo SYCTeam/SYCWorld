@@ -833,7 +833,7 @@ fun ChatUi(navController: NavController) {
                                     }
                                 ),
                                 keyboardOptions = KeyboardOptions.Default.copy(
-                                    imeAction = ImeAction.Done
+                                    imeAction = ImeAction.Send
                                 )
                             )
                         } else {

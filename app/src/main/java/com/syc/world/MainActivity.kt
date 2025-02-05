@@ -53,6 +53,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -116,7 +117,6 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TextButtonColors
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.getWindowSize
@@ -142,7 +142,6 @@ object Global {
     var url = ""
     var username = ""
     var password = ""
-    var stepCount = 0
     var monitorJob: Job? = null
 
     var isGiveBodySensorsPermissions = false
@@ -349,12 +348,24 @@ class MainActivity : ComponentActivity() {
             val service2Intent = Intent(this, RescueProcessService::class.java)
             startForegroundService(service2Intent)
 
+            val isLogin = Global.isLogin.collectAsState()
             var showBodySensorsPermissionDialog by remember { mutableStateOf(false) }
             var showActivityRecognitionPermissionDialog by remember { mutableStateOf(false) }
             var showNotificationPermissionDialog by remember { mutableStateOf(false) }
             var showManageFilePermissionDialog by remember { mutableStateOf(false) }
 
             val context = LocalContext.current
+
+            // 循环写入登录状态
+            LaunchedEffect(Unit) {
+                withContext(Dispatchers.IO) {
+                    while (true) {
+                        writeToFile(context, "isLogin", isLogin.value.toString())
+                        delay(500)
+                    }
+                }
+            }
+
 
             //在 Composable 中根据需要显示弹窗
             if (showBodySensorsPermissionDialog) {
@@ -469,7 +480,8 @@ class MainActivity : ComponentActivity() {
                     ) == PackageManager.PERMISSION_GRANTED
 
                     showActivityRecognitionPermissionDialog = !activityRecognitionPermissionGranted
-                    Global.isGiveActivityRecognitionPermissions = activityRecognitionPermissionGranted
+                    Global.isGiveActivityRecognitionPermissions =
+                        activityRecognitionPermissionGranted
 
                     delay(500)
 
@@ -547,22 +559,22 @@ fun readFromFile(context: Context, filename: String): String {
 }
 
 fun readFile(filename: String): String {
-        val file = File(filename)
-        return if (file.exists()) {
-            try {
-                val inputStream = FileInputStream(filename)
-                val reader = InputStreamReader(inputStream)
-                val content = reader.readText()
-                reader.close()
-                content.trim()  // 去除多余的空格和换行符
-            } catch (e: IOException) {
-                e.printStackTrace()
-                "error"
-            }
-        } else {
+    val file = File(filename)
+    return if (file.exists()) {
+        try {
+            val inputStream = FileInputStream(filename)
+            val reader = InputStreamReader(inputStream)
+            val content = reader.readText()
+            reader.close()
+            content.trim()  // 去除多余的空格和换行符
+        } catch (e: IOException) {
+            e.printStackTrace()
             "error"
         }
+    } else {
+        "error"
     }
+}
 
 
 fun requestPermissions(context: Context) {
@@ -570,7 +582,11 @@ fun requestPermissions(context: Context) {
 
     activityContext?.let {
         // 检查是否具有 "ACTIVITY_RECOGNITION" 权限
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACTIVITY_RECOGNITION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             ActivityCompat.requestPermissions(
                 it,  // 使用 Activity 上下文
                 arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
@@ -579,7 +595,11 @@ fun requestPermissions(context: Context) {
         }
 
         // 检查是否具有 "BODY_SENSORS" 权限
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.BODY_SENSORS) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BODY_SENSORS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             ActivityCompat.requestPermissions(
                 it,  // 使用 Activity 上下文
                 arrayOf(Manifest.permission.BODY_SENSORS),
@@ -594,7 +614,8 @@ fun requestPermissions(context: Context) {
 
 @SuppressLint("ServiceCast")
 fun createStepCountNotification(context: Context, title: String, content: String) {
-    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     // 创建通知渠道，设置为低重要性，避免打扰用户
     val channelId = "SYC_StepCount"
@@ -739,7 +760,7 @@ fun CheckBodySensorsPermission(
             confirmButton = {
                 Button(
                     onClick = {
-                     onSettingsClick()
+                        onSettingsClick()
                     }
                 ) {
                     androidx.compose.material3.Text(
@@ -857,9 +878,10 @@ fun monitorStepCount(context: Context) {
                     ) {
                         return
                     }
-                    Global.stepCount++
+                    ForegroundService.GlobalForForegroundService.stepCount++
                     Log.d("步数问题", "步数增加了一步")
                 }
+
                 Sensor.TYPE_STEP_COUNTER -> {
                     val currentStepCount = event.values[0].toInt()
                     if (initialStepCount == -1) {
@@ -872,7 +894,7 @@ fun monitorStepCount(context: Context) {
                         lastStepCount = currentStepCount
                         // 仅当差值大于 0 时累加（防止偶尔传回相同或减少的值）
                         if (delta > 0) {
-                            Global.stepCount += delta
+                            ForegroundService.GlobalForForegroundService.stepCount += delta
                         }
                     }
                 }
@@ -893,7 +915,7 @@ fun monitorStepCount(context: Context) {
         try {
             while (isActive) {
                 withContext(Dispatchers.Main) {
-                    writeToFile(context, "stepCount", Global.stepCount.toString())
+                    writeToFile(context, "stepCount", ForegroundService.GlobalForForegroundService.stepCount.toString())
                 }
                 delay(500)
             }
@@ -1322,7 +1344,7 @@ fun AllHome(
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
             composable("ChatUi") { ChatUi(navController) }
             composable("ChatSettings") { ChatSettings(navController) }
-            composable("Dynamic") { Dynamic(navController,postId.intValue,hazeState,hazeStyle) }
+            composable("Dynamic") { Dynamic(navController, postId.intValue, hazeState, hazeStyle) }
         }
     }
 }

@@ -1058,11 +1058,9 @@ fun StepRank() {
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             while (true) {
+                val readResult: String = readFromFile(context, "stepCount")
                 stepCount =
-                    if (readFromFile(context, "stepCount").toIntOrNull() != null) readFromFile(
-                        context,
-                        "stepCount"
-                    ).toInt() else 0
+                    if (readResult.toIntOrNull() != null) readResult.toInt() else 0
                 delay(500)
             }
         }
@@ -1231,11 +1229,13 @@ fun StepRank() {
                 LaunchedEffect(isRotating) {
                     if (isFirstRun) {
                         withContext(Dispatchers.IO) {
+                            val readResult: String = readFromFile(context, "stepCount")
+                            stepCount = if (readResult.toIntOrNull() != null) readResult.toInt() else 0
                             if (Global.url.contains("http")) {
                                 modifyStepCount(
                                     Global.username,
                                     Global.password,
-                                    Global.stepCount.toString()
+                                    stepCount.toString()
                                 )
                             }
 
