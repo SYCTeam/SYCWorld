@@ -1,7 +1,10 @@
 package com.syc.world
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -114,6 +117,8 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     val message = remember { mutableStateOf(0) }
     val like = remember { mutableStateOf(0) }
     val share = remember { mutableStateOf(0) }
+    val comment = remember { mutableListOf(emptyList<comments>()) }
+    val zanok = remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val post = getPost("latest", postId = postId.toString(), username = Global.username, password = Global.password).second
@@ -124,9 +129,11 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 ipAddress.value = getIpaddress(post[0].ip).second
                 elements.value = post[0].content
                 view.value = post[0].views.toString()
-                message.value = post[0].comments
+                message.value = post[0].commentsCount
                 like.value = post[0].likes
                 share.value = post[0].shares
+                comment.add(post[0].comments)
+                zanok.value = post[0].islike
             }
         }
     }
@@ -134,10 +141,13 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
         SmallTopAppBar(
             title = "",
             color = Color.Transparent,
-            modifier = Modifier.hazeEffect(
-                state = hazeState,
-                style = hazeStyle
-            ).background(CardDefaults.DefaultColor()).fillMaxWidth(),
+            modifier = Modifier
+                .hazeEffect(
+                    state = hazeState,
+                    style = hazeStyle
+                )
+                .background(CardDefaults.DefaultColor())
+                .fillMaxWidth(),
             scrollBehavior = TopAppBarState,
             navigationIcon = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -145,7 +155,9 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                         onClick = {
                             navController.popBackStack()
                         },
-                        modifier = Modifier.size(52.dp).padding(8.dp)
+                        modifier = Modifier
+                            .size(52.dp)
+                            .padding(8.dp)
                     ) {
                         Icon(
                             imageVector = MiuixIcons.ArrowBack,
@@ -245,17 +257,29 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp+WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+                .height(
+                    48.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                )
                 .shadow(elevation = 4.dp, shape = RectangleShape, spotColor = Color.Gray)
                 .background(CardDefaults.DefaultColor())
         ) {
-            Column(modifier = Modifier.fillMaxHeight().weight(1.2f).padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())) {
-                Card(modifier = Modifier.padding(start = 12.dp).padding(vertical = 7.dp).fillMaxSize(), color = MiuixTheme.colorScheme.background.copy(alpha = 0.2f)) {
+            Column(modifier = Modifier
+                .fillMaxHeight()
+                .weight(1.2f)
+                .padding(
+                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                )) {
+                Card(modifier = Modifier
+                    .padding(start = 12.dp)
+                    .padding(vertical = 7.dp)
+                    .fillMaxSize(), color = MiuixTheme.colorScheme.background.copy(alpha = 0.2f)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        Image(painter = painterResource(R.drawable.write), contentDescription = null, modifier = Modifier.padding(start = 9.dp).size(16.dp))
+                        Image(painter = painterResource(R.drawable.write), contentDescription = null, modifier = Modifier
+                            .padding(start = 9.dp)
+                            .size(16.dp))
                         Text(
                             text = "说说你的看法",
                             fontSize = 14.sp,
@@ -265,17 +289,96 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                     }
                 }
             }
-            Row(modifier = Modifier.fillMaxHeight().weight(0.8f).padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())) {
-                Row(modifier = Modifier.weight(1f).fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                    Image(painter = painterResource(R.drawable.message), contentDescription = null, modifier = Modifier.size(18.dp).offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
+
+            val context = LocalContext.current
+            val zan = remember { mutableStateOf(false) }
+            LaunchedEffect(zanok.value) {
+                if (zanok.value && zan.value) {
+                    withContext(Dispatchers.IO) {
+                        val post = addlike(
+                            username = Global.username,
+                            password = Global.password,
+                            postId = postId.toString(),
+                        )
+                        if (post.first != "success") {
+                            Log.d("点赞问题", post.second)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "点赞失败，原因：${post.second}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        } else {
+                            like.value = like.value+1
+                        }
+                        zan.value = false
+                    }
+                }
+            }
+            val zanno = remember { mutableStateOf(false) }
+            LaunchedEffect(zanno.value) {
+                if (zanno.value && zan.value) {
+                    withContext(Dispatchers.IO) {
+                        val post = cancellike(
+                            username = Global.username,
+                            password = Global.password,
+                            postId = postId.toString(),
+                        )
+                        if (post.first != "success") {
+                            Log.d("点赞问题", post.second)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "取消点赞失败，原因：${post.second}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            zanok.value = true
+                        } else {
+                            like.value = like.value-1
+                        }
+                        zanno.value = false
+                        zan.value = false
+                    }
+                }
+            }
+            Row(modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.8f)
+                .padding(
+                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                )) {
+                Row(modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Image(painter = painterResource(R.drawable.message), contentDescription = null, modifier = Modifier
+                        .size(18.dp)
+                        .offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
                     Text(text = message.value.toString(), fontSize = 9.sp, color = Color.Gray, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
                 }
-                Row(modifier = Modifier.weight(1f).fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                    Image(painter = painterResource(R.drawable.zan0), contentDescription = null, modifier = Modifier.size(18.dp).offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
-                    Text(text = like.value.toString(), fontSize = 9.sp, color = Color.Gray, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
+                val animatedColor = animateColorAsState(
+                    targetValue = if (zanok.value) MiuixTheme.colorScheme.primaryVariant else Color.Gray,
+                    animationSpec = tween(durationMillis = 300) // 动画时长为300ms
+                )
+                Row(modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        if (zanok.value) zanno.value = true
+                        zanok.value = !zanok.value
+                        zan.value = !zan.value}
+                    .fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Image(painter = painterResource(R.drawable.zan0), contentDescription = null, modifier = Modifier
+                        .size(18.dp)
+                        .offset(x = 1.5.dp),colorFilter = ColorFilter.tint(animatedColor.value))
+                    Text(text = like.value.toString(), fontSize = 9.sp, color = animatedColor.value, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
                 }
-                Row(modifier = Modifier.weight(1f).fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                    Image(painter = painterResource(R.drawable.shares), contentDescription = null, modifier = Modifier.size(18.dp).offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
+                Row(modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Image(painter = painterResource(R.drawable.shares), contentDescription = null, modifier = Modifier
+                        .size(18.dp)
+                        .offset(x = 1.5.dp),colorFilter = ColorFilter.tint(Color.Gray))
                     Text(text = share.value.toString(), fontSize = 9.sp, color = Color.Gray, modifier = Modifier.offset(x = (-1).dp, y = (-7).dp))
                 }
             }
@@ -289,14 +392,18 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 .hazeSource(state = hazeState),
         ) {
             item {
-                Column(modifier = Modifier.fillMaxSize().background(CardDefaults.DefaultColor())) {
+                Column(modifier = Modifier
+                    .fillMaxSize()
+                    .background(CardDefaults.DefaultColor())) {
                     val highlightsBuilder =
                         Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
                     AnimatedVisibility(elements.value != "") {
                         Column {
                             Markdown(
                                 elements.value,
-                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
                                 colors = markdownColor(),
                                 extendedSpans = markdownExtendedSpans {
                                     val animator = rememberSquigglyUnderlineAnimator()
@@ -347,8 +454,38 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(modifier = Modifier
+                    .fillMaxSize()
+                    .background(CardDefaults.DefaultColor())) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(48.dp)) {
+                        Text(text = "共 ${message.value} 回复", fontSize = 13.sp, modifier = Modifier.padding(16.dp))
+                    }
+                }
+            }
+            items(comment.size) {
+
+            }
+            item {
                 Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()+48.dp))
             }
         }
+    }
+}
+
+@Composable
+fun commentItem(username: String,comment: String,timestamp: Long,qq: String) {
+    Row(modifier = Modifier.padding(start = 16.dp, top = 14.dp).fillMaxWidth()) {
+        AsyncImage(
+            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${qq}&spec=640&img_type=jpg",
+            contentDescription = null,
+            modifier = Modifier
+                .size(28.dp)
+                .clip(
+                    RoundedCornerShape(
+                        20.dp
+                    )
+                )
+        )
     }
 }

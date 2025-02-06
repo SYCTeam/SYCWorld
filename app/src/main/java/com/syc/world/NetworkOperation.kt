@@ -84,13 +84,20 @@ data class Post(
     @SerializedName("timestamp") val timestamp: Long,
     @SerializedName("ip") val ip: String,
     @SerializedName("likes") val likes: Int,
-    @SerializedName("comments") val comments: Int,
+    @SerializedName("commentsCount") val commentsCount: Int,
     @SerializedName("shares") val shares: Int,
     @SerializedName("views") val views: Int,
     @SerializedName("postId") val postId: Int,
     @SerializedName("qq") val qq: Long,
     @SerializedName("isLiked") val islike: Boolean,
-    @SerializedName("online") val online: Boolean
+    @SerializedName("online") val online: Boolean,
+    @SerializedName("comments") val comments: List<comments>
+)
+
+data class comments(
+    @SerializedName("username") val username: String,
+    @SerializedName("comment") val comment: String,
+    @SerializedName("timestamp") val timestamp: Long
 )
 
 data class WebCommonInfo(
@@ -752,7 +759,8 @@ fun getIpaddress(ip: String): Pair<String, String> {
             val responseBody = response.body?.string() ?: ""
             try {
                 val data = JSONObject(responseBody).getJSONObject("data")
-                val location = buildString {
+                val location = data.getString("location").replace("中国","")
+                    buildString {
                     if (data.getString("country") != "中国") {
                         append(data.getString("country"))
                         append(" ")
