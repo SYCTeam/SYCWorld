@@ -2,6 +2,7 @@ package com.syc.world
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -80,8 +82,11 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 
-data class Selection(
+data class SelectionGlobal(
     val isEnterToSendMessage: Boolean,
+)
+
+data class SelectionDetail(
     val isCloseMessageReminder: Boolean,
     val isPinChat: Boolean
 )
@@ -93,85 +98,68 @@ fun Chat(
     navController: NavController
 ) {
     val context = LocalContext.current
+    var isLoading by remember { mutableStateOf(true) }
+    var chatGroups by remember { mutableStateOf(listOf<ChatGroup>()) }
+    
     LaunchedEffect(Unit) {
-
         withContext(Dispatchers.IO) {
-            val selectionJson = readFromFile(context, "ChatSettings/chatSettings.json")
-            if (selectionJson.isNotEmpty() && isJson(selectionJson)) {
-                val gsonResult = Gson().fromJson(selectionJson, Selection::class.java)
-                Global.setChatSelection1(gsonResult.isEnterToSendMessage)
-                Global.setChatSelection2(gsonResult.isCloseMessageReminder)
-                Global.setChatSelection3(gsonResult.isPinChat)
+            val chatList = getChatList(Global.username, Global.password)
+            if (chatList.first == "error") {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "聊天列表加载失败！原因：${chatList.second}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } else if (chatList.first == "success") {
+                isLoading = false
+
+                // 从 chatList 获取聊天数据并动态生成 ChatGroup 列表
+                chatGroups = chatList.second.map { chatItem ->
+                    ChatGroup(
+                        chatItem.qq,
+                        "联系人",
+                        chatItem.username,
+                        "嘿！咱项目终于完成80%了！",
+                        "晚上7:26",
+                        chatItem.isPinned,
+                        3
+                    )
+                }
             }
         }
     }
+
+
     Global.setUnreadCountInChat("4")
 
-    // 模拟的群组数据
-    val chatGroups = listOf(
-        ChatGroup(
-            "3383787570",
-            "联系人",
-            "酸奶",
-            "嘿！咱项目终于完成80%了！",
-            GroupType.Internal,
-            "晚上7:26",
-            3
-        ),
-        ChatGroup(
-            "10001",
-            "联系人",
-            "陌生人",
-            "你们的项目会开源吗？",
-            GroupType.External,
-            "下午6:22",
-            1
-        ),
-        ChatGroup(
-            "940580064",
-            "联系人",
-            "沉莫",
-            "下午好啊小夜",
-            GroupType.Internal,
-            "下午4:18",
-            0
-        ),
-        ChatGroup(
-            "3267887124",
-            "群聊",
-            "内部交流群",
-            "沉莫：你们开发得怎么样了？",
-            GroupType.Internal,
-            "下午4:07",
-            0
-        ),
-        ChatGroup(
-            "2196770895",
-            "群聊",
-            "外部公开群",
-            "陌生人：我很期待你们的项目！",
-            GroupType.External,
-            "下午3:48",
-            0
-        )
-
-    )
-
     Scaffold {
-        LazyColumn(
-            contentPadding = PaddingValues(top = padding.calculateTopPadding()),
-            topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
-        ) {
-            item {
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    thickness = 0.1.dp,
-                    color = Color.LightGray
-                )
+        if (!isLoading) {
+            LazyColumn(
+                contentPadding = PaddingValues(top = padding.calculateTopPadding()),
+                topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
+            ) {
+                item {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        thickness = 0.2.dp,
+                        color = Color.Gray
+                    )
+                }
+                items(chatGroups) { group ->
+                    ChatGroupItem(navController, group)
+                }
+
             }
-            items(chatGroups) { group ->
-                ChatGroupItem(navController, group)
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
         }
     }
@@ -183,16 +171,10 @@ data class ChatGroup(
     val groupName: String,
     val chatName: String,
     val content: String,
-    val type: GroupType,
     val time: String,
+    val isPin: Boolean,
     val isUnread: Int
 )
-
-// 群组类型
-enum class GroupType {
-    Internal, // 内部群
-    External  // 外部群
-}
 
 // 群组数据类
 data class ChatMessage(
@@ -214,6 +196,9 @@ enum class SenderType {
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
 fun ChatGroupItem(navController: NavController, group: ChatGroup) {
+    val context = LocalContext.current
+    val isDarkMode =
+        context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     var isNavigate by remember { mutableStateOf(false) }
     var imageChange by remember { mutableStateOf(false) }
     val imageSize by animateDpAsState(
@@ -244,10 +229,8 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 5.dp, start = 10.dp, end = 10.dp, bottom = 5.dp)
-                .height(70.dp)
-                .clip(RoundedCornerShape(16.dp)),
-            color = Color.Transparent
+                .height(70.dp),
+            color = if (group.isPin && isDarkMode) Color(0xFF252525) else if (group.isPin) Color(0xFFe6e6e6) else if (isDarkMode) Color(0xFF1E1B1B) else Color.Transparent
         ) {
             Row(
                 modifier = Modifier
@@ -262,7 +245,7 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                             isNavigate = true
                         }
                     }
-                    .padding(start = 5.dp)
+                    .padding(start = 15.dp)
                     .fillMaxSize(),
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
@@ -371,8 +354,8 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 75.dp),
-            thickness = 0.1.dp,
-            color = Color.LightGray
+            thickness = 0.2.dp,
+            color = Color.Gray
         )
     }
 
@@ -476,7 +459,7 @@ fun ChatMessage(message: ChatMessage) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxHeight(),
-                            color = Color(0xFF95EC69)
+                            color = if (isDarkMode) Color(0xFF3EB174) else Color(0xFF95EC69)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -530,6 +513,36 @@ fun ChatUi(navController: NavController) {
     val chatSelection1 = Global.chatSelection1.collectAsState()
     var textFieldChange by remember { mutableStateOf(false) }
     var buttonChange by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val selectionJsonDetail =
+                readFromFile(context, "ChatSettings/${personNameBeingChat.value}/chatSettings.json")
+            val selectionJsonGlobal = readFromFile(context, "ChatSettings/chatGlobalSettings.json")
+            if (selectionJsonDetail.isNotEmpty() && isJson(selectionJsonDetail)) {
+                val gsonDetailResult =
+                    Gson().fromJson(selectionJsonDetail, SelectionDetail::class.java)
+                Global.setChatSelection2(gsonDetailResult.isCloseMessageReminder)
+                Global.setChatSelection3(gsonDetailResult.isPinChat)
+                if (gsonDetailResult.isPinChat) {
+                    pinUser(Global.username, Global.password, personNameBeingChat.value)
+                } else {
+                    pinUser(Global.username, Global.password, personNameBeingChat.value, "true")
+                }
+            } else if (selectionJsonDetail.isEmpty() || !isJson(selectionJsonDetail)) {
+                Global.setChatSelection2(false)
+                Global.setChatSelection3(false)
+            }
+
+            if (selectionJsonGlobal.isNotEmpty() && isJson(selectionJsonGlobal)) {
+                val gsonGlobalResult =
+                    Gson().fromJson(selectionJsonGlobal, SelectionGlobal::class.java)
+                Global.setChatSelection1(gsonGlobalResult.isEnterToSendMessage)
+            } else if (selectionJsonGlobal.isEmpty() || !isJson(selectionJsonGlobal)) {
+                Global.setChatSelection1(false)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         delay(200)
@@ -972,21 +985,76 @@ fun ChatSettings(navController: NavController) {
     val personNameBeingChat = Global.personNameBeingChat.collectAsState()
     val personQQBeingChat = Global.personQQBeingChat.collectAsState()
 
+    var isFirstRun by remember { mutableStateOf(true) }
+
     val chatSelection1 = Global.chatSelection1.collectAsState()
     val chatSelection2 = Global.chatSelection2.collectAsState()
     val chatSelection3 = Global.chatSelection3.collectAsState()
 
     LaunchedEffect(chatSelection1.value, chatSelection2.value, chatSelection3.value) {
-        withContext(Dispatchers.IO) {
-            val selectionJson = Gson().toJson(
-                Selection(
-                    chatSelection1.value,
-                    chatSelection2.value,
-                    chatSelection3.value
+        if (!isFirstRun) {
+            withContext(Dispatchers.IO) {
+                val selectionJsonDetail = Gson().toJson(
+                    SelectionDetail(
+                        chatSelection2.value,
+                        chatSelection3.value
+                    )
                 )
-            )
-            if (isJson(selectionJson)) {
-                writeToFile(context, "ChatSettings", "chatSettings.json", selectionJson)
+                val selectionJsonGlobal = Gson().toJson(
+                    SelectionGlobal(
+                        chatSelection1.value
+                    )
+                )
+                if (isJson(selectionJsonDetail)) {
+                    writeToFile(
+                        context,
+                        "ChatSettings/${personNameBeingChat.value}",
+                        "chatSettings.json",
+                        selectionJsonDetail
+                    )
+                }
+
+                if (isJson(selectionJsonGlobal)) {
+                    writeToFile(
+                        context,
+                        "ChatSettings",
+                        "chatGlobalSettings.json",
+                        selectionJsonGlobal
+                    )
+                }
+
+            }
+        } else {
+            isFirstRun = false
+        }
+    }
+
+    LaunchedEffect(chatSelection3.value) {
+        withContext(Dispatchers.IO) {
+            if (chatSelection3.value) {
+                val pinUserResult =
+                    pinUser(Global.username, Global.password, personNameBeingChat.value)
+                if (pinUserResult.first == "error" && pinUserResult.second != "该用户已经被置顶") {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            "置顶失败！原因：${pinUserResult.second}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            } else {
+                val pinUserResult =
+                    pinUser(Global.username, Global.password, personNameBeingChat.value, "true")
+                if (pinUserResult.first == "error" && pinUserResult.second != "该用户并没有被置顶") {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            "取消置顶失败！原因：${pinUserResult.second}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
         }
     }
@@ -1197,8 +1265,8 @@ fun Selection(ordinal: Int, painter: Painter, description: String, isDivider: Bo
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 40.dp, top = 4.dp),
-                    thickness = 0.1.dp,
-                    color = Color.LightGray
+                    thickness = 0.2.dp,
+                    color = Color.Gray
                 )
             }
         }

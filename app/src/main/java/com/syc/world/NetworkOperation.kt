@@ -1,5 +1,6 @@
 package com.syc.world
 
+import android.annotation.SuppressLint
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
@@ -162,6 +163,32 @@ data class SynopsisData(
     @SerializedName("status") val status: String,
     @SerializedName("message") val message: String
 )
+
+data class ChatResponse(
+    @SerializedName("status")
+    val status: String,
+
+    @SerializedName("chatList")
+    val chatList: List<User>
+)
+
+data class User(
+    @SerializedName("index")
+    val index: Int,
+
+    @SerializedName("username")
+    val username: String,
+
+    @SerializedName("qq")
+    val qq: String,
+
+    @SerializedName("online")
+    val online: Boolean,
+
+    @SerializedName("isPinned")
+    val isPinned: Boolean
+)
+
 
 suspend fun getUrl(): String {
     val url = "https://sharechain.qq.com/93bd306d9c78bc6c4bc469c43c086cb6"
@@ -736,6 +763,7 @@ fun cancellike(username: String, password: String, postId: String): Pair<String,
     }
 }
 
+@SuppressLint("SuspiciousIndentation")
 fun getIpaddress(ip: String): Pair<String, String> {
     val url =
         "https://api.ip77.net/ip2/v4/".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
@@ -785,5 +813,109 @@ fun getIpaddress(ip: String): Pair<String, String> {
     } catch (e: IOException) {
         e.printStackTrace()
         Pair("error", e.message ?: "Unknown error")
+    }
+}
+
+fun pinUser(
+    username: String,
+    password: String,
+    pinUser: String,
+    isCancel: String = "false"
+): Pair<String, String> {
+    val url = "${Global.url}/syc/pinUser.php".toHttpUrlOrNull() ?: return Pair(
+        "Error",
+        "Invalid URL"
+    )
+
+    Log.d("置顶问题", "isCancel: $isCancel")
+
+    val client = OkHttpClient()
+
+    // 创建请求体，包含用户名和密码
+    val formBodyBuilder =
+        FormBody.Builder()
+        .add("username", username)
+        .add("password", password)
+        .add("pinUser", pinUser)
+        .add("isCancel", isCancel)
+
+    val formBody = formBodyBuilder.build()
+
+    Log.d("置顶用户信息获取", url.toString())
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("置顶用户信息获取", responseBody)
+            try {
+                val pinUserInfo: WebCommonInfo =
+                    Gson().fromJson(responseBody, WebCommonInfo::class.java)
+                Pair(pinUserInfo.status, pinUserInfo.message)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
+    }
+}
+
+fun getChatList(
+    username: String,
+    password: String
+): Pair<String, List<User>> {
+    val url = "${Global.url}/syc/getChatList.php".toHttpUrlOrNull() ?: return Pair(
+        "Error",
+        emptyList()
+    )
+
+    val client = OkHttpClient()
+
+    // 创建请求体，包含用户名和密码
+    val formBodyBuilder =
+        FormBody.Builder()
+            .add("username", username)
+            .add("password", password)
+
+    val formBody = formBodyBuilder.build()
+
+    Log.d("聊天列表信息获取", url.toString())
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("聊天列表信息获取", responseBody)
+            try {
+                val chatListInfo: ChatResponse =
+                    Gson().fromJson(responseBody, ChatResponse::class.java)
+                Pair(chatListInfo.status, chatListInfo.chatList)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", emptyList())
+            }
+        } else {
+            Pair("error", emptyList())
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", emptyList())
     }
 }
