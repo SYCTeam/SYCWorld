@@ -142,6 +142,7 @@ object Global {
     var url = ""
     var username = ""
     var password = ""
+    var userQQ = ""
     var monitorJob: Job? = null
 
     var isGiveBodySensorsPermissions = false
@@ -293,6 +294,14 @@ object Global {
 
     fun setPersonQQBeingChat(value: String) {
         _personQQBeingChat.value = value
+    }
+
+    private val _personIsOnlineBeingChat = MutableStateFlow(false)
+    val personIsOnlineBeingChat: StateFlow<Boolean>
+        get() = _personIsOnlineBeingChat
+
+    fun setPersonIsOnlineBeingChat(value: Boolean) {
+        _personIsOnlineBeingChat.value = value
     }
 
     private val _unreadCountInChat = MutableStateFlow("")

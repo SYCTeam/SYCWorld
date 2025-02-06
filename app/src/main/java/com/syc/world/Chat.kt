@@ -2,6 +2,7 @@ package com.syc.world
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -100,33 +101,51 @@ fun Chat(
     val context = LocalContext.current
     var isLoading by remember { mutableStateOf(true) }
     var chatGroups by remember { mutableStateOf(listOf<ChatGroup>()) }
-    
+
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val chatList = getChatList(Global.username, Global.password)
-            if (chatList.first == "error") {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        context,
-                        "聊天列表加载失败！原因：${chatList.second}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            } else if (chatList.first == "success") {
-                isLoading = false
+            while (isLoading) {
+                val chatList = getChatList(Global.username, Global.password)
+                if (chatList.first == "error") {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            "聊天列表加载失败！原因：${chatList.second}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else if (chatList.first == "success") {
+                    isLoading = false
 
-                // 从 chatList 获取聊天数据并动态生成 ChatGroup 列表
-                chatGroups = chatList.second.map { chatItem ->
-                    ChatGroup(
-                        chatItem.qq,
-                        "联系人",
-                        chatItem.username,
-                        "嘿！咱项目终于完成80%了！",
-                        "晚上7:26",
-                        chatItem.isPinned,
-                        3
-                    )
+                    chatGroups = chatList.second.map { chatItem ->
+                        ChatGroup(
+                            chatItem.qq,
+                            "联系人",
+                            chatItem.username,
+                            "嘿！咱项目终于完成80%了！",
+                            "晚上7:26",
+                            chatItem.isPinned,
+                            chatItem.online,
+                            3,
+                        )
+                    }
                 }
+                delay(3000)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            while (Global.userQQ == "") {
+                val informationResult = getUserInformation(Global.username)
+                if (informationResult.isNotEmpty() && isJson(informationResult)) {
+                    val userInfo = parseUserInfo(informationResult)
+                    if (userInfo != null && userInfo.qq.isNotEmpty()) {
+                        Global.userQQ = userInfo.qq
+                    }
+                }
+                delay(2000)
             }
         }
     }
@@ -149,6 +168,7 @@ fun Chat(
                     )
                 }
                 items(chatGroups) { group ->
+                    Log.d("聊天列表问题", "group.isPin: ${group.isPinned}")
                     ChatGroupItem(navController, group)
                 }
 
@@ -172,7 +192,8 @@ data class ChatGroup(
     val chatName: String,
     val content: String,
     val time: String,
-    val isPin: Boolean,
+    val isPinned: Boolean,
+    val isOnline: Boolean,
     val isUnread: Int
 )
 
@@ -200,6 +221,7 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
     val isDarkMode =
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     var isNavigate by remember { mutableStateOf(false) }
+
     var imageChange by remember { mutableStateOf(false) }
     val imageSize by animateDpAsState(
         targetValue = if (imageChange) 60.dp else 50.dp,
@@ -213,6 +235,7 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
     if (imageSize == 60.dp) {
         imageChange = false
     }
+
 
     LaunchedEffect(Unit) {
         delay(200)
@@ -230,7 +253,11 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(70.dp),
-            color = if (group.isPin && isDarkMode) Color(0xFF252525) else if (group.isPin) Color(0xFFe6e6e6) else if (isDarkMode) Color(0xFF1E1B1B) else Color.Transparent
+            color = when {
+                group.isPinned -> if (isDarkMode) Color(0xFF252525) else Color(0xFFe6e6e6)
+                isDarkMode -> Color(0xFF1E1B1B)
+                else -> Color.Transparent
+            }
         ) {
             Row(
                 modifier = Modifier
@@ -240,6 +267,8 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                     ) {
                         if (!isNavigate) {
                             Global.setPersonNameBeingChat(group.chatName)
+                            Global.setPersonQQBeingChat(group.groupQQ)
+                            Global.setPersonIsOnlineBeingChat(group.isOnline)
                             Global.setIsShowChat(true)
                             navController.navigate("ChatUi")
                             isNavigate = true
@@ -391,7 +420,6 @@ fun ChatMessage(message: ChatMessage) {
                 }
             }
             if (message.sender == SenderType.Others) {
-                Global.setPersonQQBeingChat(message.senderQQ)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -509,10 +537,53 @@ fun ChatUi(navController: NavController) {
     val isDarkMode =
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     val personNameBeingChat = Global.personNameBeingChat.collectAsState()
+    val personIsOnlineBeingChat = Global.personIsOnlineBeingChat.collectAsState()
     val unreadCountInChat = Global.unreadCountInChat.collectAsState()
     val chatSelection1 = Global.chatSelection1.collectAsState()
     var textFieldChange by remember { mutableStateOf(false) }
     var buttonChange by remember { mutableStateOf(false) }
+    var isSend by remember { mutableStateOf(false) }
+
+    val chatMessage = listOf(
+        ChatMessage(
+            true,
+            "酸奶",
+            SenderType.Me,
+            "1640432",
+            "在吗？",
+            1738590703
+        ),
+    )
+
+    LaunchedEffect(isSend) {
+        withContext(Dispatchers.IO) {
+            if (isSend && Global.userQQ.trim().isNotEmpty()) {
+                val sendResult =
+                    sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
+                if (sendResult.first == "error") {
+                    isSend = false
+                    withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        context,
+                        "发送失败！原因：${sendResult.second}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                        }
+                } else {
+                    text = ""
+
+                    ChatMessage(
+                        true,
+                        personNameBeingChat.value,
+                        SenderType.Me,
+                        Global.userQQ,
+                        "在吗？",
+                        1738590703
+                    )
+                }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -662,13 +733,65 @@ fun ChatUi(navController: NavController) {
                     },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = personNameBeingChat.value,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier,
-                        textAlign = TextAlign.Center,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxHeight(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = personNameBeingChat.value,
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier,
+                            textAlign = TextAlign.Center,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (personIsOnlineBeingChat.value) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxHeight(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    modifier = Modifier
+                                        .size(10.dp),
+                                    painter = painterResource(id = R.drawable.point_green),
+                                    contentDescription = null
+                                )
+                                Text(
+                                    text = "在线",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier
+                                        .padding(start = 5.dp),
+                                    textAlign = TextAlign.Center,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxHeight(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    modifier = Modifier
+                                        .size(10.dp),
+                                    painter = painterResource(id = R.drawable.point_gray),
+                                    contentDescription = null
+                                )
+                                Text(
+                                    text = "离线",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier
+                                        .padding(start = 5.dp),
+                                    textAlign = TextAlign.Center,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Surface(
@@ -700,66 +823,6 @@ fun ChatUi(navController: NavController) {
                     }
                 }
             }
-            val chatMessage = listOf(
-                ChatMessage(
-                    true,
-                    "酸奶",
-                    SenderType.Me,
-                    "1640432",
-                    "在吗？",
-                    1738590703
-                ),
-                ChatMessage(
-                    false,
-                    "酸奶",
-                    SenderType.Others,
-                    "3383787570",
-                    "怎么了？",
-                    1738590743
-                ),
-                ChatMessage(
-                    false,
-                    "酸奶",
-                    SenderType.Me,
-                    "1640432",
-                    "你现在在干嘛呢？",
-                    1738590743
-                ),
-                ChatMessage(
-                    false,
-                    "酸奶",
-                    SenderType.Others,
-                    "3383787570",
-                    "我在写\"Moments.kt\"界面。",
-                    1738590743
-                ),
-                ChatMessage(
-                    false,
-                    "酸奶",
-                    SenderType.Me,
-                    "1640432",
-                    "加油！！！",
-                    1738590743
-                ),
-                ChatMessage(
-                    true,
-                    "陌生人",
-                    SenderType.Others,
-                    "10001",
-                    "你们的项目会开源吗？",
-                    1738590743
-                ),
-                ChatMessage(
-                    true,
-                    "沉莫",
-                    SenderType.Others,
-                    "940580064",
-                    "下午好啊小夜",
-                    1738590743
-                ),
-            )
-
-
 
             LazyColumn(
                 modifier = Modifier
@@ -867,7 +930,7 @@ fun ChatUi(navController: NavController) {
                                 ),
                                 keyboardActions = KeyboardActions(
                                     onSend = {
-                                        text = ""
+                                        isSend = true
                                     }
                                 ),
                                 keyboardOptions = KeyboardOptions.Default.copy(
@@ -941,7 +1004,7 @@ fun ChatUi(navController: NavController) {
                                 ),
                                 shape = RectangleShape,
                                 onClick = {
-                                    text = ""
+                                    isSend = true
                                 }
                             ) {
                                 AnimatedVisibility(

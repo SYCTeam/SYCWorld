@@ -30,6 +30,7 @@ fun isJson(jsonString: String): Boolean {
 
 fun parseUserInfo(json: String): UserInfo? {
     if (json.isBlank()) {
+        Log.d("解析问题", "JSON input cannot be empty or blank.")
         throw IllegalArgumentException("JSON input cannot be empty or blank.")
     }
 
@@ -917,5 +918,58 @@ fun getChatList(
     } catch (e: IOException) {
         e.printStackTrace()
         Pair("error", emptyList())
+    }
+}
+
+fun sendMessage(
+    username: String,
+    password: String,
+    receiver: String,
+    message: String
+): Pair<String, String> {
+    val url = "${Global.url}/syc/sendMessage.php".toHttpUrlOrNull() ?: return Pair(
+        "Error",
+        "Invalid URL"
+    )
+
+    val client = OkHttpClient()
+
+    // 创建请求体，包含用户名和密码
+    val formBodyBuilder =
+        FormBody.Builder()
+            .add("username", username)
+            .add("password", password)
+            .add("receiver", receiver)
+            .add("message", message)
+
+    val formBody = formBodyBuilder.build()
+
+    Log.d("聊天信息获取", url.toString())
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("聊天信息获取", responseBody)
+            try {
+                val pinUserInfo: WebCommonInfo =
+                    Gson().fromJson(responseBody, WebCommonInfo::class.java)
+                Pair(pinUserInfo.status, pinUserInfo.message)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
     }
 }
