@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -91,6 +92,7 @@ import dev.snipme.highlights.model.SyntaxThemes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import org.w3c.dom.Comment
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.LazyColumn
@@ -105,6 +107,8 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.icons.ArrowBack
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.concurrent.TimeUnit
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.HorizontalDivider
 
 @Composable
 fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeStyle: HazeStyle) {
@@ -118,7 +122,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     val message = remember { mutableStateOf(0) }
     val like = remember { mutableStateOf(0) }
     val share = remember { mutableStateOf(0) }
-    val comment = remember { mutableStateListOf(emptyList<Comments>()) }
+    val comment = remember { mutableStateListOf<Comments>() }
     val zanok = remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -135,7 +139,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 like.value = post[0].likes
                 share.value = post[0].shares
                 Global.setChatSelection3(false)
-                comment.add(post[0].comments)
+                comment.addAll(post[0].comments)
                 zanok.value = post[0].islike
             }
         }
@@ -467,18 +471,24 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                     }
                 }
             }
-            val parentComments = comment.flatten().filter { it.parentCommentId == 0 }
-            item {
-                parentComments.forEach {
-                    commentItem(
-                        username = it.username,
-                        comment = it.content,
-                        time = it.timestamp*1000,
-                        qq = it.qq,
-                        online = it.online,
-                        id = it.id
-                    )
+            val parentComments = comment.filter { it.parentCommentId == 0 }
+
+            items(parentComments) { parentComment ->
+                Column(modifier = Modifier.background(CardDefaults.DefaultColor())) {
+                    // 父级评论项
+                    CommentItem(comment = parentComment)
+
+                    // 子评论部分（支持多级嵌套）
+                    Card(modifier = Modifier.padding(start = 54.dp, top = 4.dp, end = 20.dp, bottom = 10.dp),
+                        color = MiuixTheme.colorScheme.background.copy(alpha = 0.5f),
+                        cornerRadius = 8.dp) {
+                        ChildComments(parentId = parentComment.id, comments = comment.toList())
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+
+
                 }
+                //HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
             }
             item {
                 Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()+48.dp))
@@ -487,87 +497,141 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     }
 }
 
+// 4. 新增子评论组件
 @Composable
-fun commentItem(username: String,comment: String,time: Long,qq: Long,online: Boolean,id: Int) {
-    val timestamp = remember { System.currentTimeMillis() }
-    val diffInMillis = timestamp - time
-    val timeAgo = remember(diffInMillis) {
-        when {
-            diffInMillis < TimeUnit.MINUTES.toMillis(1) -> {
-                // 小于一分钟，显示秒数
-                "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
-            }
+private fun ChildComments(parentId: Int,comments: List<Comments>) {
+    // 筛选出直接子评论
+    val childComments = comments.filter { it.parentCommentId == parentId }
 
-            diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
-                // 小于1小时，显示分钟数
-                "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
-            }
+    Column(modifier = Modifier.padding(start = 0.dp)) { // 子评论缩进
+        childComments.forEach { child ->
+            Column {
+                // 子评论项
+                ChildCommentItem(comment = child,if (comments.filter { it.id == child.parentCommentId }[0].parentCommentId != 0) comments.filter { it.id == child.parentCommentId }[0].username else null)
 
-            diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
-                // 小于1天，显示小时数
-                "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
-            }
-
-            diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
-                // 小于30天，显示天数
-                "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
-            }
-
-            diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
-                // 小于一年，显示月份数
-                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
-            }
-
-            else -> {
-                // 大于一年，显示年份
-                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
+                // 递归显示更深层评论
+                ChildComments(parentId = child.id,comments = comments)
             }
         }
     }
-    Column(modifier = Modifier.fillMaxWidth().background(CardDefaults.DefaultColor())) {
-        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 14.dp)) {
+}
+
+@Composable
+fun ChildCommentItem(comment: Comments,twochild: String? = null) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
+            Row(modifier = Modifier.weight(1f).padding(start = 0.dp)) {
+                if (twochild == null) {
+                    Text(text =  comment.username+"：",
+                        fontSize = 14.sp,
+                        color = MiuixTheme.colorScheme.primaryVariant)
+                } else {
+                    Text(text = comment.username,
+                        fontSize = 14.sp,
+                        color = MiuixTheme.colorScheme.primaryVariant)
+                    Text(text =  "回复",
+                        fontSize = 14.sp)
+                    Text(text =  twochild,
+                        fontSize = 14.sp,
+                        color = MiuixTheme.colorScheme.primaryVariant)
+                    Text(text =  "：",
+                        fontSize = 14.sp)
+                }
+                // 评论内容
+                Text(
+                    text = comment.content,
+                    modifier = Modifier.padding(),
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
+}
+
+// 5. 改造后的 CommentItem
+@Composable
+fun CommentItem(comment: Comments) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(CardDefaults.DefaultColor())
+            .padding(vertical = 8.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
+            // 头像部分
             AsyncImage(
-                model = "https://q.qlogo.cn/headimg_dl?dst_uin=${qq}&spec=640&img_type=jpg",
+                model = "https://q.qlogo.cn/headimg_dl?dst_uin=${comment.qq}&spec=640&img_type=jpg",
                 contentDescription = null,
                 modifier = Modifier
                     .size(28.dp)
-                    .clip(
-                        RoundedCornerShape(
-                            6.dp
-                        )
-                    )
+                    .clip(RoundedCornerShape(6.dp))
             )
+
+            // 在线状态
             Image(
+                painter = painterResource(id = if (comment.online) R.drawable.point_green else R.drawable.point_gray),
+                contentDescription = null,
                 modifier = Modifier
                     .size(10.dp)
-                    .offset(x = (-9).dp, y = 18.dp),
-                painter = painterResource(id = if (online) R.drawable.point_green else R.drawable.point_gray),
-                contentDescription = null
+                    .offset(x = (-9).dp, y = 18.dp)
             )
-            Column(modifier = Modifier.fillMaxWidth()) {
-                var isTimeAgo by remember { mutableStateOf(true) }
-                Text(username, modifier = Modifier.padding(start = 8.dp), fontSize = 14.sp,color = MiuixTheme.colorScheme.primaryVariant)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(comment, modifier = Modifier.padding(start = 8.dp), fontSize = 15.sp)
-                Row(modifier = Modifier.height(42.dp).padding(start = 8.dp)) {
-                    AnimatedContent(
-                        targetState = isTimeAgo,
-                        transitionSpec = {
-                            (slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300))) togetherWith (slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)))
-                        }
-                    ) { targetState ->
-                        Column(verticalArrangement = Arrangement.Center, modifier = Modifier.fillMaxHeight()) {
-                            Text(
-                                text = if (targetState) timeAgo else transToString1(time),
-                                fontSize = 13.sp,
-                                color = Color.Gray,
-                                modifier = Modifier.clickable { isTimeAgo = !isTimeAgo }
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
+
+            // 主要内容
+            Column(modifier = Modifier.weight(1f).padding(start = 0.dp)) {
+
+                // 用户信息行
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = comment.username,
+                        fontSize = 14.sp,
+                        color = MiuixTheme.colorScheme.primaryVariant
+                    )
+                }
+
+                // 评论内容
+                Text(
+                    text = comment.content,
+                    modifier = Modifier.padding(top = 4.dp),
+                    fontSize = 15.sp
+                )
+
+                val timeAgo = remember {
+                    calculateTimeAgo(comment.timestamp * 1000L) // 注意 timestamp 是 Long 类型
+                }
+                var showFullTime by remember { mutableStateOf(false) }
+                AnimatedContent(
+                    targetState = showFullTime,
+                    transitionSpec = { (slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300))) togetherWith (slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300))) }
+                ) { showFull ->
+                    Text(
+                        text = if (showFull)
+                            transToString1(comment.timestamp * 1000L)
+                        else
+                            timeAgo,
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier
+                            .clickable { showFullTime = !showFull }
+                            .padding(top = 4.dp)
+                    )
                 }
             }
         }
+    }
+}
+
+fun calculateTimeAgo(timestamp: Long): String {
+    val diff = System.currentTimeMillis() - timestamp
+    return when {
+        diff < 60_000 -> "${diff / 1000}秒前"
+        diff < 3_600_000 -> "${diff / 60_000}分钟前"
+        diff < 86_400_000 -> "${diff / 3_600_000}小时前"
+        diff < 2_592_000_000 -> "${diff / 86_400_000}天前"
+        diff < 31_536_000_000 -> "${diff / 2_592_000_000}个月前"
+        else -> "${diff / 31_536_000_000}年前"
     }
 }
