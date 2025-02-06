@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,8 +40,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,6 +57,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -82,6 +87,8 @@ import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 data class SelectionGlobal(
     val isEnterToSendMessage: Boolean,
@@ -91,6 +98,12 @@ data class SelectionDetail(
     val isCloseMessageReminder: Boolean,
     val isPinChat: Boolean
 )
+
+fun getCurrentTime(): String {
+    val currentTime = LocalDateTime.now()
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    return currentTime.format(formatter)
+}
 
 @Composable
 fun Chat(
@@ -204,7 +217,7 @@ data class ChatMessage(
     val sender: SenderType,
     val senderQQ: String,
     val message: String,
-    val sendTime: Long
+    val sendTime: String
 )
 
 // 群组类型
@@ -411,7 +424,7 @@ fun ChatMessage(message: ChatMessage) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = transToString(message.sendTime),
+                        text = message.sendTime,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier,
                         overflow = TextOverflow.Ellipsis,
@@ -532,6 +545,10 @@ fun ChatMessage(message: ChatMessage) {
 fun ChatUi(navController: NavController) {
     val context = LocalContext.current
     var text by remember { mutableStateOf("") }
+    var isFirstRun by remember { mutableStateOf(true) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isAnimation by remember { mutableStateOf(false) }
+    val listState = remember { LazyListState() }
     var driveText by remember { mutableStateOf(false) }
     var isSendButtonVisible by remember { mutableStateOf(false) }
     val isDarkMode =
@@ -544,42 +561,159 @@ fun ChatUi(navController: NavController) {
     var buttonChange by remember { mutableStateOf(false) }
     var isSend by remember { mutableStateOf(false) }
 
-    val chatMessage = listOf(
-        ChatMessage(
-            true,
-            "酸奶",
-            SenderType.Me,
-            "1640432",
-            "在吗？",
-            1738590703
-        ),
+    val chatMessage = remember { mutableStateListOf<ChatMessage>() }
+
+    var delaTime by remember { mutableLongStateOf(1500L) }
+
+    val myMessage = ChatMessage(
+        true,
+        personNameBeingChat.value,
+        SenderType.Me,
+        Global.userQQ,
+        text,
+        getCurrentTime()
     )
+
+    val messageIndex = chatMessage.size
+
+
+    LaunchedEffect(chatMessage.size) {
+        if (chatMessage.isNotEmpty() && isFirstRun) {
+            delay(delaTime)
+            listState.animateScrollToItem(chatMessage.size - 1)
+            delaTime = 1000L
+            isFirstRun = false
+        } else if (chatMessage.isNotEmpty()) {
+            delay(delaTime)
+            listState.animateScrollToItem(chatMessage.size - 1)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            while (true) {
+                if (Global.userQQ.trim().isNotEmpty()) {
+                    val getMessageResult =
+                        getMessage(Global.username, Global.password, personNameBeingChat.value)
+
+                    if (getMessageResult.first == "error") {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "聊天记录获取失败！原因：${getMessageResult.second}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    } else {
+                        val existingMessages = mutableListOf<Pair<String, String>>()
+
+                        chatMessage.forEach { existingMessages.add(it.message to it.sendTime) }
+
+                        getMessageResult.second.forEach { chatRecord ->
+                            val senderQQ = chatRecord.senderQQ
+                            val message = chatRecord.message
+                            val timestamp = chatRecord.timestamp
+                            val senderType = if (chatRecord.senderUsername != Global.username) {
+                                SenderType.Others
+                            } else {
+                                SenderType.Me
+                            }
+
+                            if (!existingMessages.contains(message to timestamp)) {
+                                val newMessage = ChatMessage(
+                                    true,
+                                    personNameBeingChat.value,
+                                    senderType,
+                                    senderQQ,
+                                    message,
+                                    timestamp
+                                )
+                                chatMessage.add(newMessage)
+                                existingMessages.add(message to timestamp)
+                            }
+                        }
+                        isLoading = false
+                    }
+                }
+                delay(3000)
+                isLoading = true
+            }
+        }
+    }
+
+    LaunchedEffect(isLoading) {
+        if (!isLoading) {
+            delay(1000)
+            isAnimation = true
+        }
+    }
+
 
     LaunchedEffect(isSend) {
         withContext(Dispatchers.IO) {
             if (isSend && Global.userQQ.trim().isNotEmpty()) {
+
+                chatMessage.add(myMessage)
+
                 val sendResult =
                     sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
-                if (sendResult.first == "error") {
-                    isSend = false
-                    withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        context,
-                        "发送失败！原因：${sendResult.second}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                        }
-                } else {
-                    text = ""
 
-                    ChatMessage(
-                        true,
-                        personNameBeingChat.value,
-                        SenderType.Me,
-                        Global.userQQ,
-                        "在吗？",
-                        1738590703
-                    )
+                text = ""
+
+                isSend = false
+
+                if (sendResult.first == "error") {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            "发送失败！原因：${sendResult.second}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else if (sendResult.first == "success") {
+                    if (Global.userQQ.trim().isNotEmpty()) {
+                        val getMessageResult =
+                            getMessage(Global.username, Global.password, personNameBeingChat.value)
+
+                        if (getMessageResult.first == "error" && (getMessageResult.second as? List<*>).isNullOrEmpty()) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    "聊天记录获取失败！原因：${getMessageResult.second}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        } else {
+                            val existingMessages = mutableListOf<Pair<String, String>>()
+
+                            chatMessage.forEach { existingMessages.add(it.message to it.sendTime) }
+
+                            getMessageResult.second.forEach { chatRecord ->
+                                val senderQQ = chatRecord.senderQQ
+                                val message = chatRecord.message
+                                val timestamp = chatRecord.timestamp
+                                val senderType = if (chatRecord.senderUsername != Global.username) {
+                                    SenderType.Others
+                                } else {
+                                    SenderType.Me
+                                }
+
+                                if (!existingMessages.contains(message to timestamp)) {
+                                    val newMessage = ChatMessage(
+                                        true,
+                                        personNameBeingChat.value,
+                                        senderType,
+                                        senderQQ,
+                                        message,
+                                        timestamp
+                                    )
+                                    chatMessage.removeAt(messageIndex)
+                                    chatMessage.add(newMessage)
+                                    existingMessages.add(message to timestamp)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -826,10 +960,21 @@ fun ChatUi(navController: NavController) {
 
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .padding(bottom = 90.dp),
+                state = listState
             ) {
                 items(chatMessage) { message ->
-                    ChatMessage(message)
+                    AnimatedVisibility(
+                        visible = isAnimation,
+                        enter = fadeIn(tween(durationMillis = 500)) + slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(durationMillis = 500)
+                        ),
+                        exit = fadeOut(tween(durationMillis = 500))
+                    ) {
+                        ChatMessage(message)
+                    }
                 }
             }
 
@@ -844,8 +989,8 @@ fun ChatUi(navController: NavController) {
 
                     lineCount = newLineCount.coerceAtMost(4)
 
-                    if (text.length > lineCount * 11) {
-                        lineCount = (text.length / 11) + 1
+                    if (text.length > lineCount * 10) {
+                        lineCount = (text.length / 10) + 1
                     }
 
                     lineCount = lineCount.coerceAtMost(4)
@@ -865,7 +1010,8 @@ fun ChatUi(navController: NavController) {
         )
         Row(
             modifier = Modifier
-                .fillMaxSize(),
+                .fillMaxSize()
+                .padding(bottom = 10.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.Bottom
         ) {
@@ -882,7 +1028,7 @@ fun ChatUi(navController: NavController) {
                 ) {
 
                     val maxWidth =
-                        if (text.trim().isNotEmpty()) maxWidth * 0.5f else maxWidth * 0.7f
+                        if (text.trim().isNotEmpty()) maxWidth * 0.5f else maxWidth * 0.75f
 
                     val textFieldWidth by animateDpAsState(
                         targetValue = if (textFieldChange) maxWidth else 0.dp,
@@ -911,7 +1057,8 @@ fun ChatUi(navController: NavController) {
                             TextField(
                                 modifier = Modifier
                                     .width(textFieldWidth)
-                                    .height(textFieldHeight),
+                                    .height(textFieldHeight)
+                                    .padding(start = 10.dp, end = 10.dp),
                                 value = text,
                                 onValueChange = { newText -> text = newText },
                                 textStyle = TextStyle(
@@ -941,7 +1088,8 @@ fun ChatUi(navController: NavController) {
                             TextField(
                                 modifier = Modifier
                                     .width(textFieldWidth)
-                                    .height(textFieldHeight),
+                                    .height(textFieldHeight)
+                                    .padding(start = 10.dp, end = 10.dp),
                                 value = text,
                                 onValueChange = { newText ->
                                     text = newText
@@ -987,25 +1135,25 @@ fun ChatUi(navController: NavController) {
                         if (driveText) {
 
                             val buttonSize by animateDpAsState(
-                                targetValue = if (buttonChange) 80.dp else 0.dp,
+                                targetValue = if (buttonChange) 58.dp else 0.dp,
                                 animationSpec = tween(
                                     durationMillis = 300,
                                 )
                             )
 
-                            Button(
+                            Card(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .height(40.dp)
-                                    .width(buttonSize),
-                                colors = ButtonDefaults.buttonColors(
+                                    .height(34.dp)
+                                    .width(buttonSize)
+                                    .clickable {
+                                        isSend = true
+                                    },
+                                colors = CardDefaults.cardColors(
                                     containerColor = Color(0xFF07C160),
                                     contentColor = Color.White
                                 ),
-                                shape = RectangleShape,
-                                onClick = {
-                                    isSend = true
-                                }
+                                shape = RectangleShape
                             ) {
                                 AnimatedVisibility(
                                     visible = isSendButtonVisible,
@@ -1023,9 +1171,8 @@ fun ChatUi(navController: NavController) {
                                     ) {
                                         Text(
                                             text = "发送",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier
+                                            modifier = Modifier,
+                                            fontSize = 15.sp,
                                         )
                                     }
                                 }

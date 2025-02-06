@@ -320,35 +320,37 @@ fun ViewOthersPopup() {
                                         color = Color.LightGray,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    AnimatedVisibility(
-                                        visible = isSendMailAnimation,
-                                        enter = fadeIn(
-                                            animationSpec = tween(500, easing = FastOutSlowInEasing)
-                                        ) + slideInHorizontally(
-                                            initialOffsetX = { it + 200 },
-                                            animationSpec = tween(500, easing = FastOutSlowInEasing)
-                                        ),
-                                        exit = fadeOut(
-                                            animationSpec = tween(500, easing = FastOutSlowInEasing)
-                                        ) + slideOutHorizontally(
-                                            targetOffsetX = { it + 200 },
-                                            animationSpec = tween(500, easing = FastOutSlowInEasing)
-                                        )
-                                    ) {
-                                        Surface(
-                                            modifier = Modifier
-                                                .padding(start = 10.dp)
-                                                .clip(RoundedCornerShape(16.dp))
-                                                .clickable {
-                                                    isSendMail = true
-                                                }
-                                        ) {
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.Send,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(ButtonDefaults.IconSize)
+                                    if (personNameBeingViewed.value != Global.username) {
+                                        AnimatedVisibility(
+                                            visible = isSendMailAnimation,
+                                            enter = fadeIn(
+                                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                            ) + slideInHorizontally(
+                                                initialOffsetX = { it + 200 },
+                                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                            ),
+                                            exit = fadeOut(
+                                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                            ) + slideOutHorizontally(
+                                                targetOffsetX = { it + 200 },
+                                                animationSpec = tween(500, easing = FastOutSlowInEasing)
                                             )
+                                        ) {
+                                            Surface(
+                                                modifier = Modifier
+                                                    .padding(start = 10.dp)
+                                                    .clip(RoundedCornerShape(16.dp))
+                                                    .clickable {
+                                                        isSendMail = true
+                                                    }
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.Send,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .size(ButtonDefaults.IconSize)
+                                                )
+                                            }
                                         }
                                     }
                                 }

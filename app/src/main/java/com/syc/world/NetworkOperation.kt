@@ -194,6 +194,33 @@ data class User(
     val isPinned: Boolean
 )
 
+data class ChatRecord(
+    @SerializedName("sender_username")
+    val senderUsername: String,  // 发送者的用户名
+
+    @SerializedName("receiver_username")
+    val receiverUsername: String, // 接收者的用户名
+
+    @SerializedName("sender_qq")
+    val senderQQ: String, // 发送者的QQ
+
+    @SerializedName("receiver_qq")
+    val receiverQQ: String, // 接收者的QQ
+
+    @SerializedName("message")
+    val message: String,  // 消息内容
+
+    @SerializedName("timestamp")
+    val timestamp: String  // 时间戳，保持为字符串类型
+)
+
+data class ChatMessageResponse(
+    @SerializedName("status")
+    val status: String,
+
+    @SerializedName("chatRecords")
+    val chatRecords: List<ChatRecord>
+)
 
 suspend fun getUrl(): String {
     val url = "https://sharechain.qq.com/93bd306d9c78bc6c4bc469c43c086cb6"
@@ -976,5 +1003,64 @@ fun sendMessage(
     } catch (e: IOException) {
         e.printStackTrace()
         Pair("error", e.message ?: "Unknown error")
+    }
+}
+
+fun getMessage(
+    username: String,
+    password: String,
+    receiver: String
+): Pair<String, List<ChatRecord>> {
+    val url = "${Global.url}/syc/getChatMessage.php".toHttpUrlOrNull()
+        ?: return Pair("error", listOf())
+
+    val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    // 创建请求体，包含用户名、密码和接收者
+    val formBody = FormBody.Builder()
+        .add("username", username)
+        .add("password", password)
+        .add("receiver", receiver)
+        .build()
+
+    Log.d("聊天信息获取", "请求 URL: $url")
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            Log.d("聊天信息获取", "响应: $responseBody")
+            try {
+                val chatMessageInfo: ChatMessageResponse =
+                    Gson().fromJson(responseBody, ChatMessageResponse::class.java)
+
+                if (chatMessageInfo.status == "success") {
+                    Pair(chatMessageInfo.status, chatMessageInfo.chatRecords)
+                } else {
+                    Pair("error", listOf())
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Log.e("聊天信息解析", "解析错误: ${e.message}")
+                Pair("error", listOf())
+            }
+        } else {
+            Log.e("网络请求失败", "响应失败: ${response.message}")
+            Pair("error", listOf())
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Log.e("网络请求失败", "IO异常: ${e.message}")
+        Pair("error", listOf())
     }
 }
