@@ -67,8 +67,6 @@ class ForegroundService : Service() {
                 restartRescueProcess()
             }
             handler.postDelayed(this, 1000) // 每 1 秒检查一次
-            acquireWakeLock() // 重新获取 WakeLock
-            handler.postDelayed(this, 10 * 60 * 1000L) // 每 10 分钟重新获取一次，避免超时
         }
     }
 
@@ -222,7 +220,6 @@ class ForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        releaseWakeLock()
         handler.removeCallbacks(wakeLockRunnable) // 移除任务，避免内存泄漏
     }
 
@@ -478,7 +475,7 @@ class RescueProcessService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d("进程问题", "MainProcessService started.")
+        Log.d("进程问题", "RescueProcessService started.")
 
     }
 
