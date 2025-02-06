@@ -239,7 +239,7 @@ class ForegroundService : Service() {
     private fun restartRescueProcess() {
         // 重启主进程
         val intent = Intent(this, RescueProcessService::class.java)
-        startForegroundService(intent)
+        startService(intent)
         Log.d("进程问题", "已尝试启动MainProcessService")
     }
 
@@ -469,7 +469,7 @@ class RescueProcessService : Service() {
 
     private fun restartForegroundServiceProcess() {
         val intent = Intent(this, ForegroundService::class.java)
-        startForegroundService(intent)
+        startService(intent)
         Log.d("进程问题", "已尝试启动前台服务")
     }
 
