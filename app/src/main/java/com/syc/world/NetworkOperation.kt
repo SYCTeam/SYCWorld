@@ -93,13 +93,17 @@ data class Post(
     @SerializedName("qq") val qq: Long,
     @SerializedName("isLiked") val islike: Boolean,
     @SerializedName("online") val online: Boolean,
-    @SerializedName("comments") val comments: List<comments>
+    @SerializedName("comments") val comments: List<Comments>
 )
 
-data class comments(
+data class Comments(
+    @SerializedName("id") val id: Int,
+    @SerializedName("parentCommentId") val parentCommentId: Int,
     @SerializedName("username") val username: String,
-    @SerializedName("comment") val comment: String,
-    @SerializedName("timestamp") val timestamp: Long
+    @SerializedName("content") val content: String,
+    @SerializedName("timestamp") val timestamp: Long,
+    @SerializedName("qq") val qq: Long,
+    @SerializedName("online") val online: Boolean
 )
 
 data class WebCommonInfo(
@@ -667,6 +671,7 @@ fun getPost(sort: String = "random",postId: String = "0",username: String,passwo
             try {
                 val postResponse: PostResponse = Gson().fromJson(responseBody, PostResponse::class.java)
                 // Assuming PostResponse has a field `posts` that holds a list of Post objects
+                Log.d("帖子问题", postResponse.posts.toString())
                 Pair(postResponse.status, postResponse.posts)  // Return the list of posts
             } catch (e: Exception) {
                 e.printStackTrace()

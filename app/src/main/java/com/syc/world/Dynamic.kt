@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -117,10 +118,11 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     val message = remember { mutableStateOf(0) }
     val like = remember { mutableStateOf(0) }
     val share = remember { mutableStateOf(0) }
-    val comment = remember { mutableListOf(emptyList<comments>()) }
+    val comment = remember { mutableStateListOf(emptyList<Comments>()) }
     val zanok = remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
+            comment.clear()
             val post = getPost("latest", postId = postId.toString(), username = Global.username, password = Global.password).second
             if (post.isNotEmpty()) {
                 qq.value = post[0].qq.toString()
@@ -132,6 +134,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 message.value = post[0].commentsCount
                 like.value = post[0].likes
                 share.value = post[0].shares
+                Global.setChatSelection3(false)
                 comment.add(post[0].comments)
                 zanok.value = post[0].islike
             }
@@ -272,7 +275,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 Card(modifier = Modifier
                     .padding(start = 12.dp)
                     .padding(vertical = 7.dp)
-                    .fillMaxSize(), color = MiuixTheme.colorScheme.background.copy(alpha = 0.2f)) {
+                    .fillMaxSize(), color = MiuixTheme.colorScheme.background.copy(alpha = 0.5f)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxSize()
@@ -366,7 +369,8 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                     .clickable {
                         if (zanok.value) zanno.value = true
                         zanok.value = !zanok.value
-                        zan.value = !zan.value}
+                        zan.value = !zan.value
+                    }
                     .fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                     Image(painter = painterResource(R.drawable.zan0), contentDescription = null, modifier = Modifier
                         .size(18.dp)
@@ -393,7 +397,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
         ) {
             item {
                 Column(modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .background(CardDefaults.DefaultColor())) {
                     val highlightsBuilder =
                         Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
@@ -402,7 +406,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                             Markdown(
                                 elements.value,
                                 modifier = Modifier
-                                    .fillMaxSize()
+                                    .fillMaxWidth()
                                     .padding(16.dp),
                                 colors = markdownColor(),
                                 extendedSpans = markdownExtendedSpans {
@@ -463,8 +467,18 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                     }
                 }
             }
-            items(comment.size) {
-
+            val parentComments = comment.flatten().filter { it.parentCommentId == 0 }
+            item {
+                parentComments.forEach {
+                    commentItem(
+                        username = it.username,
+                        comment = it.content,
+                        time = it.timestamp*1000,
+                        qq = it.qq,
+                        online = it.online,
+                        id = it.id
+                    )
+                }
             }
             item {
                 Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()+48.dp))
@@ -474,18 +488,86 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
 }
 
 @Composable
-fun commentItem(username: String,comment: String,timestamp: Long,qq: String) {
-    Row(modifier = Modifier.padding(start = 16.dp, top = 14.dp).fillMaxWidth()) {
-        AsyncImage(
-            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${qq}&spec=640&img_type=jpg",
-            contentDescription = null,
-            modifier = Modifier
-                .size(28.dp)
-                .clip(
-                    RoundedCornerShape(
-                        20.dp
+fun commentItem(username: String,comment: String,time: Long,qq: Long,online: Boolean,id: Int) {
+    val timestamp = remember { System.currentTimeMillis() }
+    val diffInMillis = timestamp - time
+    val timeAgo = remember(diffInMillis) {
+        when {
+            diffInMillis < TimeUnit.MINUTES.toMillis(1) -> {
+                // 小于一分钟，显示秒数
+                "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
+            }
+
+            diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
+                // 小于1小时，显示分钟数
+                "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
+            }
+
+            diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
+                // 小于1天，显示小时数
+                "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
+            }
+
+            diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
+                // 小于30天，显示天数
+                "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
+            }
+
+            diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
+                // 小于一年，显示月份数
+                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
+            }
+
+            else -> {
+                // 大于一年，显示年份
+                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
+            }
+        }
+    }
+    Column(modifier = Modifier.fillMaxWidth().background(CardDefaults.DefaultColor())) {
+        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 14.dp)) {
+            AsyncImage(
+                model = "https://q.qlogo.cn/headimg_dl?dst_uin=${qq}&spec=640&img_type=jpg",
+                contentDescription = null,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(
+                        RoundedCornerShape(
+                            6.dp
+                        )
                     )
-                )
-        )
+            )
+            Image(
+                modifier = Modifier
+                    .size(10.dp)
+                    .offset(x = (-9).dp, y = 18.dp),
+                painter = painterResource(id = if (online) R.drawable.point_green else R.drawable.point_gray),
+                contentDescription = null
+            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                var isTimeAgo by remember { mutableStateOf(true) }
+                Text(username, modifier = Modifier.padding(start = 8.dp), fontSize = 14.sp,color = MiuixTheme.colorScheme.primaryVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(comment, modifier = Modifier.padding(start = 8.dp), fontSize = 15.sp)
+                Row(modifier = Modifier.height(42.dp).padding(start = 8.dp)) {
+                    AnimatedContent(
+                        targetState = isTimeAgo,
+                        transitionSpec = {
+                            (slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300))) togetherWith (slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)))
+                        }
+                    ) { targetState ->
+                        Column(verticalArrangement = Arrangement.Center, modifier = Modifier.fillMaxHeight()) {
+                            Text(
+                                text = if (targetState) timeAgo else transToString1(time),
+                                fontSize = 13.sp,
+                                color = Color.Gray,
+                                modifier = Modifier.clickable { isTimeAgo = !isTimeAgo }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
     }
 }
