@@ -199,7 +199,7 @@ class ForegroundService : Service() {
             wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SYC:WakeLock")
         }
         if (wakeLock?.isHeld != true) {
-            wakeLock?.acquire(10 * 60 * 1000L) // 申请 10 分钟
+            wakeLock?.acquire(1 * 60 * 1000L) // 申请 1 分钟
         }
     }
 
@@ -369,6 +369,7 @@ class ForegroundService : Service() {
                                 }*/
                             } else {
                                 withContext(Dispatchers.IO) {
+                                    acquireWakeLock()
                                     val loginResponse = loginForForegroundService(GlobalForForegroundService.username, GlobalForForegroundService.password)
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(
@@ -393,8 +394,8 @@ class ForegroundService : Service() {
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
-                                        delay(1000)
                                     }
+                                    releaseWakeLock()
                                 }
                             }
                         }
