@@ -139,7 +139,7 @@ class ForegroundService : Service() {
             val response = client.newCall(request).execute()
             if (response.isSuccessful) {
                 val responseBody = response.body?.string() ?: ""
-                Log.d("信息获取", responseBody)
+                Log.d("登录问题", responseBody)
                 responseBody
             } else {
                 "Error: ${response.message}"
@@ -266,7 +266,7 @@ class ForegroundService : Service() {
                 if (readUsernameResult.trim().isNotEmpty()) {
                     GlobalForForegroundService.username = readUsernameResult
                 }
-                val readPasswordResult = readFromFileForForegroundService(applicationContext, "username")
+                val readPasswordResult = readFromFileForForegroundService(applicationContext, "password")
                 if (readPasswordResult.trim().isNotEmpty()) {
                     GlobalForForegroundService.password = readPasswordResult
                 }
