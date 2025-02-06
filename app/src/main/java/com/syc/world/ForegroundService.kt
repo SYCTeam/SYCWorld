@@ -119,7 +119,7 @@ class ForegroundService : Service() {
 
 
     private fun loginForForegroundService(username: String, password: String): String {
-        val url = "${Global.url}/syc/login.php".toHttpUrlOrNull() ?: return "Error: Invalid URL"
+        val url = "${GlobalForForegroundService.url}/syc/login.php".toHttpUrlOrNull() ?: return "Error: Invalid URL"
 
         val client = OkHttpClient()
 
