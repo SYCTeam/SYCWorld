@@ -19,10 +19,12 @@ datastorePreferences = "1.1.2"
 multiplatformMarkdownRendererAndroid = "0.30.0"
 multiplatformMarkdownRendererCode = "0.30.0"
 multiplatformMarkdownRendererCoil2 = "0.30.0"
+multiplatformMarkdownRendererCoil3 = "0.30.0"
 navigationCompose = "2.8.6"
 okhttp = "4.12.0"
 playServicesFitness = "21.2.0"
 playServicesLocation = "21.3.0"
+composeTesting = "1.0.0-alpha01"
 
 [libraries]
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
@@ -52,9 +54,11 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 multiplatform-markdown-renderer-android = { module = "com.mikepenz:multiplatform-markdown-renderer-android", version.ref = "multiplatformMarkdownRendererAndroid" }
 multiplatform-markdown-renderer-code = { module = "com.mikepenz:multiplatform-markdown-renderer-code", version.ref = "multiplatformMarkdownRendererCode" }
 multiplatform-markdown-renderer-coil2 = { module = "com.mikepenz:multiplatform-markdown-renderer-coil2", version.ref = "multiplatformMarkdownRendererCoil2" }
+multiplatform-markdown-renderer-coil3 = { module = "com.mikepenz:multiplatform-markdown-renderer-coil3", version.ref = "multiplatformMarkdownRendererCoil3" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 play-services-fitness = { module = "com.google.android.gms:play-services-fitness", version.ref = "playServicesFitness" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
+androidx-compose-testing = { group = "androidx.xr.compose", name = "compose-testing", version.ref = "composeTesting" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

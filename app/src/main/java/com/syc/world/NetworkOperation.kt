@@ -124,6 +124,15 @@ data class actionInfo(
     val newLikesCount: Int
 )
 
+data class sendCommentInfo(
+    @SerializedName("status")
+    val status: String,
+    @SerializedName("message")
+    val message: String,
+    @SerializedName("commentId")
+    val commentId: Int
+)
+
 data class IpInfo(
     // 接口中的 "QUERY_IP" 对应用户的IP地址
     @SerializedName("QUERY_IP")
@@ -1062,5 +1071,47 @@ fun getMessage(
         e.printStackTrace()
         Log.e("网络请求失败", "IO异常: ${e.message}")
         Pair("error", listOf())
+    }
+}
+
+fun sendComment(username: String, password: String, postId: Int, parentCommentId: Int,content: String): Pair<String, String> {
+    val url =
+        "${Global.url}/syc/comments.php".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+
+    val client = OkHttpClient()
+
+    // 创建请求体
+    val formBody = FormBody.Builder()
+        .add("username", username)
+        .add("password",password)
+        .add("postId",postId.toString())
+        .add("parentCommentId",parentCommentId.toString())
+        .add("content",content)
+        .build()
+
+    // 构建请求
+    val request = Request.Builder()
+        .url(url)
+        .post(formBody)
+        .build()
+
+    return try {
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            try {
+                val sendCommentInfo: sendCommentInfo =
+                    Gson().fromJson(responseBody, sendCommentInfo::class.java)
+                Pair(sendCommentInfo.status, if (sendCommentInfo.status != "success") sendCommentInfo.message else sendCommentInfo.commentId.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Pair("error", "Parsing error")
+            }
+        } else {
+            Pair("error", response.message)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Pair("error", e.message ?: "Unknown error")
     }
 }
