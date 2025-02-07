@@ -159,124 +159,127 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     val replyid = remember { mutableStateOf(0) }
 
     Scaffold(topBar = {
-        SmallTopAppBar(
-            title = "",
-            color = Color.Transparent,
-            modifier = Modifier
-                .hazeEffect(
-                    state = hazeState,
-                    style = hazeStyle
-                )
-                .background(CardDefaults.DefaultColor())
-                .fillMaxWidth(),
-            scrollBehavior = TopAppBarState,
-            navigationIcon = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = {
-                            navController.popBackStack()
-                        },
-                        modifier = Modifier
-                            .size(52.dp)
-                            .padding(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = MiuixIcons.ArrowBack,
-                            contentDescription = null,
-                            tint = MiuixTheme.colorScheme.onBackground
-                        )
-                    }
-                    AnimatedVisibility(qq.value != "0") {
-                        Row {
-                            AsyncImage(
-                                model = "https://q.qlogo.cn/headimg_dl?dst_uin=${qq.value}&spec=640&img_type=jpg",
+        Column {
+            SmallTopAppBar(
+                title = "",
+                color = Color.Transparent,
+                modifier = Modifier
+                    .hazeEffect(
+                        state = hazeState,
+                        style = hazeStyle
+                    )
+                    .background(CardDefaults.DefaultColor())
+                    .fillMaxWidth(),
+                scrollBehavior = TopAppBarState,
+                navigationIcon = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                navController.popBackStack()
+                            },
+                            modifier = Modifier
+                                .size(52.dp)
+                                .padding(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = MiuixIcons.ArrowBack,
                                 contentDescription = null,
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(
-                                        RoundedCornerShape(
-                                            20.dp
-                                        )
-                                    )
+                                tint = MiuixTheme.colorScheme.onBackground
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                val timestamp = remember { System.currentTimeMillis() }
-                                val diffInMillis = timestamp - time.longValue
-                                val timeAgo = remember(diffInMillis) {
-                                    when {
-                                        diffInMillis < TimeUnit.MINUTES.toMillis(1) -> {
-                                            // 小于一分钟，显示秒数
-                                            "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
-                                        }
+                        }
+                        AnimatedVisibility(qq.value != "0") {
+                            Row {
+                                AsyncImage(
+                                    model = "https://q.qlogo.cn/headimg_dl?dst_uin=${qq.value}&spec=640&img_type=jpg",
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(
+                                            RoundedCornerShape(
+                                                20.dp
+                                            )
+                                        )
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    val timestamp = remember { System.currentTimeMillis() }
+                                    val diffInMillis = timestamp - time.longValue
+                                    val timeAgo = remember(diffInMillis) {
+                                        when {
+                                            diffInMillis < TimeUnit.MINUTES.toMillis(1) -> {
+                                                // 小于一分钟，显示秒数
+                                                "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
+                                            }
 
-                                        diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
-                                            // 小于1小时，显示分钟数
-                                            "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
-                                        }
+                                            diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
+                                                // 小于1小时，显示分钟数
+                                                "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
+                                            }
 
-                                        diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
-                                            // 小于1天，显示小时数
-                                            "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
-                                        }
+                                            diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
+                                                // 小于1天，显示小时数
+                                                "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
+                                            }
 
-                                        diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
-                                            // 小于30天，显示天数
-                                            "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
-                                        }
+                                            diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
+                                                // 小于30天，显示天数
+                                                "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
+                                            }
 
-                                        diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
-                                            // 小于一年，显示月份数
-                                            "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
-                                        }
+                                            diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
+                                                // 小于一年，显示月份数
+                                                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
+                                            }
 
-                                        else -> {
-                                            // 大于一年，显示年份
-                                            "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
+                                            else -> {
+                                                // 大于一年，显示年份
+                                                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
+                                            }
                                         }
                                     }
-                                }
-                                Text(
-                                    text = author.value,
-                                    modifier = Modifier.offset(y = 0.dp),
-                                    fontSize = 16.sp
-                                )
-                                var isTimeAgo by remember { mutableStateOf(true) }
-                                Row(
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .clickable { isTimeAgo = !isTimeAgo }
-                                        .padding(top = 1.5.dp)
-                                ) {
-                                    AnimatedContent(
-                                        targetState = isTimeAgo,
-                                        transitionSpec = {
-                                            (slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300))) togetherWith
-                                                    (slideOutHorizontally(targetOffsetX = { it }) + fadeOut(
-                                                        tween(
-                                                            300
-                                                        )
-                                                    ))
+                                    Text(
+                                        text = author.value,
+                                        modifier = Modifier.offset(y = 0.dp),
+                                        fontSize = 16.sp
+                                    )
+                                    var isTimeAgo by remember { mutableStateOf(true) }
+                                    Row(
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .clickable { isTimeAgo = !isTimeAgo }
+                                            .padding(top = 1.5.dp)
+                                    ) {
+                                        AnimatedContent(
+                                            targetState = isTimeAgo,
+                                            transitionSpec = {
+                                                (slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300))) togetherWith
+                                                        (slideOutHorizontally(targetOffsetX = { it }) + fadeOut(
+                                                            tween(
+                                                                300
+                                                            )
+                                                        ))
+                                            }
+                                        ) { targetState ->
+                                            Text(
+                                                text = if (targetState) timeAgo else transToString1(time.longValue),
+                                                fontSize = 12.sp,
+                                                color = Color.Gray,
+                                                style = TextStyle(fontStyle = FontStyle.Normal)
+                                            )
                                         }
-                                    ) { targetState ->
-                                        Text(
-                                            text = if (targetState) timeAgo else transToString1(time.longValue),
-                                            fontSize = 12.sp,
-                                            color = Color.Gray,
-                                            style = TextStyle(fontStyle = FontStyle.Normal)
-                                        )
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
-        )
-        HorizontalDivider(
-            modifier = Modifier.height(0.2.dp)+
-        )
+            )
+            HorizontalDivider(
+                modifier = Modifier.height(0.1.dp),
+                color = MiuixTheme.colorScheme.background
+            )
+        }
     }, bottomBar = {
         Row(
             modifier = Modifier
@@ -492,22 +495,22 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                     }
                 }
             }
-            val parentComments = comment.filter { it.parentCommentId == 0 }
+            val parentComments = comment.filter { it.parentCommentId == 0 }.sortedByDescending { it.timestamp }
 
             items(parentComments) { parentComment ->
                 Column(modifier = Modifier.background(CardDefaults.DefaultColor())) {
                     // 父级评论项
                     CommentItem(comment = parentComment)
 
-                    // 子评论部分（支持多级嵌套）
-                    Card(modifier = Modifier.padding(start = 54.dp, top = 4.dp, end = 20.dp, bottom = 10.dp),
-                        color = MiuixTheme.colorScheme.background.copy(alpha = 0.5f),
-                        cornerRadius = 8.dp) {
-                        ChildComments(parentId = parentComment.id, comments = comment.toList())
-                        Spacer(modifier = Modifier.height(4.dp))
+                    if (comment.toList().filter { it.parentCommentId == parentComment.id }.size != 0) {
+                        // 子评论部分（支持多级嵌套）
+                        Card(modifier = Modifier.padding(start = 54.dp, top = 4.dp, end = 20.dp, bottom = 10.dp),
+                            color = MiuixTheme.colorScheme.background.copy(alpha = 0.5f),
+                            cornerRadius = 8.dp) {
+                            ChildComments(parentId = parentComment.id, comments = comment.toList(), show = showreply, replyid = replyid)
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
                     }
-
-
                 }
                 //HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
             }
@@ -526,7 +529,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
 
 // 4. 新增子评论组件
 @Composable
-private fun ChildComments(parentId: Int,comments: List<Comments>) {
+private fun ChildComments(parentId: Int,comments: List<Comments>, show: MutableState<Boolean>, replyid: MutableState<Int>) {
     // 筛选出直接子评论
     val childComments = comments.filter { it.parentCommentId == parentId }
 
@@ -534,21 +537,27 @@ private fun ChildComments(parentId: Int,comments: List<Comments>) {
         childComments.forEach { child ->
             Column {
                 // 子评论项
-                ChildCommentItem(comment = child,if (comments.filter { it.id == child.parentCommentId }[0].parentCommentId != 0) comments.filter { it.id == child.parentCommentId }[0].username else null)
+                ChildCommentItem(comment = child,
+                    if (comments.filter { it.id == child.parentCommentId }[0].parentCommentId != 0) comments.filter { it.id == child.parentCommentId }[0].username else null,
+                    show, replyid)
 
                 // 递归显示更深层评论
-                ChildComments(parentId = child.id,comments = comments)
+                ChildComments(parentId = child.id,comments = comments,show, replyid)
             }
         }
     }
 }
 
 @Composable
-fun ChildCommentItem(comment: Comments,twochild: String? = null) {
+fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableState<Boolean>, replyid: MutableState<Int>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
+            .clickable {
+                show.value = true
+                replyid.value = comment.id
+            }
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
             Row(modifier = Modifier.weight(1f).padding(start = 0.dp)) {
@@ -742,12 +751,12 @@ fun ReplyDialog(
                                         withContext(Dispatchers.Main) {
                                             Toast.makeText(
                                                 context,
-                                                "${post.second}",
+                                                "回复成功！",
                                                 Toast.LENGTH_LONG
                                             ).show()
                                         }
                                         dismissDialog(show)
-                                        comment.add(0, Comments(post.second.toInt(), parentCommentId = replyid, Global.username, replycontent.value, timestamp, Global.userQQ.toLong(), true))
+                                        comment.add(Comments(post.second.toInt(), parentCommentId = replyid, Global.username, replycontent.value, timestamp, Global.userQQ.toLong(), true))
                                     } else {
                                         withContext(Dispatchers.Main) {
                                             Toast.makeText(
