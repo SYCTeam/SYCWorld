@@ -16,7 +16,6 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.runtime.mutableStateListOf
 import androidx.core.app.NotificationCompat
 import com.google.gson.Gson
 import com.syc.world.ForegroundService.GlobalForForegroundService.isLogin
@@ -184,12 +183,12 @@ class ForegroundService : Service() {
         }
     }
 
-    fun checkChatMessage(
+    private fun checkChatMessage(
         username: String,
         password: String,
         localMessageCount: Int,
     ): Pair<String, String> {
-        val url = "${Global.url}/syc/receiveChatMessage.php".toHttpUrlOrNull() ?: return Pair(
+        val url = "${GlobalForForegroundService.url}/syc/receiveChatMessage.php".toHttpUrlOrNull() ?: return Pair(
             "Error",
             "Invalid URL"
         )
@@ -235,14 +234,63 @@ class ForegroundService : Service() {
         }
     }
 
+    private fun readAndSumFileContents(context: Context): Int {
+        val directory = File(context.filesDir, "ChatMessage/Count")  // 改为相对路径
+        var totalSum = 0
+
+        // 确保目录存在且是目录
+        if (directory.exists() && directory.isDirectory) {
+            Log.d("读取问题", "目录存在，开始读取文件")  // 日志记录
+
+            // 获取目录下所有文件
+            val files = directory.listFiles()
+
+            // 遍历所有文件
+            files?.forEach { file ->
+                // 如果文件是普通文件且存在
+                if (file.isFile) {
+                    Log.d("读取问题", "正在读取文件: ${file.name}")  // 日志记录
+
+                    val fileContent = readFromFileForForegroundService(context, "ChatMessage/Count/${file.name}")  // 更新为相对路径
+
+                    // 尝试将文件内容转换为整数并累加
+                    val fileValue = fileContent.toIntOrNull()
+                    if (fileValue != null) {
+                        Log.d("读取问题", "文件内容转换为整数: $fileValue")  // 日志记录
+                        totalSum += fileValue
+                    } else {
+                        Log.d("读取问题", "文件内容不是有效的整数: $fileContent")  // 日志记录
+                    }
+                }
+            }
+        } else {
+            Log.d("读取问题", "目录不存在或不是一个有效目录")  // 日志记录
+        }
+
+        Log.d("读取问题", "总和: $totalSum")  // 日志记录总和
+        return totalSum
+    }
+
+
 
 
     private fun chatMessageNotification() {
-        val chatMessage = { mutableStateListOf<ChatMessage>() }
 
         CoroutineScope(Dispatchers.IO).launch {
-            while (true) {
-
+            while (isLogin.value) {
+                val localMessageCount = readAndSumFileContents(applicationContext)
+                Log.d("读取问题", "localMessageCount: $localMessageCount")
+                val hasNewMessage = checkChatMessage(GlobalForForegroundService.username, GlobalForForegroundService.password, localMessageCount)
+                if (hasNewMessage.first == "success") {
+                    if (hasNewMessage.second == "true") {
+                        Log.d("消息问题", "有新消息！")
+                        createChatMessageNotification(applicationContext, "您收到了一条消息", "请前往\"消息\"界面查看")
+                    } else if (hasNewMessage.second == "false") {
+                        Log.d("消息问题", "没有新消息。")
+                    }
+                } else {
+                    Log.d("消息问题", hasNewMessage.second)
+                }
                 delay(3000)
             }
         }
@@ -321,6 +369,8 @@ class ForegroundService : Service() {
         var currentTime: Long
         var lastExecutionTime: Long = 0
         var nextExecutionTime = 5 * 60 * 1000
+
+        chatMessageNotification()
 
         CoroutineScope(Dispatchers.IO).launch {
             while (true) {

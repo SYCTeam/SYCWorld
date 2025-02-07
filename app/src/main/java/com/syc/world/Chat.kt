@@ -66,6 +66,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusState
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.Painter
@@ -464,7 +466,7 @@ fun ChatMessage(message: ChatMessage) {
                 AnimatedVisibility(
                     visible = chatIsChatMessageAnimation.value,
                     enter = fadeIn(tween(durationMillis = 300)) + slideInHorizontally(
-                        initialOffsetX = { + 300 },
+                        initialOffsetX = { +300 },
                         animationSpec = tween(durationMillis = 300)
                     ),
                     exit = fadeOut(tween(durationMillis = 300))
@@ -523,7 +525,7 @@ fun ChatMessage(message: ChatMessage) {
                 AnimatedVisibility(
                     visible = chatIsChatMessageAnimation.value,
                     enter = fadeIn(tween(durationMillis = 300)) + slideInHorizontally(
-                        initialOffsetX = { - 300 },
+                        initialOffsetX = { -300 },
                         animationSpec = tween(durationMillis = 300)
                     ),
                     exit = fadeOut(tween(durationMillis = 300))
@@ -609,6 +611,7 @@ fun ChatUi(navController: NavController) {
     var textFieldChange by remember { mutableStateOf(false) }
     var buttonChange by remember { mutableStateOf(false) }
     var isSend by remember { mutableStateOf(false) }
+    var isFocusTextField by remember { mutableStateOf(false) }
 
     val chatMessage = remember { mutableStateListOf<ChatMessage>() }
 
@@ -616,8 +619,7 @@ fun ChatUi(navController: NavController) {
 
     var isShowTime by remember { mutableStateOf(false) }
 
-
-    val myMessage = ChatMessage(
+    var myMessage = ChatMessage(
         isShowTime,
         personNameBeingChat.value,
         SenderType.Me,
@@ -626,31 +628,13 @@ fun ChatUi(navController: NavController) {
         getCurrentTime()
     )
 
-    val currentTimestamp = LocalDateTime.parse(myMessage.sendTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-
-    if (chatMessage.isNotEmpty()) {
-        // 获取列表中最后一条消息的时间
-        val lastMessage = chatMessage.last()
-        val lastTimestamp = LocalDateTime.parse(lastMessage.sendTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-
-
-        // 计算两条消息的时间差（分钟）
-        val timeDifference = ChronoUnit.MINUTES.between(lastTimestamp, currentTimestamp)
-
-
-        // 如果时间差超过 10 分钟，设置 isShowTime 为 true
-        if (timeDifference > 10) {
-            isShowTime = true
-        } else if (timeDifference != 0L){
-            isShowTime = false
-        }
-    }
 
     val messageIndex = chatMessage.size
 
 
     LaunchedEffect(chatMessage, isLoading, text) {
-        if (chatMessage.isNotEmpty() && !isLoading || (chatMessage.isNotEmpty() && text.trim().isNotEmpty())) {
+        if (chatMessage.isNotEmpty() && !isLoading || (chatMessage.isNotEmpty() && isFocusTextField)
+        ) {
             listState.animateScrollToItem(chatMessage.size - 1)
         }
     }
@@ -710,8 +694,18 @@ fun ChatUi(navController: NavController) {
                                     chatMessage.add(newMessage)
                                     existingMessages.add(message to timestamp)
                                     lastMessageTimestamp = timestamp // 更新上一条消息的时间戳
-                                    writeToFile(context, "/ChatMessage/Count", personNameBeingChat.value, chatMessage.size.toString())
-                                    writeToFile(context, "/ChatMessage/Message", personNameBeingChat.value, chatMessage.toString())
+                                    writeToFile(
+                                        context,
+                                        "/ChatMessage/Count",
+                                        personNameBeingChat.value,
+                                        chatMessage.size.toString()
+                                    )
+                                    writeToFile(
+                                        context,
+                                        "/ChatMessage/Message",
+                                        personNameBeingChat.value,
+                                        chatMessage.toString()
+                                    )
                                     isLoading = false
                                 }
                             }
@@ -727,14 +721,44 @@ fun ChatUi(navController: NavController) {
         withContext(Dispatchers.IO) {
             if (isSend && Global.userQQ.trim().isNotEmpty()) {
 
+                isSend = false
+
+                // 计算时间差，确保时间格式化无误
+                val lastMessageTime = LocalDateTime.parse(
+                    chatMessage.last().sendTime,
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                )
+                val currentMessageTime = LocalDateTime.parse(
+                    myMessage.sendTime,
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                )
+
+                // 比较时间差，单位为分钟
+                val timeDifference = ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
+
+                // 如果时间差超过 10 分钟，设置 isShowTime 为 true
+                isShowTime = if (timeDifference > 10) {
+                    true
+                } else {
+                    // 否则，不显示时间
+                    false
+                }
+
+                myMessage = ChatMessage(
+                    isShowTime,
+                    personNameBeingChat.value,
+                    SenderType.Me,
+                    Global.userQQ,
+                    text,
+                    getCurrentTime()
+                )
+
                 chatMessage.add(myMessage)
 
                 val sendResult =
                     sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
 
                 text = ""
-
-                isSend = false
 
                 if (sendResult.first == "error") {
                     withContext(Dispatchers.Main) {
@@ -948,7 +972,7 @@ fun ChatUi(navController: NavController) {
                     ) {
                         Text(
                             text = personNameBeingChat.value,
-                            style = MaterialTheme.typography.headlineSmall,
+                            fontSize = 18.sp,
                             modifier = Modifier,
                             textAlign = TextAlign.Center,
                             overflow = TextOverflow.Ellipsis
@@ -956,19 +980,20 @@ fun ChatUi(navController: NavController) {
                         if (personIsOnlineBeingChat.value) {
                             Row(
                                 modifier = Modifier
-                                    .fillMaxHeight(),
+                                    .fillMaxHeight()
+                                    .padding(bottom = 5.dp),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Image(
                                     modifier = Modifier
-                                        .size(10.dp),
+                                        .size(8.dp),
                                     painter = painterResource(id = R.drawable.point_green),
                                     contentDescription = null
                                 )
                                 Text(
                                     text = "在线",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 10.sp,
                                     modifier = Modifier
                                         .padding(start = 5.dp),
                                     textAlign = TextAlign.Center,
@@ -978,23 +1003,24 @@ fun ChatUi(navController: NavController) {
                         } else {
                             Row(
                                 modifier = Modifier
-                                    .fillMaxHeight(),
+                                    .fillMaxHeight()
+                                    .padding(bottom = 5.dp),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Image(
                                     modifier = Modifier
-                                        .size(10.dp),
+                                        .size(8.dp),
                                     painter = painterResource(id = R.drawable.point_gray),
                                     contentDescription = null
                                 )
                                 Text(
                                     text = "离线",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 10.sp,
                                     modifier = Modifier
                                         .padding(start = 5.dp),
                                     textAlign = TextAlign.Center,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }
@@ -1030,12 +1056,18 @@ fun ChatUi(navController: NavController) {
                     }
                 }
             }
-
+            HorizontalDivider(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                thickness = 0.2.dp,
+                color = Color.Gray
+            )
 
             // 确保在每次消息更新时自动滚动到最后一项
             LaunchedEffect(chatMessage.size) {
                 // 延迟一下再滚动到最后一项，确保消息已经渲染
                 if (chatMessage.isNotEmpty()) {
+                    delay(500)
                     listState.animateScrollToItem(chatMessage.size - 1)
                 }
             }
@@ -1137,7 +1169,10 @@ fun ChatUi(navController: NavController) {
                             modifier = Modifier
                                 .width(textFieldWidth)
                                 .height(textFieldHeight)
-                                .padding(start = 10.dp, end = 10.dp),
+                                .padding(start = 10.dp, end = 10.dp)
+                                .onFocusChanged { focusState: FocusState ->
+                                    isFocusTextField = focusState.isFocused
+                                },
                             value = text,
                             onValueChange = { newText -> text = newText },
                             textStyle = TextStyle(
@@ -1170,7 +1205,10 @@ fun ChatUi(navController: NavController) {
                             modifier = Modifier
                                 .width(textFieldWidth)
                                 .height(textFieldHeight)
-                                .padding(start = 10.dp, end = 10.dp),
+                                .padding(start = 10.dp, end = 10.dp)
+                                .onFocusChanged { focusState: FocusState ->
+                                    isFocusTextField = focusState.isFocused
+                                },
                             value = text,
                             onValueChange = { newText ->
                                 text = newText

@@ -15,6 +15,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -706,6 +708,63 @@ fun createStepCountNotification(context: Context, title: String, content: String
     // 发送通知
     notificationManager.notify(10001, notificationBuilder.build())
 }
+
+@SuppressLint("ServiceCast")
+fun createChatMessageNotification(context: Context, title: String, content: String) {
+    val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    // 创建通知渠道，设置为高重要性
+    val channelId = "SYC_ChatMessage"
+    val channelName = "酸夜沉空间消息通知服务"
+    val importance = NotificationManager.IMPORTANCE_HIGH
+    val notificationChannel = NotificationChannel(channelId, channelName, importance).apply {
+        // 设置自定义铃声（来自 res/raw/ring.mp3）
+        val soundUri = Uri.parse("android.resource://${context.packageName}/raw/ring")
+        setSound(soundUri, AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build())
+
+        // 启用震动
+        enableVibration(true)
+        vibrationPattern = longArrayOf(0, 500, 1000)
+
+        // 禁止显示角标
+        setShowBadge(false)
+        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+    }
+    notificationManager.createNotificationChannel(notificationChannel)
+
+    val intent = Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    }
+
+    // 创建 PendingIntent
+    val pendingIntent = PendingIntent.getActivity(
+        context,
+        0,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    // 创建通知
+    val notificationBuilder = NotificationCompat.Builder(context, channelId)
+        .setSmallIcon(R.drawable.new_message) // 设置通知图标
+        .setContentTitle(title) // 设置通知标题
+        .setContentText(content) // 设置通知内容
+        .setOngoing(true) // 设置通知为常驻通知
+        .setAutoCancel(false) // 禁止自动消失
+        .setPriority(NotificationCompat.PRIORITY_HIGH) // 高优先级，确保通知被展示
+        .setVibrate(longArrayOf(0, 500, 1000)) // 设置震动模式
+        .setSound(Uri.parse("android.resource://${context.packageName}/raw/ring")) // 设置铃声
+        .setDefaults(Notification.DEFAULT_LIGHTS) // 仅使用 LED 提示（如果有的话）
+        .setContentIntent(pendingIntent) // 设置点击通知时打开应用首页
+
+    // 发送通知
+    notificationManager.notify(10001, notificationBuilder.build())
+}
+
 
 
 // 电池优化
