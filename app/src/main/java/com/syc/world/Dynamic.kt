@@ -38,11 +38,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,6 +58,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -100,6 +104,8 @@ import dev.chrisbanes.haze.hazeSource
 import dev.snipme.highlights.Highlights
 import dev.snipme.highlights.model.SyntaxThemes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -124,8 +130,9 @@ import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeStyle: HazeStyle) {
+fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeStyle: HazeStyle,isReply: MutableState<Boolean>) {
     val TopAppBarState = MiuixScrollBehavior(rememberTopAppBarState())
+    val listState = rememberLazyListState()
     val qq = remember { mutableStateOf("0") }
     val time = remember { mutableLongStateOf(0L) }
     val author = remember { mutableStateOf("") }
@@ -155,6 +162,8 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 Global.setChatSelection3(false)
                 comment.addAll(post[0].comments)
                 zanok.value = post[0].islike
+                delay(300)
+                if (isReply.value) listState.animateScrollToItem(1)
             }
         }
     }
@@ -204,40 +213,8 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
-                                    val timestamp = remember { System.currentTimeMillis() }
-                                    val diffInMillis = timestamp - time.longValue
-                                    val timeAgo = remember(diffInMillis) {
-                                        when {
-                                            diffInMillis < TimeUnit.MINUTES.toMillis(1) -> {
-                                                // 小于一分钟，显示秒数
-                                                "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
-                                            }
-
-                                            diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
-                                                // 小于1小时，显示分钟数
-                                                "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
-                                            }
-
-                                            diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
-                                                // 小于1天，显示小时数
-                                                "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
-                                            }
-
-                                            diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
-                                                // 小于30天，显示天数
-                                                "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
-                                            }
-
-                                            diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
-                                                // 小于一年，显示月份数
-                                                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
-                                            }
-
-                                            else -> {
-                                                // 大于一年，显示年份
-                                                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
-                                            }
-                                        }
+                                    val timeAgo = remember {
+                                        calculateTimeAgo(time.longValue)
                                     }
                                     Text(
                                         text = author.value,
@@ -256,11 +233,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                             targetState = isTimeAgo,
                                             transitionSpec = {
                                                 (slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300))) togetherWith
-                                                        (slideOutHorizontally(targetOffsetX = { it }) + fadeOut(
-                                                            tween(
-                                                                300
-                                                            )
-                                                        ))
+                                                        (slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)))
                                             }
                                         ) { targetState ->
                                             Text(
@@ -376,6 +349,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                     }
                 }
             }
+            val coroutineScope = rememberCoroutineScope()
             Row(modifier = Modifier
                 .fillMaxHeight()
                 .weight(0.8f)
@@ -384,6 +358,11 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 )) {
                 Row(modifier = Modifier
                     .weight(1f)
+                    .clickable {
+                        coroutineScope.launch {
+                            listState.animateScrollToItem(1)
+                        }
+                    }
                     .fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                     Image(painter = painterResource(R.drawable.message), contentDescription = null, modifier = Modifier
                         .size(18.dp)
@@ -418,119 +397,170 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
             }
         }
     }) { padding ->
-        Column {
-            Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
-            LazyColumn(
-                //contentPadding = PaddingValues(top = padding.calculateTopPadding()),
-                topAppBarScrollBehavior = TopAppBarState,
+        if (qq.value != "0") {
+            Column {
+                Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
+                LazyColumn(
+                    state = listState,
+                    //contentPadding = PaddingValues(top = padding.calculateTopPadding()),
+                    topAppBarScrollBehavior = TopAppBarState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .hazeSource(state = hazeState),
+                ) {
+                    item {
+                        Column(modifier = Modifier
+                            .fillMaxWidth()
+                            .background(CardDefaults.DefaultColor())) {
+                            val highlightsBuilder =
+                                Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
+                            if (elements.value != "") {
+                                Column {
+                                    Markdown(
+                                        elements.value,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        colors = markdownColor(),
+                                        extendedSpans = markdownExtendedSpans {
+                                            val animator = rememberSquigglyUnderlineAnimator()
+                                            remember {
+                                                ExtendedSpans(
+                                                    RoundedCornerSpanPainter(),
+                                                    SquigglyUnderlineSpanPainter(animator = animator)
+                                                )
+                                            }
+                                        },
+                                        components = markdownComponents(
+                                            codeBlock = {
+                                                MarkdownHighlightedCodeBlock(
+                                                    it.content,
+                                                    it.node,
+                                                    highlightsBuilder
+                                                )
+                                            },
+                                            codeFence = {
+                                                MarkdownHighlightedCodeFence(
+                                                    it.content,
+                                                    it.node,
+                                                    highlightsBuilder
+                                                )
+                                            },
+                                        ),
+                                        imageTransformer = Coil3ImageTransformerImpl,
+                                        typography = markdownTypography1()
+                                    )
+                                }
+                            }
+                            Row(modifier = Modifier.padding(16.dp)) {
+                                if (ipAddress.value != "") {
+                                    Text(
+                                        text = "发布于 ${ipAddress.value}",
+                                        fontSize = 13.sp,
+                                        color = Color.Gray,
+                                        style = TextStyle(fontStyle = FontStyle.Normal)
+                                    )
+                                }
+                                if (view.value != "") {
+                                    Text(
+                                        text = " · ${view.value}浏览",
+                                        fontSize = 13.sp,
+                                        color = Color.Gray,
+                                        style = TextStyle(fontStyle = FontStyle.Normal)
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    stickyHeader {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(CardDefaults.DefaultColor())
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.height(48.dp)
+                            ) {
+                                Text(
+                                    text = "共 ${message.value} 回复",
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
+                    }
+                    val parentComments = comment.filter { it.parentCommentId == 0 }.sortedByDescending { it.timestamp }
+
+                    items(parentComments) { parentComment ->
+                        Column(modifier = Modifier.background(CardDefaults.DefaultColor())) {
+                            // 父级评论项
+                            CommentItem(comment = parentComment, show = showreply, replyid = replyid, replyname = replyname)
+
+                            AnimatedVisibility (comment.toList().filter { it.parentCommentId == parentComment.id }.size != 0) {
+                                // 子评论部分（支持多级嵌套）
+                                Card(modifier = Modifier.padding(start = 54.dp, top = 0.dp, end = 20.dp, bottom = 10.dp),
+                                    color = MiuixTheme.colorScheme.background.copy(alpha = 1f),
+                                    cornerRadius = 8.dp) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    ChildComments(parentId = parentComment.id, comments = comment.toList(), show = showreply, replyid = replyid, replyname = replyname)
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+
+                                            }
+                                    ) {
+                                        Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp,top = 4.dp, bottom = 4.dp)) {
+                                            Row(modifier = Modifier.weight(1f)) {
+                                                Text(text = "查看全部回复(postId:${parentComment.id})",
+                                                    fontSize = 14.sp,
+                                                    color = MiuixTheme.colorScheme.primaryVariant)
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+                            }
+                        }
+                        //HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
+                    }
+                    item {
+                        AnimatedVisibility(comment.size == 0) {
+                            Column(modifier = Modifier.fillMaxSize()
+                                .height(200.dp)
+                                .background(CardDefaults.DefaultColor()), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("还没有回复哦，快来回复一下吧~", fontSize = 14.sp)
+                            }
+                        }
+                    }
+                    item {
+                        Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()+48.dp))
+                    }
+                }
+            }
+        } else {
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .hazeSource(state = hazeState),
+                    .wrapContentSize(Alignment.Center) // 内容居中
             ) {
-                item {
-                    Column(modifier = Modifier
-                        .fillMaxWidth()
-                        .background(CardDefaults.DefaultColor())) {
-                        val highlightsBuilder =
-                            Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
-                        AnimatedVisibility(elements.value != "") {
-                            Column {
-                                Markdown(
-                                    elements.value,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    colors = markdownColor(),
-                                    extendedSpans = markdownExtendedSpans {
-                                        val animator = rememberSquigglyUnderlineAnimator()
-                                        remember {
-                                            ExtendedSpans(
-                                                RoundedCornerSpanPainter(),
-                                                SquigglyUnderlineSpanPainter(animator = animator)
-                                            )
-                                        }
-                                    },
-                                    components = markdownComponents(
-                                        codeBlock = {
-                                            MarkdownHighlightedCodeBlock(
-                                                it.content,
-                                                it.node,
-                                                highlightsBuilder
-                                            )
-                                        },
-                                        codeFence = {
-                                            MarkdownHighlightedCodeFence(
-                                                it.content,
-                                                it.node,
-                                                highlightsBuilder
-                                            )
-                                        },
-                                    ),
-                                    imageTransformer = Coil3ImageTransformerImpl,
-                                    typography = markdownTypography1()
-                                )
-                            }
-                        }
-                        Row(modifier = Modifier.padding(16.dp)) {
-                            AnimatedVisibility(ipAddress.value != "") {
-                                Text(
-                                    text = "发布于 ${ipAddress.value}",
-                                    fontSize = 13.sp,
-                                    color = Color.Gray,
-                                    style = TextStyle(fontStyle = FontStyle.Normal)
-                                )
-                            }
-                            AnimatedVisibility(view.value != "") {
-                                Text(
-                                    text = " · ${view.value}浏览",
-                                    fontSize = 13.sp,
-                                    color = Color.Gray,
-                                    style = TextStyle(fontStyle = FontStyle.Normal)
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-                stickyHeader {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(CardDefaults.DefaultColor())
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.height(48.dp)
-                        ) {
-                            Text(
-                                text = "共 ${message.value} 回复",
-                                fontSize = 14.sp,
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
-                    }
-                }
-                val parentComments = comment.filter { it.parentCommentId == 0 }.sortedByDescending { it.timestamp }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally // 水平居中
+                ) {
+                    // 圆形进度条
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(50.dp), // 设置进度条的大小
+                        color = MiuixTheme.colorScheme.primary, // 进度条颜色
+                        strokeWidth = 6.dp // 进度条宽度
+                    )
 
-                items(parentComments) { parentComment ->
-                    Column(modifier = Modifier.background(CardDefaults.DefaultColor())) {
-                        // 父级评论项
-                        CommentItem(comment = parentComment, show = showreply, replyid = replyid, replyname = replyname)
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                        if (comment.toList().filter { it.parentCommentId == parentComment.id }.size != 0) {
-                            // 子评论部分（支持多级嵌套）
-                            Card(modifier = Modifier.padding(start = 54.dp, top = 8.dp, end = 20.dp, bottom = 10.dp),
-                                color = MiuixTheme.colorScheme.background.copy(alpha = 1f),
-                                cornerRadius = 8.dp) {
-                                ChildComments(parentId = parentComment.id, comments = comment.toList(), show = showreply, replyid = replyid, replyname = replyname)
-                                Spacer(modifier = Modifier.height(0.dp))
-                            }
-                        }
-                    }
-                    //HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
-                }
-                item {
-                    Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()+48.dp))
+                    Text(
+                        text = "加载中...",
+                    )
                 }
             }
         }
@@ -578,7 +608,7 @@ fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableS
             }
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp,top = 4.dp, bottom = 4.dp)) {
-            Row(modifier = Modifier.weight(1f).padding(start = 0.dp)) {
+            Row(modifier = Modifier.weight(1f)) {
                 if (twochild == null) {
                     Text(text =  comment.username+"：",
                         fontSize = 14.sp,
