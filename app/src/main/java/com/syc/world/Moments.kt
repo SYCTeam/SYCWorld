@@ -376,7 +376,7 @@ fun MomentsItem(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .clickable { isTimeAgo = !isTimeAgo }
+                        //.clickable { isTimeAgo = !isTimeAgo }
                         .padding(top = 3.dp)
                 ) {
                     AnimatedContent(
