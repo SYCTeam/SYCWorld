@@ -46,9 +46,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -71,6 +74,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -85,6 +89,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.mikepenz.markdown.coil3.Coil3ImageTransformerImpl
@@ -128,11 +133,13 @@ import top.yukonga.miuix.kmp.utils.SmoothRoundedCornerShape
 import top.yukonga.miuix.kmp.utils.getWindowSize
 import java.util.concurrent.TimeUnit
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeStyle: HazeStyle,isReply: MutableState<Boolean>) {
-    val TopAppBarState = MiuixScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
+    val topAppBarState = rememberTopAppBarState()
+    val TopAppBarState = MiuixScrollBehavior(topAppBarState)
+    val nestedScrollConnection = remember { TopAppBarState.nestedScrollConnection }
     val qq = remember { mutableStateOf("0") }
     val time = remember { mutableLongStateOf(0L) }
     val author = remember { mutableStateOf("") }
@@ -162,19 +169,25 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 Global.setChatSelection3(false)
                 comment.addAll(post[0].comments)
                 zanok.value = post[0].islike
-                delay(300)
-                if (isReply.value) listState.animateScrollToItem(1)
+                delay(0)
+                withContext(Dispatchers.Main) {
+                    if (isReply.value) listState.animateScrollToItem(1)
+                }
             }
         }
     }
     val showreply = remember { mutableStateOf(false) }
     val replyid = remember { mutableStateOf(0) }
     val replyname = remember { mutableStateOf("") }
+
+    val showMainComment = remember { mutableStateOf(false) }
+    val mainCommentId = remember { mutableStateOf(0) }
+
     Scaffold(topBar = {
         Column {
             SmallTopAppBar(
                 title = "",
-                color = Color.Transparent,
+                color = CardDefaults.DefaultColor(),
                 modifier = Modifier
                     .hazeEffect(
                         state = hazeState,
@@ -403,9 +416,10 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 LazyColumn(
                     state = listState,
                     //contentPadding = PaddingValues(top = padding.calculateTopPadding()),
-                    topAppBarScrollBehavior = TopAppBarState,
+                    //topAppBarScrollBehavior = TopAppBarState,
                     modifier = Modifier
                         .fillMaxSize()
+                        .nestedScroll(nestedScrollConnection)
                         .hazeSource(state = hazeState),
                 ) {
                     item {
@@ -498,7 +512,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                             // 父级评论项
                             CommentItem(comment = parentComment, show = showreply, replyid = replyid, replyname = replyname)
 
-                            AnimatedVisibility (comment.toList().filter { it.parentCommentId == parentComment.id }.size != 0) {
+                            if (comment.toList().filter { it.parentCommentId == parentComment.id }.size != 0) {
                                 // 子评论部分（支持多级嵌套）
                                 Card(modifier = Modifier.padding(start = 54.dp, top = 0.dp, end = 20.dp, bottom = 10.dp),
                                     color = MiuixTheme.colorScheme.background.copy(alpha = 1f),
@@ -509,10 +523,13 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable {
-
+                                                mainCommentId.value = parentComment.id
+                                                showMainComment.value = true
                                             }
                                     ) {
-                                        Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp,top = 4.dp, bottom = 4.dp)) {
+                                        Row(modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
                                             Row(modifier = Modifier.weight(1f)) {
                                                 Text(text = "查看全部回复(postId:${parentComment.id})",
                                                     fontSize = 14.sp,
@@ -528,7 +545,8 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                     }
                     item {
                         AnimatedVisibility(comment.size == 0) {
-                            Column(modifier = Modifier.fillMaxSize()
+                            Column(modifier = Modifier
+                                .fillMaxSize()
                                 .height(200.dp)
                                 .background(CardDefaults.DefaultColor()), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("还没有回复哦，快来回复一下吧~", fontSize = 14.sp)
@@ -564,13 +582,44 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 }
             }
         }
+        if (showMainComment.value) {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showMainComment.value = false
+                    mainCommentId.value = 0},
+                containerColor = MiuixTheme.colorScheme.background,
+                contentColor = MiuixTheme.colorScheme.background,
+                modifier = Modifier.zIndex(1.1f)
+            ) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    val parentComments = comment.filter { it.id == mainCommentId.value }.sortedByDescending { it.timestamp }
+
+                    items(parentComments) { parentComment ->
+                        Column(modifier = Modifier) {
+                            // 父级评论项
+                            CommentItem(comment = parentComment, show = showreply, replyid = replyid, replyname = replyname)
+
+                            if (comment.toList().filter { it.parentCommentId == parentComment.id }.size != 0) {
+                                // 子评论部分（支持多级嵌套）
+                                Column() {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    MainChildComments(parentId = parentComment.id, comments = comment.toList(), show = showreply, replyid = replyid, replyname = replyname)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         ReplyDialog(
             show = showreply,
             replyid = replyid.value,
             postId = postId,
             comment = comment,
             message = message,
-            replyname = replyname.value
+            replyname = replyname.value,
+            modifier = Modifier.zIndex(1f)
         )
     }
 }
@@ -607,7 +656,9 @@ fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableS
                 replyname.value = comment.username
             }
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp,top = 4.dp, bottom = 4.dp)) {
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
             Row(modifier = Modifier.weight(1f)) {
                 if (twochild == null) {
                     Text(text =  comment.username+"：",
@@ -636,20 +687,42 @@ fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableS
     }
 }
 
-// 5. 改造后的 CommentItem
 @Composable
-fun CommentItem(comment: Comments, show: MutableState<Boolean>, replyid: MutableState<Int>,replyname: MutableState<String>) {
+private fun MainChildComments(parentId: Int,comments: List<Comments>, show: MutableState<Boolean>, replyid: MutableState<Int>,replyname: MutableState<String>) {
+    // 筛选出直接子评论
+    val childComments = comments.filter { it.parentCommentId == parentId }
+
+    Column(modifier = Modifier.padding(start = 0.dp)) { // 子评论缩进
+        childComments.forEach { child ->
+            Column {
+                // 子评论项
+                MainChildCommentItem(comment = child,
+                    if (comments.filter { it.id == child.parentCommentId }[0].parentCommentId != 0) comments.filter { it.id == child.parentCommentId }[0].username else null,
+                    if (comments.filter { it.id == child.parentCommentId }[0].parentCommentId != 0) comments.filter { it.id == child.parentCommentId }[0].content else null,
+                    show, replyid,replyname)
+
+                // 递归显示更深层评论
+                MainChildComments(parentId = child.id,comments = comments,show, replyid,replyname)
+            }
+        }
+    }
+}
+
+@Composable
+fun MainChildCommentItem(comment: Comments, twochildname: String? = null,twochildcontent: String? = null, show: MutableState<Boolean>, replyid: MutableState<Int>,replyname: MutableState<String>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(CardDefaults.DefaultColor())
             .clickable {
                 show.value = true
                 replyid.value = comment.id
                 replyname.value = comment.username
             }
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp).padding(vertical = 8.dp)) {
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp)
+            .padding(vertical = 8.dp)) {
             // 头像部分
             AsyncImage(
                 model = "https://q.qlogo.cn/headimg_dl?dst_uin=${comment.qq}&spec=640&img_type=jpg",
@@ -669,7 +742,114 @@ fun CommentItem(comment: Comments, show: MutableState<Boolean>, replyid: Mutable
             )
 
             // 主要内容
-            Column(modifier = Modifier.weight(1f).padding(start = 0.dp)) {
+            Column(modifier = Modifier
+                .weight(1f)
+                .padding(start = 0.dp)) {
+
+                // 用户信息行
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (twochildname == null) {
+                        Text(text =  comment.username,
+                            fontSize = 14.sp,
+                            color = MiuixTheme.colorScheme.primaryVariant)
+                    } else {
+                        Text(text = comment.username,
+                            fontSize = 14.sp,
+                            color = MiuixTheme.colorScheme.primaryVariant)
+                        Text(text =  "回复",
+                            fontSize = 14.sp)
+                        Text(text =  twochildname,
+                            fontSize = 14.sp,
+                            color = MiuixTheme.colorScheme.primaryVariant)
+                    }
+                }
+                if (twochildcontent != null && twochildname != null) {
+                    Card(Modifier.padding(top = 4.dp, end = 14.dp).fillMaxWidth(), color = CardDefaults.DefaultColor().copy(alpha = 0.5f), cornerRadius = 8.dp) {
+                        Text(
+                            text = twochildname,
+                            modifier = Modifier.padding(start = 8.dp, top = 4.dp),
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = twochildcontent,
+                            modifier = Modifier.padding(start = 8.dp, top = 2.dp, bottom = 4.dp),
+                            fontSize = 13.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                // 评论内容
+                Text(
+                    text = comment.content,
+                    modifier = Modifier.padding(top = 4.dp),
+                    fontSize = 15.sp
+                )
+
+                val timeAgo = remember {
+                    calculateTimeAgo(comment.timestamp * 1000L) // 注意 timestamp 是 Long 类型
+                }
+                var showFullTime by remember { mutableStateOf(false) }
+                AnimatedContent(
+                    targetState = showFullTime,
+                    transitionSpec = { (slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300))) togetherWith (slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300))) }
+                ) { showFull ->
+                    Text(
+                        text = if (showFull)
+                            transToString1(comment.timestamp * 1000L)
+                        else
+                            timeAgo,
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier
+                            .clickable { showFullTime = !showFull }
+                            .padding(top = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 5. 改造后的 CommentItem
+@Composable
+fun CommentItem(comment: Comments, show: MutableState<Boolean>, replyid: MutableState<Int>,replyname: MutableState<String>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(CardDefaults.DefaultColor())
+            .clickable {
+                show.value = true
+                replyid.value = comment.id
+                replyname.value = comment.username
+            }
+    ) {
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp)
+            .padding(vertical = 8.dp)) {
+            // 头像部分
+            AsyncImage(
+                model = "https://q.qlogo.cn/headimg_dl?dst_uin=${comment.qq}&spec=640&img_type=jpg",
+                contentDescription = null,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(20.dp))
+            )
+
+            // 在线状态
+            Image(
+                painter = painterResource(id = if (comment.online) R.drawable.point_green else R.drawable.point_gray),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(10.dp)
+                    .offset(x = (-9).dp, y = 18.dp)
+            )
+
+            // 主要内容
+            Column(modifier = Modifier
+                .weight(1f)
+                .padding(start = 0.dp)) {
 
                 // 用户信息行
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -760,7 +940,7 @@ fun ReplyDialog(
         showDialog(
             content = {
                 Box(
-                    modifier = Modifier
+                    modifier = modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
                             detectTapGestures(
@@ -779,12 +959,18 @@ fun ReplyDialog(
                             }
                             .align(contentAlignment)
                             .graphicsLayer(
-                                shape = RoundedCornerShape(topStart = bottomCornerRadius, topEnd = bottomCornerRadius),
+                                shape = RoundedCornerShape(
+                                    topStart = bottomCornerRadius,
+                                    topEnd = bottomCornerRadius
+                                ),
                                 clip = false
                             )
                             .background(
                                 color = SuperDialogDefaults.backgroundColor(),
-                                shape = RoundedCornerShape(topStart = bottomCornerRadius, topEnd = bottomCornerRadius)
+                                shape = RoundedCornerShape(
+                                    topStart = bottomCornerRadius,
+                                    topEnd = bottomCornerRadius
+                                )
                             )
                     ) {
                         val replycontent = remember { mutableStateOf("") }
@@ -828,7 +1014,8 @@ fun ReplyDialog(
                         Row() {
                             Text("回复",modifier = Modifier.padding(18.dp))
                             Spacer(modifier = Modifier.weight(1f))
-                            Text("发布",modifier = Modifier.padding(18.dp)
+                            Text("发布",modifier = Modifier
+                                .padding(18.dp)
                                 .clickable {
                                     sendreply.value = true
                                 },
@@ -882,8 +1069,12 @@ fun ReplyTextField(
     val interactionSource = interactionSource ?: remember { MutableInteractionSource() }
     val paddingModifier = remember(insideMargin, leadingIcon, trailingIcon) {
         if (leadingIcon == null && trailingIcon == null) Modifier.padding(insideMargin.width, vertical = insideMargin.height)
-        else if (leadingIcon == null) Modifier.padding(start = insideMargin.width).padding(vertical = insideMargin.height)
-        else if (trailingIcon == null) Modifier.padding(end = insideMargin.width).padding(vertical = insideMargin.height)
+        else if (leadingIcon == null) Modifier
+            .padding(start = insideMargin.width)
+            .padding(vertical = insideMargin.height)
+        else if (trailingIcon == null) Modifier
+            .padding(end = insideMargin.width)
+            .padding(vertical = insideMargin.height)
         else Modifier.padding(vertical = insideMargin.height)
     }
     val labelOffsetY by animateDpAsState(if (value.isNotEmpty()) -(insideMargin.height / 2) else 0.dp)

@@ -815,7 +815,7 @@ fun getIpaddress(context: Context,ip: String): Pair<String, String> {
     // 如果 IP 是特定的，直接返回指定的地址
     if (ip == "221.193.168.119") {
         return Pair("success", "北京朝阳和平里东街道")
-    } else if (ip == "39.144.225.117") {
+    } else if (ip == "39.144.225.1171") {
         return Pair("success", "缅甸佤邦")
     }
 
