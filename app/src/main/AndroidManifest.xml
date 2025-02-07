@@ -127,10 +127,10 @@
             android:foregroundServiceType="mediaPlayback|location|dataSync"
             tools:ignore="ForegroundServicePermission" />
         <service
-            android:process="com.syc.world.RescueProcessService"
             android:name=".RescueProcessService"
-            android:foregroundServiceType="mediaPlayback|location|dataSync"
-            tools:ignore="ForegroundServicePermission" />
+            android:process="com.syc.world.RescueProcessService"
+            android:permission="android.permission.BIND_JOB_SERVICE">
+        </service>
     </application>
 
 </manifest>

@@ -10,7 +10,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -32,8 +32,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -57,7 +57,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,8 +86,11 @@ import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
+import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 data class SelectionGlobal(
     val isEnterToSendMessage: Boolean,
@@ -98,6 +100,22 @@ data class SelectionDetail(
     val isCloseMessageReminder: Boolean,
     val isPinChat: Boolean
 )
+
+fun calculateTimeDifference(lastTimestamp: String, currentTimestamp: String): Long {
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    try {
+        val lastDate = dateFormat.parse(lastTimestamp)
+        val currentDate = dateFormat.parse(currentTimestamp)
+
+        if (lastDate != null && currentDate != null) {
+            val diffInMillis = currentDate.time - lastDate.time
+            return diffInMillis / (1000 * 60)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    return 0L
+}
 
 fun getCurrentTime(): String {
     val currentTime = LocalDateTime.now()
@@ -116,6 +134,7 @@ fun Chat(
     var chatGroups by remember { mutableStateOf(listOf<ChatGroup>()) }
 
     LaunchedEffect(Unit) {
+        Global.setChatIsChatMessageAnimation(false)
         withContext(Dispatchers.IO) {
             while (isLoading) {
                 val chatList = getChatList(Global.username, Global.password)
@@ -282,7 +301,6 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                             Global.setPersonNameBeingChat(group.chatName)
                             Global.setPersonQQBeingChat(group.groupQQ)
                             Global.setPersonIsOnlineBeingChat(group.isOnline)
-                            Global.setIsShowChat(true)
                             navController.navigate("ChatUi")
                             isNavigate = true
                         }
@@ -410,6 +428,13 @@ fun ChatMessage(message: ChatMessage) {
     val isDarkMode =
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     val personNameBeingChat = Global.personNameBeingChat.collectAsState()
+    val chatIsChatMessageAnimation = Global.chatIsChatMessageAnimation.collectAsState()
+
+    LaunchedEffect(Unit) {
+        delay(500)
+        Global.setChatIsChatMessageAnimation(true)
+    }
+
     if (personNameBeingChat.value == message.chatName) {
         Column(
             modifier = Modifier,
@@ -420,7 +445,7 @@ fun ChatMessage(message: ChatMessage) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 25.dp),
+                        .padding(top = 25.dp, bottom = 25.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -433,104 +458,122 @@ fun ChatMessage(message: ChatMessage) {
                 }
             }
             if (message.sender == SenderType.Others) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 10.dp, bottom = 15.dp),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
+                AnimatedVisibility(
+                    visible = chatIsChatMessageAnimation.value,
+                    enter = fadeIn(tween(durationMillis = 300)) + slideInHorizontally(
+                        initialOffsetX = { + 300 },
+                        animationSpec = tween(durationMillis = 300)
+                    ),
+                    exit = fadeOut(tween(durationMillis = 300))
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(start = 10.dp, bottom = 15.dp),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AsyncImage(
-                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(45.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .padding(start = 10.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
+                        Box(
                             modifier = Modifier
                                 .fillMaxHeight(),
-                            color = if (isDarkMode) Color(0xFF313131) else Color.White
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(
+                            AsyncImage(
+                                model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(45.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(start = 10.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxHeight(),
-                                contentAlignment = Alignment.Center
+                                color = if (isDarkMode) Color(0xFF313131) else Color.White
                             ) {
-                                Text(
-                                    text = message.message,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    textAlign = TextAlign.Center,
+                                Box(
                                     modifier = Modifier
-                                        .padding(10.dp)
-                                        .fillMaxHeight()
-                                )
+                                        .fillMaxHeight(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = message.message,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier
+                                            .padding(10.dp)
+                                            .fillMaxHeight()
+                                    )
+                                }
                             }
                         }
                     }
                 }
             } else if (message.sender == SenderType.Me) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 15.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                AnimatedVisibility(
+                    visible = chatIsChatMessageAnimation.value,
+                    enter = fadeIn(tween(durationMillis = 300)) + slideInHorizontally(
+                        initialOffsetX = { - 300 },
+                        animationSpec = tween(durationMillis = 300)
+                    ),
+                    exit = fadeOut(tween(durationMillis = 300))
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .padding(end = 10.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(bottom = 15.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
+                        Box(
                             modifier = Modifier
-                                .fillMaxHeight(),
-                            color = if (isDarkMode) Color(0xFF3EB174) else Color(0xFF95EC69)
+                                .fillMaxHeight()
+                                .padding(end = 10.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(
+                            Surface(
                                 modifier = Modifier
                                     .fillMaxHeight(),
-                                contentAlignment = Alignment.Center
+                                color = if (isDarkMode) Color(0xFF3EB174) else Color(0xFF95EC69)
                             ) {
-                                Text(
-                                    text = message.message,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    textAlign = TextAlign.Center,
+                                Box(
                                     modifier = Modifier
-                                        .padding(10.dp)
-                                        .fillMaxHeight()
-                                )
+                                        .fillMaxHeight(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = message.message,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier
+                                            .padding(10.dp)
+                                            .fillMaxHeight()
+                                    )
+                                }
                             }
                         }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .padding(end = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
-                            contentDescription = null,
+                        Box(
                             modifier = Modifier
-                                .size(45.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                        )
+                                .fillMaxHeight()
+                                .padding(end = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = "https://q.qlogo.cn/headimg_dl?dst_uin=${message.senderQQ}&spec=640&img_type=jpg",
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(45.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            )
+                        }
                     }
                 }
             }
@@ -545,10 +588,8 @@ fun ChatMessage(message: ChatMessage) {
 fun ChatUi(navController: NavController) {
     val context = LocalContext.current
     var text by remember { mutableStateOf("") }
-    var isFirstRun by remember { mutableStateOf(true) }
     var isLoading by remember { mutableStateOf(true) }
-    var isAnimation by remember { mutableStateOf(false) }
-    val listState = remember { LazyListState() }
+    val listState = Global.chatLazyColumnState.collectAsState()
     var driveText by remember { mutableStateOf(false) }
     var isSendButtonVisible by remember { mutableStateOf(false) }
     val isDarkMode =
@@ -563,10 +604,12 @@ fun ChatUi(navController: NavController) {
 
     val chatMessage = remember { mutableStateListOf<ChatMessage>() }
 
-    var delaTime by remember { mutableLongStateOf(1500L) }
+
+    var isShowTime by remember { mutableStateOf(false) }
+
 
     val myMessage = ChatMessage(
-        true,
+        isShowTime,
         personNameBeingChat.value,
         SenderType.Me,
         Global.userQQ,
@@ -574,24 +617,39 @@ fun ChatUi(navController: NavController) {
         getCurrentTime()
     )
 
+    val currentTimestamp = LocalDateTime.parse(myMessage.sendTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+
+    if (chatMessage.isNotEmpty()) {
+        // 获取列表中最后一条消息的时间
+        val lastMessage = chatMessage.last()
+        val lastTimestamp = LocalDateTime.parse(lastMessage.sendTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+
+
+        // 计算两条消息的时间差（分钟）
+        val timeDifference = ChronoUnit.MINUTES.between(lastTimestamp, currentTimestamp)
+
+
+        // 如果时间差超过 30 分钟，设置 isShowTime 为 true
+        if (timeDifference > 30) {
+            isShowTime = true
+        } else if (timeDifference != 0L){
+            isShowTime = false
+        }
+    }
+
     val messageIndex = chatMessage.size
 
 
-    LaunchedEffect(chatMessage.size) {
-        if (chatMessage.isNotEmpty() && isFirstRun) {
-            delay(delaTime)
-            listState.animateScrollToItem(chatMessage.size - 1)
-            delaTime = 1000L
-            isFirstRun = false
-        } else if (chatMessage.isNotEmpty()) {
-            delay(delaTime)
-            listState.animateScrollToItem(chatMessage.size - 1)
+    LaunchedEffect(isLoading) {
+        if (chatMessage.isNotEmpty() && !isLoading) {
+            listState.value.animateScrollToItem(chatMessage.size - 1)
         }
     }
 
     LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            while (true) {
+        while (true) {
+            withContext(Dispatchers.IO) {
+                isLoading = true
                 if (Global.userQQ.trim().isNotEmpty()) {
                     val getMessageResult =
                         getMessage(Global.username, Global.password, personNameBeingChat.value)
@@ -609,7 +667,9 @@ fun ChatUi(navController: NavController) {
 
                         chatMessage.forEach { existingMessages.add(it.message to it.sendTime) }
 
-                        getMessageResult.second.forEach { chatRecord ->
+                        var lastMessageTimestamp = ""
+
+                        getMessageResult.second.forEachIndexed { index, chatRecord ->
                             val senderQQ = chatRecord.senderQQ
                             val message = chatRecord.message
                             val timestamp = chatRecord.timestamp
@@ -619,35 +679,39 @@ fun ChatUi(navController: NavController) {
                                 SenderType.Me
                             }
 
+                            // 判断当前消息和前一条消息的时间差
+                            val isFirstMessage = index == 0 || calculateTimeDifference(
+                                lastMessageTimestamp,
+                                timestamp
+                            ) > 30
+
+                            // 如果消息不存在于已存在的列表中，则创建新消息
                             if (!existingMessages.contains(message to timestamp)) {
                                 val newMessage = ChatMessage(
-                                    true,
+                                    isFirstMessage,
                                     personNameBeingChat.value,
                                     senderType,
                                     senderQQ,
                                     message,
                                     timestamp
                                 )
-                                chatMessage.add(newMessage)
-                                existingMessages.add(message to timestamp)
+
+                                withContext(Dispatchers.Main) {
+                                    // 添加新消息到 chatMessage
+                                    chatMessage.add(newMessage)
+                                    existingMessages.add(message to timestamp)
+                                    lastMessageTimestamp = timestamp // 更新上一条消息的时间戳
+                                    writeToFile(context, "/ChatMessage", "ChatMessage", chatMessage.toString())
+                                    isLoading = false
+                                }
                             }
                         }
-                        isLoading = false
                     }
                 }
-                delay(3000)
-                isLoading = true
             }
+            delay(3000)
         }
     }
-
-    LaunchedEffect(isLoading) {
-        if (!isLoading) {
-            delay(1000)
-            isAnimation = true
-        }
-    }
-
 
     LaunchedEffect(isSend) {
         withContext(Dispatchers.IO) {
@@ -700,7 +764,7 @@ fun ChatUi(navController: NavController) {
 
                                 if (!existingMessages.contains(message to timestamp)) {
                                     val newMessage = ChatMessage(
-                                        true,
+                                        isShowTime,
                                         personNameBeingChat.value,
                                         senderType,
                                         senderQQ,
@@ -798,7 +862,6 @@ fun ChatUi(navController: NavController) {
                                 indication = null,
                                 interactionSource = MutableInteractionSource()
                             ) {
-                                Global.setIsShowChat(false)
                                 navController.popBackStack()
                             },
                         contentAlignment = Alignment.CenterStart
@@ -958,223 +1021,227 @@ fun ChatUi(navController: NavController) {
                 }
             }
 
+
+            // 确保在每次消息更新时自动滚动到最后一项
+            LaunchedEffect(chatMessage.size) {
+                // 延迟一下再滚动到最后一项，确保消息已经渲染
+                if (chatMessage.isNotEmpty()) {
+                    listState.value.animateScrollToItem(chatMessage.size - 1)
+                }
+            }
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 90.dp),
-                state = listState
+                state = listState.value
             ) {
-                items(chatMessage) { message ->
-                    AnimatedVisibility(
-                        visible = isAnimation,
-                        enter = fadeIn(tween(durationMillis = 500)) + slideInVertically(
-                            initialOffsetY = { it },
-                            animationSpec = tween(durationMillis = 500)
-                        ),
-                        exit = fadeOut(tween(durationMillis = 500))
-                    ) {
-                        ChatMessage(message)
-                    }
-                }
-            }
-
-        }
-
-        var lineCount by remember { mutableIntStateOf(1) }
-
-        LaunchedEffect(text) {
-            withContext(Dispatchers.IO) {
-                while (true) {
-                    val newLineCount = text.split("\n").size
-
-                    lineCount = newLineCount.coerceAtMost(4)
-
-                    if (text.length > lineCount * 10) {
-                        lineCount = (text.length / 10) + 1
-                    }
-
-                    lineCount = lineCount.coerceAtMost(4)
-
-                    delay(500)
+                itemsIndexed(
+                    chatMessage,
+                    key = { _, message -> message.sendTime } // 使用 sendTime 作为唯一标识符
+                ) { _, message ->
+                    // 只在首次显示时触发动画
+                    ChatMessage(message)
                 }
             }
         }
+    }
 
 
-        val textFieldHeight by animateDpAsState(
-            targetValue = if (lineCount == 1) 50.dp else (50.dp + (lineCount - 1) * 25.dp),
-            animationSpec = tween(
-                durationMillis = 500,
-                easing = FastOutSlowInEasing
-            )
+    var lineCount by remember { mutableIntStateOf(1) }
+
+    LaunchedEffect(text) {
+        withContext(Dispatchers.IO) {
+            while (true) {
+                val newLineCount = text.split("\n").size
+
+                lineCount = newLineCount.coerceAtMost(4)
+
+                if (text.length > lineCount * 10) {
+                    lineCount = (text.length / 10) + 1
+                }
+
+                lineCount = lineCount.coerceAtMost(4)
+
+                delay(500)
+            }
+        }
+    }
+
+
+    val textFieldHeight by animateDpAsState(
+        targetValue = if (lineCount == 1) 50.dp else (50.dp + (lineCount - 1) * 25.dp),
+        animationSpec = tween(
+            durationMillis = 500,
+            easing = FastOutSlowInEasing
         )
-        Row(
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.Bottom
+    ) {
+        Surface(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 10.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.Bottom
+                .height(textFieldHeight + 30.dp)
+                .fillMaxWidth(),
+            color = if (isDarkMode) Color(0xFF252525) else Color(0xFFeeeeee)
         ) {
-            Surface(
+            BoxWithConstraints(
                 modifier = Modifier
-                    .height(textFieldHeight + 30.dp)
-                    .fillMaxWidth(),
-                color = if (isDarkMode) Color(0xFF252525) else Color(0xFFeeeeee)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.CenterStart
             ) {
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.CenterStart
-                ) {
 
-                    val maxWidth =
-                        if (text.trim().isNotEmpty()) maxWidth * 0.5f else maxWidth * 0.75f
+                val maxWidth =
+                    if (text.trim().isNotEmpty()) maxWidth * 0.5f else maxWidth * 0.75f
 
-                    val textFieldWidth by animateDpAsState(
-                        targetValue = if (textFieldChange) maxWidth else 0.dp,
-                        animationSpec = tween(
-                            durationMillis = 1000,
-                            easing = FastOutSlowInEasing
-                        )
+                val textFieldWidth by animateDpAsState(
+                    targetValue = if (textFieldChange) maxWidth else 0.dp,
+                    animationSpec = tween(
+                        durationMillis = 1000,
+                        easing = FastOutSlowInEasing
                     )
-                    Row(
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = 10.dp, end = 10.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.text_input),
+                        contentDescription = null,
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 10.dp, end = 10.dp),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
+                            .size(30.dp)
+                            .weight(0.1f),
+                        tint = if (isDarkMode) Color.White else Color.Black
+                    )
+
+                    if (chatSelection1.value) {
+                        TextField(
+                            modifier = Modifier
+                                .width(textFieldWidth)
+                                .height(textFieldHeight)
+                                .padding(start = 10.dp, end = 10.dp),
+                            value = text,
+                            onValueChange = { newText -> text = newText },
+                            textStyle = TextStyle(
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp,
+                                color = if (isDarkMode) Color.White else Color.Black
+                            ),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
+                                unfocusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
+                                cursorColor = Color(0xFF95EC69),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedIndicatorColor = Color(0xFF95EC69),
+                                unfocusedIndicatorColor = Color.White
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onSend = {
+                                    isSend = true
+                                }
+                            ),
+                            keyboardOptions = KeyboardOptions.Default.copy(
+                                imeAction = ImeAction.Send
+                            )
+                        )
+                    } else {
+                        TextField(
+                            modifier = Modifier
+                                .width(textFieldWidth)
+                                .height(textFieldHeight)
+                                .padding(start = 10.dp, end = 10.dp),
+                            value = text,
+                            onValueChange = { newText ->
+                                text = newText
+                            },
+                            textStyle = TextStyle(
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp,
+                                color = if (isDarkMode) Color.White else Color.Black
+                            ),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
+                                unfocusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
+                                cursorColor = Color(0xFF95EC69),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedIndicatorColor = Color(0xFF95EC69),
+                                unfocusedIndicatorColor = Color.White
+                            )
+                        )
+                    }
+
+
+                    Surface(
+                        modifier = Modifier
+                            .weight(0.1f)
+                            .clip(CircleShape),
+                        color = Color.Transparent
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.text_input),
+                            painter = painterResource(R.drawable.emotion),
                             contentDescription = null,
                             modifier = Modifier
                                 .size(30.dp)
-                                .weight(0.1f),
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = MutableInteractionSource()
+                                ) {
+
+                                },
                             tint = if (isDarkMode) Color.White else Color.Black
                         )
+                    }
+                    if (driveText) {
 
-                        if (chatSelection1.value) {
-                            TextField(
-                                modifier = Modifier
-                                    .width(textFieldWidth)
-                                    .height(textFieldHeight)
-                                    .padding(start = 10.dp, end = 10.dp),
-                                value = text,
-                                onValueChange = { newText -> text = newText },
-                                textStyle = TextStyle(
-                                    fontSize = 15.sp,
-                                    lineHeight = 22.sp,
-                                    color = if (isDarkMode) Color.White else Color.Black
-                                ),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
-                                    unfocusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
-                                    cursorColor = Color(0xFF95EC69),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color(0xFF95EC69),
-                                    unfocusedIndicatorColor = Color.White
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onSend = {
-                                        isSend = true
-                                    }
-                                ),
-                                keyboardOptions = KeyboardOptions.Default.copy(
-                                    imeAction = ImeAction.Send
-                                )
+                        val buttonSize by animateDpAsState(
+                            targetValue = if (buttonChange) 58.dp else 0.dp,
+                            animationSpec = tween(
+                                durationMillis = 300,
                             )
-                        } else {
-                            TextField(
-                                modifier = Modifier
-                                    .width(textFieldWidth)
-                                    .height(textFieldHeight)
-                                    .padding(start = 10.dp, end = 10.dp),
-                                value = text,
-                                onValueChange = { newText ->
-                                    text = newText
-                                },
-                                textStyle = TextStyle(
-                                    fontSize = 15.sp,
-                                    lineHeight = 22.sp,
-                                    color = if (isDarkMode) Color.White else Color.Black
-                                ),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
-                                    unfocusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
-                                    cursorColor = Color(0xFF95EC69),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedIndicatorColor = Color(0xFF95EC69),
-                                    unfocusedIndicatorColor = Color.White
-                                )
-                            )
-                        }
+                        )
 
-
-                        Surface(
+                        Card(
                             modifier = Modifier
-                                .weight(0.1f)
-                                .clip(CircleShape),
-                            color = Color.Transparent
+                                .clip(RoundedCornerShape(8.dp))
+                                .height(34.dp)
+                                .width(buttonSize)
+                                .clickable {
+                                    isSend = true
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF07C160),
+                                contentColor = Color.White
+                            ),
+                            shape = RectangleShape
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.emotion),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(30.dp)
-                                    .clickable(
-                                        indication = null,
-                                        interactionSource = MutableInteractionSource()
-                                    ) {
-
-                                    },
-                                tint = if (isDarkMode) Color.White else Color.Black
-                            )
-                        }
-                        if (driveText) {
-
-                            val buttonSize by animateDpAsState(
-                                targetValue = if (buttonChange) 58.dp else 0.dp,
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                )
-                            )
-
-                            Card(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .height(34.dp)
-                                    .width(buttonSize)
-                                    .clickable {
-                                        isSend = true
-                                    },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFF07C160),
-                                    contentColor = Color.White
+                            AnimatedVisibility(
+                                visible = isSendButtonVisible,
+                                enter = fadeIn(
+                                    animationSpec = tween(durationMillis = 300)
                                 ),
-                                shape = RectangleShape
+                                exit = fadeOut(
+                                    animationSpec = tween(durationMillis = 300)
+                                )
                             ) {
-                                AnimatedVisibility(
-                                    visible = isSendButtonVisible,
-                                    enter = fadeIn(
-                                        animationSpec = tween(durationMillis = 300)
-                                    ),
-                                    exit = fadeOut(
-                                        animationSpec = tween(durationMillis = 300)
-                                    )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize(),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "发送",
-                                            modifier = Modifier,
-                                            fontSize = 15.sp,
-                                        )
-                                    }
+                                    Text(
+                                        text = "发送",
+                                        modifier = Modifier,
+                                        fontSize = 15.sp,
+                                    )
                                 }
                             }
                         }
@@ -1298,7 +1365,6 @@ fun ChatSettings(navController: NavController) {
                                 indication = null,
                                 interactionSource = MutableInteractionSource()
                             ) {
-                                Global.setIsShowChat(false)
                                 navController.popBackStack()
                             },
                         contentAlignment = Alignment.CenterStart
@@ -1374,8 +1440,18 @@ fun ChatSettings(navController: NavController) {
                 }
 
                 item {
-                    Selection(1, painterResource(R.drawable.message_tip), "回车键发送消息", true)
-                    Selection(2, painterResource(R.drawable.without_disturb), "消息免打扰", true)
+                    Selection(
+                        1,
+                        painterResource(R.drawable.message_tip),
+                        "回车键发送消息",
+                        true
+                    )
+                    Selection(
+                        2,
+                        painterResource(R.drawable.without_disturb),
+                        "消息免打扰",
+                        true
+                    )
                     Selection(3, painterResource(R.drawable.top), "置顶聊天", false)
                     Spacer(modifier = Modifier.height(20.dp))
                     SelectionWithoutButton(

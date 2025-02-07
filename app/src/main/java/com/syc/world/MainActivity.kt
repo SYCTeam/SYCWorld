@@ -3,6 +3,7 @@ package com.syc.world
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -42,6 +43,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.AlertDialog
@@ -56,11 +58,13 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -272,14 +276,6 @@ object Global {
         _personLoginCountBeingViewed.value = value
     }
 
-    private val _isShowChat = MutableStateFlow(false)
-    val isShowChat: StateFlow<Boolean>
-        get() = _isShowChat
-
-    fun setIsShowChat(value: Boolean) {
-        _isShowChat.value = value
-    }
-
     private val _personNameBeingChat = MutableStateFlow("")
     val personNameBeingChat: StateFlow<String>
         get() = _personNameBeingChat
@@ -336,7 +332,21 @@ object Global {
         _chatSelection3.value = value
     }
 
+    private val _chatLazyColumnState = MutableStateFlow(LazyListState())
+    val chatLazyColumnState: StateFlow<LazyListState>
+        get() = _chatLazyColumnState
 
+    fun setChatLazyColumnState(value: LazyListState) {
+        _chatLazyColumnState.value = value
+    }
+
+    private val _chatIsChatMessageAnimation = MutableStateFlow(false)
+    val chatIsChatMessageAnimation: StateFlow<Boolean>
+        get() = _chatIsChatMessageAnimation
+
+    fun setChatIsChatMessageAnimation(value: Boolean) {
+        _chatIsChatMessageAnimation.value = value
+    }
 }
 
 class MainActivity : ComponentActivity() {
@@ -355,7 +365,8 @@ class MainActivity : ComponentActivity() {
 
             // 守护进程，启动！！！
             val service2Intent = Intent(this, RescueProcessService::class.java)
-            startForegroundService(service2Intent)
+            startService(service2Intent)
+
 
             val isLogin = Global.isLogin.collectAsState()
             var showBodySensorsPermissionDialog by remember { mutableStateOf(false) }
@@ -369,7 +380,13 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 withContext(Dispatchers.IO) {
                     while (true) {
-                        writeToFile(context, "isLogin", "/", isLogin.value.toString())
+                        writeToFile(context, "", "isLogin", isLogin.value.toString())
+                        if (!isProcessRunning(context, "com.syc.world.RescueProcessService")) {
+                            restartRescueProcess(context)
+                        }
+                        if (!isProcessRunning(context, "com.syc.world.ForegroundService")) {
+                            restartForegroundServiceProcess(context)
+                        }
                         delay(500)
                     }
                 }
@@ -539,6 +556,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+@SuppressLint("ServiceCast")
+fun isProcessRunning(context: Context, processName: String): Boolean {
+    val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    val runningAppProcesses = activityManager.runningAppProcesses
+
+    for (process in runningAppProcesses) {
+        if (process.processName == processName) {
+            return true
+        }
+    }
+    return false
+}
+
+fun restartRescueProcess(context: Context) {
+    val intent = Intent(context, RescueProcessService::class.java)
+    context.startService(intent)
+}
+
+private fun restartForegroundServiceProcess(context: Context) {
+    val intent = Intent(context, ForegroundService::class.java)
+    context.startService(intent)
+}
+
 
 fun writeToFile(context: Context, child: String, filename: String, content: String) {
     val dir = File(context.filesDir, child)
@@ -930,7 +971,7 @@ fun monitorStepCount(context: Context) {
         try {
             while (isActive) {
                 withContext(Dispatchers.Main) {
-                    writeToFile(context, "stepCount", "/", ForegroundService.GlobalForForegroundService.stepCount.toString())
+                    writeToFile(context, "", "stepCount", ForegroundService.GlobalForForegroundService.stepCount.toString())
                 }
                 delay(500)
             }

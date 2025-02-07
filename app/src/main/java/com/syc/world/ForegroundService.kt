@@ -16,7 +16,9 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.runtime.mutableStateListOf
 import androidx.core.app.NotificationCompat
+import com.google.gson.Gson
 import com.syc.world.ForegroundService.GlobalForForegroundService.isLogin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +56,7 @@ class ForegroundService : Service() {
         }
 
     }
+
     private var wakeLock: PowerManager.WakeLock? = null
     private val handler = Handler(Looper.getMainLooper())
     private val wakeLockRunnable = object : Runnable {
@@ -119,7 +122,8 @@ class ForegroundService : Service() {
 
 
     private fun loginForForegroundService(username: String, password: String): String {
-        val url = "${GlobalForForegroundService.url}/syc/login.php".toHttpUrlOrNull() ?: return "Error: Invalid URL"
+        val url = "${GlobalForForegroundService.url}/syc/login.php".toHttpUrlOrNull()
+            ?: return "Error: Invalid URL"
 
         val client = OkHttpClient()
 
@@ -180,6 +184,67 @@ class ForegroundService : Service() {
         }
     }
 
+    fun checkChatMessage(
+        username: String,
+        password: String,
+        localMessageCount: Int,
+    ): Pair<String, String> {
+        val url = "${Global.url}/syc/receiveChatMessage.php".toHttpUrlOrNull() ?: return Pair(
+            "Error",
+            "Invalid URL"
+        )
+
+        val client = OkHttpClient()
+
+        // 创建请求体，包含用户名和密码
+        val formBodyBuilder =
+            FormBody.Builder()
+                .add("username", username)
+                .add("password", password)
+                .add("localMessageCount", localMessageCount.toString())
+
+        val formBody = formBodyBuilder.build()
+
+        Log.d("聊天信息获取", url.toString())
+
+        // 构建请求
+        val request = Request.Builder()
+            .url(url)
+            .post(formBody)
+            .build()
+
+        return try {
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: ""
+                Log.d("聊天信息获取", responseBody)
+                try {
+                    val pinUserInfo: WebCommonInfo =
+                        Gson().fromJson(responseBody, WebCommonInfo::class.java)
+                    Pair(pinUserInfo.status, pinUserInfo.message)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Pair("error", "Parsing error")
+                }
+            } else {
+                Pair("error", response.message)
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Pair("error", e.message ?: "Unknown error")
+        }
+    }
+
+    private fun chatMessageNotification() {
+        val chatMessage = { mutableStateListOf<ChatMessage>() }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            while (true) {
+
+                delay(3000)
+            }
+        }
+    }
 
 
     private fun createNotificationChannel() {
@@ -258,15 +323,31 @@ class ForegroundService : Service() {
         CoroutineScope(Dispatchers.IO).launch {
             while (true) {
                 if (readFromFileForForegroundService(applicationContext, "isLogin") == "true") {
-                    GlobalForForegroundService.setIsLogin(readFromFileForForegroundService(applicationContext, "isLogin").toBooleanStrict())
-                } else if (readFromFileForForegroundService(applicationContext, "isLogin") == "false") {
-                    GlobalForForegroundService.setIsLogin(readFromFileForForegroundService(applicationContext, "isLogin").toBooleanStrict())
+                    GlobalForForegroundService.setIsLogin(
+                        readFromFileForForegroundService(
+                            applicationContext,
+                            "isLogin"
+                        ).toBooleanStrict()
+                    )
+                } else if (readFromFileForForegroundService(
+                        applicationContext,
+                        "isLogin"
+                    ) == "false"
+                ) {
+                    GlobalForForegroundService.setIsLogin(
+                        readFromFileForForegroundService(
+                            applicationContext,
+                            "isLogin"
+                        ).toBooleanStrict()
+                    )
                 }
-                val readUsernameResult = readFromFileForForegroundService(applicationContext, "username")
+                val readUsernameResult =
+                    readFromFileForForegroundService(applicationContext, "username")
                 if (readUsernameResult.trim().isNotEmpty()) {
                     GlobalForForegroundService.username = readUsernameResult
                 }
-                val readPasswordResult = readFromFileForForegroundService(applicationContext, "password")
+                val readPasswordResult =
+                    readFromFileForForegroundService(applicationContext, "password")
                 if (readPasswordResult.trim().isNotEmpty()) {
                     GlobalForForegroundService.password = readPasswordResult
                 }
@@ -279,7 +360,10 @@ class ForegroundService : Service() {
             Log.d("步数问题", stepCount)
             if (stepCount.trim().isNotEmpty() && stepCount.toIntOrNull() != null) {
                 GlobalForForegroundService.stepCount = stepCount.toInt()
-                Log.d("步数问题", "已经将文件中的步数更新，GlobalForForegroundService.stepCount: ${GlobalForForegroundService.stepCount}")
+                Log.d(
+                    "步数问题",
+                    "已经将文件中的步数更新，GlobalForForegroundService.stepCount: ${GlobalForForegroundService.stepCount}"
+                )
             }
             monitorStepCount(applicationContext)
             Log.d("步数问题", "已启用步数监控")
@@ -318,8 +402,10 @@ class ForegroundService : Service() {
                         )
                         // 每5分钟提交一次步数
                         withContext(Dispatchers.IO) {
-                            if (GlobalForForegroundService.username.trim().isNotEmpty() && GlobalForForegroundService.password.trim()
-                                    .isNotEmpty() && GlobalForForegroundService.stepCount.toString().trim().isNotEmpty()
+                            if (GlobalForForegroundService.username.trim()
+                                    .isNotEmpty() && GlobalForForegroundService.password.trim()
+                                    .isNotEmpty() && GlobalForForegroundService.stepCount.toString()
+                                    .trim().isNotEmpty()
                             ) {
                                 Log.d("提交问题", "开始提交步数...")
                                 result = modifyStepCount(
@@ -345,7 +431,10 @@ class ForegroundService : Service() {
                 withContext(Dispatchers.IO) {
                     GlobalForForegroundService.url = getUrlForForegroundService()
                 }
-                if (GlobalForForegroundService.url != "" && GlobalForForegroundService.url.contains("http")) {
+                if (GlobalForForegroundService.url != "" && GlobalForForegroundService.url.contains(
+                        "http"
+                    )
+                ) {
                     break
                 }
                 delay(2000)
@@ -356,10 +445,16 @@ class ForegroundService : Service() {
                     "步数：${GlobalForForegroundService.stepCount}",
                     "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。"
                 )
-                if (isLogin.value && GlobalForForegroundService.url != "" && GlobalForForegroundService.url.contains("http")) {
+                if (isLogin.value && GlobalForForegroundService.url != "" && GlobalForForegroundService.url.contains(
+                        "http"
+                    )
+                ) {
                     if (GlobalForForegroundService.username.trim().isNotEmpty()) {
                         withContext(Dispatchers.IO) {
-                            if (checkUserOnlineForForegroundService(username = GlobalForForegroundService.username).contains("success")) {
+                            if (checkUserOnlineForForegroundService(username = GlobalForForegroundService.username).contains(
+                                    "success"
+                                )
+                            ) {
                                 /*withContext(Dispatchers.Main) {
                                     Toast.makeText(
                                         applicationContext,
@@ -370,7 +465,10 @@ class ForegroundService : Service() {
                             } else {
                                 withContext(Dispatchers.IO) {
                                     acquireWakeLock()
-                                    val loginResponse = loginForForegroundService(GlobalForForegroundService.username, GlobalForForegroundService.password)
+                                    val loginResponse = loginForForegroundService(
+                                        GlobalForForegroundService.username,
+                                        GlobalForForegroundService.password
+                                    )
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(
                                             applicationContext,
@@ -401,7 +499,10 @@ class ForegroundService : Service() {
                         }
                     }
                 } else {
-                    Log.d("在线状态", "未登录或域名不完整, isLogin.value: ${isLogin.value}, GlobalForForegroundService.url: ${GlobalForForegroundService.url}")
+                    Log.d(
+                        "在线状态",
+                        "未登录或域名不完整, isLogin.value: ${isLogin.value}, GlobalForForegroundService.url: ${GlobalForForegroundService.url}"
+                    )
                 }
                 delay(10000)
             }
