@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -50,6 +51,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -58,10 +60,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -101,7 +105,8 @@ import kotlin.random.Random
 fun Home(
     topAppBarScrollBehavior: ScrollBehavior,
     padding: PaddingValues,
-    navController: NavController
+    navController: NavController,
+    postId: MutableState<Int>
 ) {
     Scaffold {
         LazyColumn(
@@ -109,7 +114,7 @@ fun Home(
             topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
         ) {
             item {
-                LatestContentShow()
+                LatestContentShow(postId, navController)
                 StepRank()
                 Spacer(
                     Modifier.height(
@@ -638,50 +643,17 @@ fun transToTimeStamp(date:String):Long{
 
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
-fun LatestContentShow() {
-    val content by remember { mutableStateOf("我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...我失恋了...") }
-    val author by remember { mutableStateOf("沉莫") }
-    val ipAddress by remember { mutableStateOf("湖北") }
-    val time by remember { mutableStateOf("1737276065842") }
-
-    val timestamp = remember { System.currentTimeMillis() }
-    val diffInMillis = timestamp - time.toLong()
-    val timeAgo = remember(diffInMillis) {
-        when {
-            diffInMillis < TimeUnit.MINUTES.toMillis(1) -> {
-                // 小于一分钟，显示秒数
-                "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
-            }
-
-            diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
-                // 小于1小时，显示分钟数
-                "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
-            }
-
-            diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
-                // 小于1天，显示小时数
-                "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
-            }
-
-            diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
-                // 小于30天，显示天数
-                "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
-            }
-
-            diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
-                // 小于一年，显示月份数
-                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
-            }
-
-            else -> {
-                // 大于一年，显示年份
-                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
-            }
+fun LatestContentShow(postId: MutableState<Int>, navController: NavController) {
+    val postlist = remember { mutableStateListOf<Post>() }
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            postlist.clear()
+            val post = getPost("latest", username = Global.username, password = Global.password).second
+            postlist.add(post[0])
         }
     }
     Box(
         modifier = Modifier
-            .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
             .fillMaxWidth()
     ) {
         Column(
@@ -689,320 +661,53 @@ fun LatestContentShow() {
             verticalArrangement = Arrangement.Center
         ) {
             HeadlineInLargePrint(headline = "最新动态")
-            OutlinedCard(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-                border = BorderStroke(1.dp, Color.Black),
-                modifier = Modifier
-                    .height(200.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable {
-                        // TODO
-                    }
-            ) {
-                Row(
-                    modifier = Modifier.padding(start = 10.dp, top = 10.dp),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(
-                        painterResource(R.drawable.my),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(30.dp)
-                            .offset(x = 5.dp)
-                    )
-                    Image(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .offset(x = (-5).dp, y = 10.dp),
-                        painter = painterResource(id = R.drawable.point_green),
-                        contentDescription = null
-                    )
-                    Column {
-                        Text(
-                            text = author,
-                            modifier = Modifier,
-                            fontSize = 15.sp,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            style = TextStyle(fontStyle = FontStyle.Italic)
-                        )
-                        var isTimeAgo by remember { mutableStateOf(true) }
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (isTimeAgo) timeAgo else time.toLongOrNull()
-                                    ?.let { transToString(it) } ?: "",
-                                modifier = Modifier
-                                    .clickable(
-                                        indication = null,
-                                        interactionSource = MutableInteractionSource()
-                                    ) {
-                                        isTimeAgo = !isTimeAgo
-                                    },
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                style = TextStyle(fontStyle = FontStyle.Normal)
-                            )
-                            VerticalDivider(
-                                modifier = Modifier
-                                    .padding(3.dp)
-                                    .height(15.dp)
-                                    .clip(RoundedCornerShape(18.dp)),
-                                thickness = 2.dp,
-                                color = Color.Gray
-                            )
-                            Text(
-                                text = "IP地址:",
-                                modifier = Modifier,
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                style = TextStyle(fontStyle = FontStyle.Normal)
-                            )
-                            Text(
-                                text = ipAddress,
-                                modifier = Modifier,
-                                textAlign = TextAlign.Center,
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                style = TextStyle(fontWeight = FontWeight.Bold)
-                            )
-                        }
-                    }
-                }
-                Box(
+            if (postlist.size == 0) {
+                Column(
                     modifier = Modifier
-                        .fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center) // 内容居中
                 ) {
-                    Text(
-                        text = content,
-                        modifier = Modifier
-                            .padding(start = 10.dp, end = 10.dp, bottom = 20.dp),
-                        textAlign = TextAlign.Center,
-                        fontSize = 20.sp,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        style = TextStyle(fontStyle = FontStyle.Normal),
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            var isFirstRun by remember { mutableStateOf(true) }
-            // 点赞数
-            var favoriteCounts by remember { mutableIntStateOf(0) }
-            // 评论数
-            var commentsCounts by remember { mutableIntStateOf(0) }
-            // 转发数
-            var sharedCounts by remember { mutableIntStateOf(0) }
-
-            val animatedFavoriteCounts by animateIntAsState(
-                targetValue = favoriteCounts,
-                animationSpec = if (isFirstRun) tween(durationMillis = 1000) else tween(
-                    durationMillis = 0
-                )
-            )
-
-            val animatedCommentsCounts by animateIntAsState(
-                targetValue = commentsCounts,
-                animationSpec = if (isFirstRun) tween(durationMillis = 1000) else tween(
-                    durationMillis = 0
-                )
-            )
-
-            val animatedSharedCounts by animateIntAsState(
-                targetValue = sharedCounts,
-                animationSpec = if (isFirstRun) tween(durationMillis = 1000) else tween(
-                    durationMillis = 0
-                )
-            )
-
-            LaunchedEffect(Unit) {
-                favoriteCounts = 2
-                commentsCounts = 64
-                sharedCounts = 128
-            }
-            var isClick by remember { mutableStateOf(false) }
-            var isChange by remember { mutableStateOf(false) }
-            val buttonSize by animateDpAsState(
-                targetValue = if (isChange) 40.dp else 30.dp,
-                animationSpec = tween(
-                    durationMillis = 100,
-                    easing = FastOutSlowInEasing
-                ),
-                label = ""
-            )
-            if (buttonSize == 40.dp) {
-                isChange = false
-            }
-            LaunchedEffect(isClick) {
-                if (isClick) {
-                    favoriteCounts++
-                } else if (!isFirstRun) {
-                    favoriteCounts--
-                } else {
-                    delay(1000)
-                    isFirstRun = false
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 点赞
-                Box(
-                    modifier = Modifier
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                indication = null,
-                                interactionSource = MutableInteractionSource()
-                            ) {
-                                if (!isFirstRun) {
-                                    isChange = !isChange
-                                    isClick = !isClick
-                                }
-                            },
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally // 水平居中
                     ) {
-                        if (isClick) {
-                            Image(
-                                modifier = Modifier
-                                    .padding(10.dp)
-                                    .size(buttonSize),
-                                painter = painterResource(id = R.drawable.thumbs_up),
-                                contentDescription = null
-                            )
-                        } else {
-                            Image(
-                                painter = painterResource(R.drawable.thumbs_up),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .padding(10.dp)
-                                    .size(buttonSize)
-                                    .clickable(
-                                        indication = null,
-                                        interactionSource = MutableInteractionSource()
-                                    ) {
-                                        if (!isFirstRun) {
-                                            isChange = !isChange
-                                            isClick = !isClick
-                                        }
-                                    },
-                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
-                            )
-                        }
+                        // 圆形进度条
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(50.dp), // 设置进度条的大小
+                            color = MiuixTheme.colorScheme.primary, // 进度条颜色
+                            strokeWidth = 6.dp // 进度条宽度
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
                         Text(
-                            text = animatedFavoriteCounts.toString(),
-                            modifier = Modifier
-                                .padding(10.dp),
-                            textAlign = TextAlign.Center,
-                            fontSize = 20.sp,
-                            style = TextStyle(fontStyle = FontStyle.Normal)
+                            text = "加载中...",
                         )
                     }
                 }
-                // 评论
-                Box(
-                    modifier = Modifier
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                indication = null,
-                                interactionSource = MutableInteractionSource()
-                            ) {
-                                if (!isFirstRun) {
-                                    // TODO
-                                }
-                            },
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            painter = painterResource(R.drawable.comments),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(10.dp)
-                                .size(30.dp),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
-                        )
-                        Text(
-                            text = animatedCommentsCounts.toString(),
-                            modifier = Modifier
-                                .padding(10.dp),
-                            textAlign = TextAlign.Center,
-                            fontSize = 20.sp,
-                            style = TextStyle(fontStyle = FontStyle.Normal)
-                        )
-                    }
-                }
+            } else {
                 val context = LocalContext.current
-                // 转发
-                Box(
-                    modifier = Modifier
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                indication = null,
-                                interactionSource = MutableInteractionSource()
-                            ) {
-                                if (!isFirstRun) {
-                                    // 创建分享的 Intent
-                                    val shareIntent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        putExtra(
-                                            Intent.EXTRA_TEXT,
-                                            "【来自${author}的动态】: $content"
-                                        )
-                                        type = "text/plain"
-                                    }
-                                    context.startActivity(
-                                        Intent.createChooser(
-                                            shareIntent,
-                                            "分享到"
-                                        )
-                                    )
-                                }
-                            },
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            painter = painterResource(R.drawable.share),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(10.dp)
-                                .size(30.dp),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface)
-                        )
-                        Text(
-                            text = animatedSharedCounts.toString(),
-                            modifier = Modifier
-                                .padding(10.dp),
-                            textAlign = TextAlign.Center,
-                            fontSize = 20.sp,
-                            style = TextStyle(fontStyle = FontStyle.Normal)
-                        )
+                val ipAddress = remember { mutableStateOf(postlist.toList()[0].ip) }
+
+                LaunchedEffect(postlist.toList()[0].ip) {
+                    withContext(Dispatchers.IO) {
+                        ipAddress.value = getIpaddress(context,postlist.toList()[0].ip).second
                     }
                 }
+                MomentsItem(
+                    time = (postlist.toList()[0].timestamp.toString()+"000").toLong(),
+                    author = postlist.toList()[0].username,
+                    ipAddress = ipAddress.value,
+                    elements = postlist.toList()[0].content,
+                    zan = postlist.toList()[0].likes,
+                    message = postlist.toList()[0].commentsCount,
+                    share = postlist.toList()[0].shares,
+                    authorQQ = postlist.toList()[0].qq,
+                    postId = postlist.toList()[0].postId,
+                    morepostId = postId,
+                    navController = navController,
+                    islike = postlist.toList()[0].islike,
+                    online = postlist.toList()[0].online
+                )
             }
         }
     }

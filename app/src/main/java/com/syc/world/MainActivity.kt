@@ -1523,7 +1523,8 @@ fun AppHorizontalPager(
                 0 -> Home(
                     topAppBarScrollBehavior = topAppBarScrollBehaviorList[0],
                     padding = padding,
-                    navController = navController
+                    navController = navController,
+                    postId = postId
                 )
 
                 1 -> Chat(

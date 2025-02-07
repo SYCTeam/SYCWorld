@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -121,6 +122,7 @@ import top.yukonga.miuix.kmp.utils.SmoothRoundedCornerShape
 import top.yukonga.miuix.kmp.utils.getWindowSize
 import java.util.concurrent.TimeUnit
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeStyle: HazeStyle) {
     val TopAppBarState = MiuixScrollBehavior(rememberTopAppBarState())
@@ -135,6 +137,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     val share = remember { mutableStateOf(0) }
     val comment = remember { mutableStateListOf<Comments>() }
     val zanok = remember { mutableStateOf(false) }
+    val context = LocalContext.current
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             comment.clear()
@@ -143,7 +146,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 qq.value = post[0].qq.toString()
                 time.longValue = post[0].timestamp*1000
                 author.value = post[0].username
-                ipAddress.value = getIpaddress(post[0].ip).second
+                ipAddress.value = getIpaddress(context,post[0].ip).second
                 elements.value = post[0].content
                 view.value = post[0].views.toString()
                 message.value = post[0].commentsCount
@@ -168,7 +171,6 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                         state = hazeState,
                         style = hazeStyle
                     )
-                    .background(CardDefaults.DefaultColor())
                     .fillMaxWidth(),
                 scrollBehavior = TopAppBarState,
                 navigationIcon = {
@@ -416,106 +418,120 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
             }
         }
     }) { padding ->
-        LazyColumn(
-            contentPadding = PaddingValues(top = padding.calculateTopPadding()),
-            topAppBarScrollBehavior = TopAppBarState,
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(state = hazeState),
-        ) {
-            item {
-                Column(modifier = Modifier
-                    .fillMaxWidth()
-                    .background(CardDefaults.DefaultColor())) {
-                    val highlightsBuilder =
-                        Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
-                    AnimatedVisibility(elements.value != "") {
-                        Column {
-                            Markdown(
-                                elements.value,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                colors = markdownColor(),
-                                extendedSpans = markdownExtendedSpans {
-                                    val animator = rememberSquigglyUnderlineAnimator()
-                                    remember {
-                                        ExtendedSpans(
-                                            RoundedCornerSpanPainter(),
-                                            SquigglyUnderlineSpanPainter(animator = animator)
-                                        )
-                                    }
-                                },
-                                components = markdownComponents(
-                                    codeBlock = {
-                                        MarkdownHighlightedCodeBlock(
-                                            it.content,
-                                            it.node,
-                                            highlightsBuilder
-                                        )
-                                    },
-                                    codeFence = {
-                                        MarkdownHighlightedCodeFence(
-                                            it.content,
-                                            it.node,
-                                            highlightsBuilder
-                                        )
-                                    },
-                                ),
-                                imageTransformer = Coil3ImageTransformerImpl,
-                                typography = markdownTypography1()
-                            )
-                        }
-                    }
-                    Row(modifier = Modifier.padding(16.dp)) {
-                        AnimatedVisibility(ipAddress.value != "") {
-                            Text(
-                                text = "发布于 ${ipAddress.value}",
-                                fontSize = 13.sp,
-                                color = Color.Gray,
-                                style = TextStyle(fontStyle = FontStyle.Normal)
-                            )
-                        }
-                        AnimatedVisibility(view.value != "") {
-                            Text(
-                                text = " · ${view.value}浏览",
-                                fontSize = 13.sp,
-                                color = Color.Gray,
-                                style = TextStyle(fontStyle = FontStyle.Normal)
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Column(modifier = Modifier
+        Column {
+            Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
+            LazyColumn(
+                //contentPadding = PaddingValues(top = padding.calculateTopPadding()),
+                topAppBarScrollBehavior = TopAppBarState,
+                modifier = Modifier
                     .fillMaxSize()
-                    .background(CardDefaults.DefaultColor())) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(48.dp)) {
-                        Text(text = "共 ${message.value} 回复", fontSize = 13.sp, modifier = Modifier.padding(16.dp))
+                    .hazeSource(state = hazeState),
+            ) {
+                item {
+                    Column(modifier = Modifier
+                        .fillMaxWidth()
+                        .background(CardDefaults.DefaultColor())) {
+                        val highlightsBuilder =
+                            Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
+                        AnimatedVisibility(elements.value != "") {
+                            Column {
+                                Markdown(
+                                    elements.value,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    colors = markdownColor(),
+                                    extendedSpans = markdownExtendedSpans {
+                                        val animator = rememberSquigglyUnderlineAnimator()
+                                        remember {
+                                            ExtendedSpans(
+                                                RoundedCornerSpanPainter(),
+                                                SquigglyUnderlineSpanPainter(animator = animator)
+                                            )
+                                        }
+                                    },
+                                    components = markdownComponents(
+                                        codeBlock = {
+                                            MarkdownHighlightedCodeBlock(
+                                                it.content,
+                                                it.node,
+                                                highlightsBuilder
+                                            )
+                                        },
+                                        codeFence = {
+                                            MarkdownHighlightedCodeFence(
+                                                it.content,
+                                                it.node,
+                                                highlightsBuilder
+                                            )
+                                        },
+                                    ),
+                                    imageTransformer = Coil3ImageTransformerImpl,
+                                    typography = markdownTypography1()
+                                )
+                            }
+                        }
+                        Row(modifier = Modifier.padding(16.dp)) {
+                            AnimatedVisibility(ipAddress.value != "") {
+                                Text(
+                                    text = "发布于 ${ipAddress.value}",
+                                    fontSize = 13.sp,
+                                    color = Color.Gray,
+                                    style = TextStyle(fontStyle = FontStyle.Normal)
+                                )
+                            }
+                            AnimatedVisibility(view.value != "") {
+                                Text(
+                                    text = " · ${view.value}浏览",
+                                    fontSize = 13.sp,
+                                    color = Color.Gray,
+                                    style = TextStyle(fontStyle = FontStyle.Normal)
+                                )
+                            }
+                        }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-            }
-            val parentComments = comment.filter { it.parentCommentId == 0 }.sortedByDescending { it.timestamp }
-
-            items(parentComments) { parentComment ->
-                Column(modifier = Modifier.background(CardDefaults.DefaultColor())) {
-                    // 父级评论项
-                    CommentItem(comment = parentComment, show = showreply, replyid = replyid, replyname = replyname)
-
-                    if (comment.toList().filter { it.parentCommentId == parentComment.id }.size != 0) {
-                        // 子评论部分（支持多级嵌套）
-                        Card(modifier = Modifier.padding(start = 54.dp, top = 8.dp, end = 20.dp, bottom = 10.dp),
-                            color = MiuixTheme.colorScheme.background.copy(alpha = 1f),
-                            cornerRadius = 8.dp) {
-                            ChildComments(parentId = parentComment.id, comments = comment.toList(), show = showreply, replyid = replyid, replyname = replyname)
-                            Spacer(modifier = Modifier.height(0.dp))
+                stickyHeader {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(CardDefaults.DefaultColor())
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.height(48.dp)
+                        ) {
+                            Text(
+                                text = "共 ${message.value} 回复",
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(16.dp)
+                            )
                         }
                     }
                 }
-                //HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
-            }
-            item {
-                Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()+48.dp))
+                val parentComments = comment.filter { it.parentCommentId == 0 }.sortedByDescending { it.timestamp }
+
+                items(parentComments) { parentComment ->
+                    Column(modifier = Modifier.background(CardDefaults.DefaultColor())) {
+                        // 父级评论项
+                        CommentItem(comment = parentComment, show = showreply, replyid = replyid, replyname = replyname)
+
+                        if (comment.toList().filter { it.parentCommentId == parentComment.id }.size != 0) {
+                            // 子评论部分（支持多级嵌套）
+                            Card(modifier = Modifier.padding(start = 54.dp, top = 8.dp, end = 20.dp, bottom = 10.dp),
+                                color = MiuixTheme.colorScheme.background.copy(alpha = 1f),
+                                cornerRadius = 8.dp) {
+                                ChildComments(parentId = parentComment.id, comments = comment.toList(), show = showreply, replyid = replyid, replyname = replyname)
+                                Spacer(modifier = Modifier.height(0.dp))
+                            }
+                        }
+                    }
+                    //HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
+                }
+                item {
+                    Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()+48.dp))
+                }
             }
         }
         ReplyDialog(
@@ -610,7 +626,7 @@ fun CommentItem(comment: Comments, show: MutableState<Boolean>, replyid: Mutable
                 contentDescription = null,
                 modifier = Modifier
                     .size(28.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(20.dp))
             )
 
             // 在线状态

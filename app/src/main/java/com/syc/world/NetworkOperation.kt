@@ -1,7 +1,11 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.util.Log
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
@@ -14,6 +18,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
@@ -806,18 +811,34 @@ fun cancellike(username: String, password: String, postId: String): Pair<String,
 }
 
 @SuppressLint("SuspiciousIndentation")
-fun getIpaddress(ip: String): Pair<String, String> {
-    val url =
-        "https://api.ip77.net/ip2/v4/".toHttpUrlOrNull() ?: return Pair("Error", "Invalid URL")
+fun getIpaddress(context: Context,ip: String): Pair<String, String> {
+    // 如果 IP 是特定的，直接返回指定的地址
+    if (ip == "221.193.168.119") {
+        return Pair("success", "北京朝阳和平里东街道")
+    }
 
+    // 检查本地文件是否已经保存了查询结果
+    val cacheFile = File(context.cacheDir, "$ip.json")
+    if (cacheFile.exists()) {
+        // 读取文件内容并返回
+        try {
+            val fileContent = cacheFile.readText()
+            val data = JSONObject(fileContent).getString("location")
+            return Pair("success", data)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return Pair("error", "Error reading cached file")
+        }
+    }
+
+    // 如果没有缓存，进行 API 查询
+    val url = "https://api.ip77.net/ip2/v4/".toHttpUrlOrNull() ?: return Pair("error", "Invalid URL")
     val client = OkHttpClient()
 
-    // 创建请求体
     val formBody = FormBody.Builder()
         .add("ip", ip)
         .build()
 
-    // 构建请求
     val request = Request.Builder()
         .url(url)
         .post(formBody)
@@ -829,21 +850,12 @@ fun getIpaddress(ip: String): Pair<String, String> {
             val responseBody = response.body?.string() ?: ""
             try {
                 val data = JSONObject(responseBody).getJSONObject("data")
-                val location = data.getString("location").replace("中国","")
-                    buildString {
-                    if (data.getString("country") != "中国") {
-                        append(data.getString("country"))
-                        append(" ")
-                    }
-                    append(data.getString("province"))
-                    if (data.getString("city") != data.getString("province") || data.getString("city") != "") {
-                        append(data.getString("city"))
-                        if (data.getString("district") != "") {
-                            append(data.getString("district"))
-                        }
-                        if (data.getString("street") != "") append(data.getString("street"))
-                    }
+                val location = data.getString("location").replace("中国", "")
+                // 保存查询结果到文件
+                val jsonToSave = JSONObject().apply {
+                    put("location", location)
                 }
+                cacheFile.writeText(jsonToSave.toString())
                 Pair("success", location)
             } catch (e: Exception) {
                 e.printStackTrace()

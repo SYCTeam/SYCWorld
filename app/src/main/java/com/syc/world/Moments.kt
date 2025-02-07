@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import coil3.compose.AsyncImage
@@ -148,15 +149,23 @@ fun Moments(
                     }
                 }
             } else {
+                val context = LocalContext.current
                 LazyColumn(
                     topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
                 ) {
                     items(postlist.size) {
                         for (post in postlist[it]) {
+                            val ipAddress = remember { mutableStateOf(post.ip) }
+
+                            LaunchedEffect(post.ip) {
+                                withContext(Dispatchers.IO) {
+                                    ipAddress.value = getIpaddress(context,post.ip).second
+                                }
+                            }
                             MomentsItem(
                                 time = (post.timestamp.toString()+"000").toLong(),
                                 author = post.username,
-                                ipAddress = post.ip,
+                                ipAddress = ipAddress.value,
                                 elements = post.content,
                                 zan = post.likes,
                                 message = post.commentsCount,
@@ -293,44 +302,12 @@ fun MomentsItem(
     islike: Boolean,
     online: Boolean
 ) {
-    val timestamp = remember { System.currentTimeMillis() }
-    val diffInMillis = timestamp - time
-    val timeAgo = remember(diffInMillis) {
-        when {
-            diffInMillis < TimeUnit.MINUTES.toMillis(1) -> {
-                // 小于一分钟，显示秒数
-                "${TimeUnit.MILLISECONDS.toSeconds(diffInMillis)}秒前"
-            }
-
-            diffInMillis < TimeUnit.HOURS.toMillis(1) -> {
-                // 小于1小时，显示分钟数
-                "${TimeUnit.MILLISECONDS.toMinutes(diffInMillis)}分钟前"
-            }
-
-            diffInMillis < TimeUnit.DAYS.toMillis(1) -> {
-                // 小于1天，显示小时数
-                "${TimeUnit.MILLISECONDS.toHours(diffInMillis)}小时前"
-            }
-
-            diffInMillis < TimeUnit.DAYS.toMillis(30) -> {
-                // 小于30天，显示天数
-                "${TimeUnit.MILLISECONDS.toDays(diffInMillis)}天前"
-            }
-
-            diffInMillis < TimeUnit.DAYS.toMillis(365) -> {
-                // 小于一年，显示月份数
-                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 30}个月前"
-            }
-
-            else -> {
-                // 大于一年，显示年份
-                "${TimeUnit.MILLISECONDS.toDays(diffInMillis) / 365}年前"
-            }
-        }
+    val timeAgo = remember {
+        calculateTimeAgo(time)
     }
     Card(
         modifier = Modifier
-            .padding(vertical = 6.dp, horizontal = 6.dp)
+            .padding(vertical = 6.dp, horizontal = 10.dp)
             .fillMaxWidth()
             .clickable {
                 morepostId.value = postId
