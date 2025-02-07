@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -67,6 +68,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -445,7 +447,7 @@ fun ChatMessage(message: ChatMessage) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 25.dp, bottom = 25.dp),
+                        .padding(top = 15.dp, bottom = 25.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -469,7 +471,7 @@ fun ChatMessage(message: ChatMessage) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 10.dp, bottom = 15.dp),
+                            .padding(start = 10.dp, end = 10.dp, bottom = 15.dp),
                         horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -506,7 +508,7 @@ fun ChatMessage(message: ChatMessage) {
                                     Text(
                                         text = message.message,
                                         style = MaterialTheme.typography.bodyLarge,
-                                        textAlign = TextAlign.Center,
+                                        textAlign = TextAlign.Start,
                                         modifier = Modifier
                                             .padding(10.dp)
                                             .fillMaxHeight()
@@ -528,31 +530,31 @@ fun ChatMessage(message: ChatMessage) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 15.dp),
+                            .padding(start = 65.dp, end = 5.dp, bottom = 15.dp),
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .padding(end = 10.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
+                                .weight(1f),
+                            contentAlignment = Alignment.CenterEnd // 确保 Surface 从左开始扩展
                         ) {
                             Surface(
                                 modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
                                     .fillMaxHeight(),
                                 color = if (isDarkMode) Color(0xFF3EB174) else Color(0xFF95EC69)
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight(),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center // 文本对齐保持从左开始
                                 ) {
                                     Text(
                                         text = message.message,
                                         style = MaterialTheme.typography.bodyLarge,
-                                        textAlign = TextAlign.Center,
+                                        textAlign = TextAlign.Start,
                                         modifier = Modifier
                                             .padding(10.dp)
                                             .fillMaxHeight()
@@ -560,6 +562,10 @@ fun ChatMessage(message: ChatMessage) {
                                 }
                             }
                         }
+
+                        // Spacer 用于固定 Surface 和图片之间的间距
+                        Spacer(modifier = Modifier.width(10.dp))
+
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
@@ -571,10 +577,12 @@ fun ChatMessage(message: ChatMessage) {
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(45.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop // 保持图片比例
                             )
                         }
                     }
+
                 }
             }
         }
@@ -1126,7 +1134,8 @@ fun ChatUi(navController: NavController) {
                             modifier = Modifier
                                 .width(textFieldWidth)
                                 .height(textFieldHeight)
-                                .padding(start = 10.dp, end = 10.dp),
+                                .padding(start = 10.dp, end = 10.dp)
+                                .imePadding(),
                             value = text,
                             onValueChange = { newText -> text = newText },
                             textStyle = TextStyle(
@@ -1145,7 +1154,9 @@ fun ChatUi(navController: NavController) {
                             ),
                             keyboardActions = KeyboardActions(
                                 onSend = {
-                                    isSend = true
+                                    if (text != "") {
+                                        isSend = true
+                                    }
                                 }
                             ),
                             keyboardOptions = KeyboardOptions.Default.copy(
@@ -1157,7 +1168,8 @@ fun ChatUi(navController: NavController) {
                             modifier = Modifier
                                 .width(textFieldWidth)
                                 .height(textFieldHeight)
-                                .padding(start = 10.dp, end = 10.dp),
+                                .padding(start = 10.dp, end = 10.dp)
+                                .imePadding(),
                             value = text,
                             onValueChange = { newText ->
                                 text = newText
@@ -1215,7 +1227,9 @@ fun ChatUi(navController: NavController) {
                                 .height(34.dp)
                                 .width(buttonSize)
                                 .clickable {
-                                    isSend = true
+                                    if (text != "") {
+                                        isSend = true
+                                    }
                                 },
                             colors = CardDefaults.cardColors(
                                 containerColor = Color(0xFF07C160),
