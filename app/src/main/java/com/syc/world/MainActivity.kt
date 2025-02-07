@@ -1407,6 +1407,7 @@ fun AllHome(
 
     Column {
         val postId = remember { mutableIntStateOf(0) }
+        val isReply = remember { mutableStateOf(false) }
         NavHost(navController = navController, startDestination = "loading", enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { windowWidth },
@@ -1443,7 +1444,8 @@ fun AllHome(
                     colorMode = colorMode,
                     hazeState,
                     hazeStyle,
-                    postId = postId
+                    postId = postId,
+                    isReply = isReply
                 )
             }
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
@@ -1451,7 +1453,7 @@ fun AllHome(
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
             composable("ChatUi") { ChatUi(navController) }
             composable("ChatSettings") { ChatSettings(navController) }
-            composable("Dynamic") { Dynamic(navController, postId.intValue, hazeState, hazeStyle) }
+            composable("Dynamic") { Dynamic(navController, postId.intValue, hazeState, hazeStyle,isReply) }
         }
     }
 }
@@ -1492,7 +1494,8 @@ fun Main(
     colorMode: MutableState<Int>,
     hazeState: HazeState,
     hazeStyle: HazeStyle,
-    postId: MutableState<Int>
+    postId: MutableState<Int>,
+    isReply: MutableState<Boolean>
 ) {
     val topAppBarScrollBehavior0 =
         MiuixScrollBehavior(top.yukonga.miuix.kmp.basic.rememberTopAppBarState())
@@ -1590,7 +1593,8 @@ fun Main(
                 padding = padding,
                 navController = navController,
                 colorMode = colorMode,
-                postId = postId
+                postId = postId,
+                isReply = isReply
             )
         }
     }
@@ -1604,7 +1608,8 @@ fun AppHorizontalPager(
     padding: PaddingValues,
     navController: NavController,
     colorMode: MutableState<Int>,
-    postId: MutableState<Int>
+    postId: MutableState<Int>,
+    isReply: MutableState<Boolean>
 ) {
     HorizontalPager(
         modifier = modifier,
@@ -1629,7 +1634,8 @@ fun AppHorizontalPager(
                     topAppBarScrollBehavior = topAppBarScrollBehaviorList[2],
                     padding = padding,
                     navController = navController,
-                    postId = postId
+                    postId = postId,
+                    isReply = isReply
                 )
 
                 else -> Person(

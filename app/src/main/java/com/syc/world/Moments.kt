@@ -98,7 +98,8 @@ fun Moments(
     topAppBarScrollBehavior: ScrollBehavior,
     padding: PaddingValues,
     postId: MutableState<Int>,
-    navController: NavController
+    navController: NavController,
+    isReply: MutableState<Boolean>
 ) {
     Scaffold() {
         Column(modifier = Modifier.padding(PaddingValues(top = padding.calculateTopPadding()))) {
@@ -175,17 +176,13 @@ fun Moments(
                                 morepostId = postId,
                                 navController = navController,
                                 islike = post.islike,
-                                online = post.online
+                                online = post.online,
+                                isReply = isReply
                             )
                         }
                     }
                     item {
-                        Spacer(
-                            Modifier.height(
-                                WindowInsets.navigationBars.asPaddingValues()
-                                    .calculateBottomPadding() + 65.dp
-                            )
-                        )
+                        Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 65.dp))
                     }
                 }
             }
@@ -300,7 +297,8 @@ fun MomentsItem(
     morepostId: MutableState<Int>,
     navController: NavController,
     islike: Boolean,
-    online: Boolean
+    online: Boolean,
+    isReply: MutableState<Boolean> = remember { mutableStateOf(false) }
 ) {
     val timeAgo = remember {
         calculateTimeAgo(time)
@@ -990,6 +988,11 @@ fun MomentsItem(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    .clickable {
+                        morepostId.value = postId
+                        navController.navigate("Dynamic")
+                        isReply.value = true
+                    }
             ) {
                 Image(
                     painterResource(R.drawable.message),
