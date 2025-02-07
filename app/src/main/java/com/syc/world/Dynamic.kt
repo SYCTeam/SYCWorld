@@ -157,7 +157,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     }
     val showreply = remember { mutableStateOf(false) }
     val replyid = remember { mutableStateOf(0) }
-
+    val replyname = remember { mutableStateOf("") }
     Scaffold(topBar = {
         Column {
             SmallTopAppBar(
@@ -303,7 +303,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                         showreply.value = true
                         replyid.value = 0
                     }
-                    .fillMaxSize(), color = MiuixTheme.colorScheme.background.copy(alpha = 0.5f)) {
+                    .fillMaxSize(), color = MiuixTheme.colorScheme.background.copy(alpha = 1f)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxSize()
@@ -500,15 +500,15 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
             items(parentComments) { parentComment ->
                 Column(modifier = Modifier.background(CardDefaults.DefaultColor())) {
                     // 父级评论项
-                    CommentItem(comment = parentComment)
+                    CommentItem(comment = parentComment, show = showreply, replyid = replyid, replyname = replyname)
 
                     if (comment.toList().filter { it.parentCommentId == parentComment.id }.size != 0) {
                         // 子评论部分（支持多级嵌套）
-                        Card(modifier = Modifier.padding(start = 54.dp, top = 4.dp, end = 20.dp, bottom = 10.dp),
-                            color = MiuixTheme.colorScheme.background.copy(alpha = 0.5f),
+                        Card(modifier = Modifier.padding(start = 54.dp, top = 8.dp, end = 20.dp, bottom = 10.dp),
+                            color = MiuixTheme.colorScheme.background.copy(alpha = 1f),
                             cornerRadius = 8.dp) {
-                            ChildComments(parentId = parentComment.id, comments = comment.toList(), show = showreply, replyid = replyid)
-                            Spacer(modifier = Modifier.height(4.dp))
+                            ChildComments(parentId = parentComment.id, comments = comment.toList(), show = showreply, replyid = replyid, replyname = replyname)
+                            Spacer(modifier = Modifier.height(0.dp))
                         }
                     }
                 }
@@ -522,14 +522,16 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
             show = showreply,
             replyid = replyid.value,
             postId = postId,
-            comment = comment
+            comment = comment,
+            message = message,
+            replyname = replyname.value
         )
     }
 }
 
 // 4. 新增子评论组件
 @Composable
-private fun ChildComments(parentId: Int,comments: List<Comments>, show: MutableState<Boolean>, replyid: MutableState<Int>) {
+private fun ChildComments(parentId: Int,comments: List<Comments>, show: MutableState<Boolean>, replyid: MutableState<Int>,replyname: MutableState<String>) {
     // 筛选出直接子评论
     val childComments = comments.filter { it.parentCommentId == parentId }
 
@@ -539,27 +541,27 @@ private fun ChildComments(parentId: Int,comments: List<Comments>, show: MutableS
                 // 子评论项
                 ChildCommentItem(comment = child,
                     if (comments.filter { it.id == child.parentCommentId }[0].parentCommentId != 0) comments.filter { it.id == child.parentCommentId }[0].username else null,
-                    show, replyid)
+                    show, replyid,replyname)
 
                 // 递归显示更深层评论
-                ChildComments(parentId = child.id,comments = comments,show, replyid)
+                ChildComments(parentId = child.id,comments = comments,show, replyid,replyname)
             }
         }
     }
 }
 
 @Composable
-fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableState<Boolean>, replyid: MutableState<Int>) {
+fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableState<Boolean>, replyid: MutableState<Int>,replyname: MutableState<String>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp)
             .clickable {
                 show.value = true
                 replyid.value = comment.id
+                replyname.value = comment.username
             }
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp,top = 4.dp, bottom = 4.dp)) {
             Row(modifier = Modifier.weight(1f).padding(start = 0.dp)) {
                 if (twochild == null) {
                     Text(text =  comment.username+"：",
@@ -590,14 +592,18 @@ fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableS
 
 // 5. 改造后的 CommentItem
 @Composable
-fun CommentItem(comment: Comments) {
+fun CommentItem(comment: Comments, show: MutableState<Boolean>, replyid: MutableState<Int>,replyname: MutableState<String>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(CardDefaults.DefaultColor())
-            .padding(vertical = 8.dp)
+            .clickable {
+                show.value = true
+                replyid.value = comment.id
+                replyname.value = comment.username
+            }
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp).padding(vertical = 8.dp)) {
             // 头像部分
             AsyncImage(
                 model = "https://q.qlogo.cn/headimg_dl?dst_uin=${comment.qq}&spec=640&img_type=jpg",
@@ -679,7 +685,9 @@ fun ReplyDialog(
     onDismissRequest: (() -> Unit)? = { dismissDialog(show)  },
     replyid: Int,
     postId: Int,
-    comment: SnapshotStateList<Comments>
+    comment: SnapshotStateList<Comments>,
+    message: MutableState<Int>,
+    replyname: String? = null
 ) {
     if (!show.value) {
         dialogStates.remove(show)
@@ -755,6 +763,7 @@ fun ReplyDialog(
                                                 Toast.LENGTH_LONG
                                             ).show()
                                         }
+                                        message.value += 1
                                         dismissDialog(show)
                                         comment.add(Comments(post.second.toInt(), parentCommentId = replyid, Global.username, replycontent.value, timestamp, Global.userQQ.toLong(), true))
                                     } else {
@@ -783,7 +792,7 @@ fun ReplyDialog(
                             onValueChange = { replycontent.value = it },
                             backgroundColor = Color.Transparent,
                             cornerRadius = 0.dp,
-                            label = "回复" + if (replyid == 0) "楼主" else "",
+                            label = "回复" + if (replyid == 0) "楼主" else "@${replyname}",
                             minLines = 5,
                             insideMargin = DpSize(16.dp,15.dp),
                             modifier = Modifier.offset(y = (-13).dp)
