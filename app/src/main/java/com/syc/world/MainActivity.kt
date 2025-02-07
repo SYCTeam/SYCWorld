@@ -332,14 +332,6 @@ object Global {
         _chatSelection3.value = value
     }
 
-    private val _chatLazyColumnState = MutableStateFlow(LazyListState())
-    val chatLazyColumnState: StateFlow<LazyListState>
-        get() = _chatLazyColumnState
-
-    fun setChatLazyColumnState(value: LazyListState) {
-        _chatLazyColumnState.value = value
-    }
-
     private val _chatIsChatMessageAnimation = MutableStateFlow(false)
     val chatIsChatMessageAnimation: StateFlow<Boolean>
         get() = _chatIsChatMessageAnimation

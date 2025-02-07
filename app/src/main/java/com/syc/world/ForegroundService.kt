@@ -235,6 +235,8 @@ class ForegroundService : Service() {
         }
     }
 
+
+
     private fun chatMessageNotification() {
         val chatMessage = { mutableStateListOf<ChatMessage>() }
 

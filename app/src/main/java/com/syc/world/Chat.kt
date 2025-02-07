@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -597,7 +598,6 @@ fun ChatUi(navController: NavController) {
     val context = LocalContext.current
     var text by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
-    val listState = Global.chatLazyColumnState.collectAsState()
     var driveText by remember { mutableStateOf(false) }
     var isSendButtonVisible by remember { mutableStateOf(false) }
     val isDarkMode =
@@ -612,6 +612,7 @@ fun ChatUi(navController: NavController) {
 
     val chatMessage = remember { mutableStateListOf<ChatMessage>() }
 
+    val listState = rememberLazyListState()
 
     var isShowTime by remember { mutableStateOf(false) }
 
@@ -637,8 +638,8 @@ fun ChatUi(navController: NavController) {
         val timeDifference = ChronoUnit.MINUTES.between(lastTimestamp, currentTimestamp)
 
 
-        // 如果时间差超过 30 分钟，设置 isShowTime 为 true
-        if (timeDifference > 30) {
+        // 如果时间差超过 10 分钟，设置 isShowTime 为 true
+        if (timeDifference > 10) {
             isShowTime = true
         } else if (timeDifference != 0L){
             isShowTime = false
@@ -648,9 +649,9 @@ fun ChatUi(navController: NavController) {
     val messageIndex = chatMessage.size
 
 
-    LaunchedEffect(isLoading) {
-        if (chatMessage.isNotEmpty() && !isLoading) {
-            listState.value.animateScrollToItem(chatMessage.size - 1)
+    LaunchedEffect(chatMessage, isLoading, text) {
+        if (chatMessage.isNotEmpty() && !isLoading || (chatMessage.isNotEmpty() && text.trim().isNotEmpty())) {
+            listState.animateScrollToItem(chatMessage.size - 1)
         }
     }
 
@@ -691,7 +692,7 @@ fun ChatUi(navController: NavController) {
                             val isFirstMessage = index == 0 || calculateTimeDifference(
                                 lastMessageTimestamp,
                                 timestamp
-                            ) > 30
+                            ) > 10
 
                             // 如果消息不存在于已存在的列表中，则创建新消息
                             if (!existingMessages.contains(message to timestamp)) {
@@ -709,7 +710,8 @@ fun ChatUi(navController: NavController) {
                                     chatMessage.add(newMessage)
                                     existingMessages.add(message to timestamp)
                                     lastMessageTimestamp = timestamp // 更新上一条消息的时间戳
-                                    writeToFile(context, "/ChatMessage", "ChatMessage", chatMessage.toString())
+                                    writeToFile(context, "/ChatMessage/Count", personNameBeingChat.value, chatMessage.size.toString())
+                                    writeToFile(context, "/ChatMessage/Message", personNameBeingChat.value, chatMessage.toString())
                                     isLoading = false
                                 }
                             }
@@ -1034,15 +1036,16 @@ fun ChatUi(navController: NavController) {
             LaunchedEffect(chatMessage.size) {
                 // 延迟一下再滚动到最后一项，确保消息已经渲染
                 if (chatMessage.isNotEmpty()) {
-                    listState.value.animateScrollToItem(chatMessage.size - 1)
+                    listState.animateScrollToItem(chatMessage.size - 1)
                 }
             }
 
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 90.dp),
-                state = listState.value
+                    .padding(bottom = 90.dp)
+                    .imePadding(),
+                state = listState
             ) {
                 itemsIndexed(
                     chatMessage,
@@ -1134,8 +1137,7 @@ fun ChatUi(navController: NavController) {
                             modifier = Modifier
                                 .width(textFieldWidth)
                                 .height(textFieldHeight)
-                                .padding(start = 10.dp, end = 10.dp)
-                                .imePadding(),
+                                .padding(start = 10.dp, end = 10.dp),
                             value = text,
                             onValueChange = { newText -> text = newText },
                             textStyle = TextStyle(
@@ -1168,8 +1170,7 @@ fun ChatUi(navController: NavController) {
                             modifier = Modifier
                                 .width(textFieldWidth)
                                 .height(textFieldHeight)
-                                .padding(start = 10.dp, end = 10.dp)
-                                .imePadding(),
+                                .padding(start = 10.dp, end = 10.dp),
                             value = text,
                             onValueChange = { newText ->
                                 text = newText
