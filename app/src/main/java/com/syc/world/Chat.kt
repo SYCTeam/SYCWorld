@@ -1087,7 +1087,7 @@ fun ChatUi(navController: NavController) {
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = 10.dp),
+            .imePadding(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.Bottom
     ) {
