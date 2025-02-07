@@ -656,6 +656,7 @@ fun requestPermissions(context: Context) {
                 10002
             )
         }
+
     } ?: run {
         // 如果 context 不是 Activity 类型，则给出错误提示
         Log.e("权限问题", "Context is not an instance of Activity")
@@ -762,10 +763,8 @@ fun createChatMessageNotification(context: Context, title: String, content: Stri
         .setContentIntent(pendingIntent) // 设置点击通知时打开应用首页
 
     // 发送通知
-    notificationManager.notify(10001, notificationBuilder.build())
+    notificationManager.notify(10002, notificationBuilder.build())
 }
-
-
 
 // 电池优化
 @SuppressLint("BatteryLife")
