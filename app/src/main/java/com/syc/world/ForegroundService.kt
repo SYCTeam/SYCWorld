@@ -10,6 +10,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -35,6 +36,9 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStreamReader
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.regex.Pattern
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -646,23 +650,41 @@ class ForegroundService : Service() {
     @SuppressLint("SdCardPath")
     private fun buildForegroundNotification(text: String = "We are unstoppable."): Notification {
         val channelId = "SYC"
+        val channelName = "后台运行通知"
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val emptyIntent = Intent().apply {
+        // 创建时间格式化
+        val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        val startTime = timeFormat.format(Date()) // 获取当前时间
+
+        // 创建通知通道
+        val channel = NotificationChannel(
+            channelId,
+            channelName,
+            NotificationManager.IMPORTANCE_LOW // 设置低重要性，避免干扰
+        ).apply {
+            setSound(null, null)  // 取消声音
+            enableLights(false)    // 关闭LED灯
+            enableVibration(false) // 关闭震动
         }
+        notificationManager.createNotificationChannel(channel)
 
+        val emptyIntent = Intent()
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
             emptyIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
         val name = readFile("/data/data/com.syc.world/files/username")
 
         return NotificationCompat.Builder(this, channelId)
             .setContentTitle(if (name != "error") name else "酸夜沉空间正在运行中")
-            .setContentText(text)
+            .setContentText("启动时间: $startTime") // 显示通知启动时间
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
+            .setSilent(true)
             .setOngoing(true)
             .build()
     }
