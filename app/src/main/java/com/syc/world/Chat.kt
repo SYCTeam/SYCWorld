@@ -635,31 +635,30 @@ fun ChatUi(navController: NavController) {
     val messageIndex = chatMessage.size
 
 
-    LaunchedEffect(chatMessage, isLoading, text) {
+    LaunchedEffect(chatMessage.size, isLoading, text) {
         if (chatMessage.isNotEmpty() && !isLoading || (chatMessage.isNotEmpty() && isFocusTextField)
         ) {
             listState.animateScrollToItem(chatMessage.size - 1)
         }
     }
 
-    LaunchedEffect(chatMessage) {
-        if (chatMessage.isNotEmpty() && !isLoading) {
+    LaunchedEffect(chatMessage.size, isLoading, isSend) {
+        if (chatMessage.isNotEmpty()) {
             withContext(Dispatchers.IO) {
-                while (true) {
-                    writeToFile(
-                        context,
-                        "/ChatMessage/Count",
-                        personNameBeingChat.value,
-                        chatMessage.size.toString()
-                    )
-                    writeToFile(
-                        context,
-                        "/ChatMessage/Message",
-                        personNameBeingChat.value,
-                        chatMessage.toString()
-                    )
-                    delay(500)
-                }
+                writeToFile(
+                    context,
+                    "/ChatMessage/Count",
+                    personNameBeingChat.value,
+                    chatMessage.size.toString()
+                )
+                Log.d("写入问题", "已经写入count: ${chatMessage.size}")
+                writeToFile(
+                    context,
+                    "/ChatMessage/Message",
+                    personNameBeingChat.value,
+                    chatMessage.toString()
+                )
+                delay(500)
             }
         }
     }
@@ -752,7 +751,8 @@ fun ChatUi(navController: NavController) {
                     )
 
                     // 比较时间差，单位为分钟
-                    val timeDifference = ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
+                    val timeDifference =
+                        ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
 
                     isShowTime =
                         timeDifference > 10

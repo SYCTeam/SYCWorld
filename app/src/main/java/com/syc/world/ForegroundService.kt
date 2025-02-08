@@ -311,7 +311,7 @@ class ForegroundService : Service() {
                         if (hasNewMessage.first == "success") {
                             if (hasNewMessage.second != null) {
                                 val message = hasNewMessage.second
-                                if (message?.message == "true" && !isRing) {
+                                if (message?.hasNewMessages == "true" && !isRing) {
                                     Log.d("消息问题", "有新消息！")
                                     val sendCount =
                                         hasNewMessage.second!!.totalMessageCount - localMessageCount
@@ -320,7 +320,7 @@ class ForegroundService : Service() {
                                         sendCount
                                     )
                                     isRing = true
-                                } else if (message?.message == "false") {
+                                } else if (message?.hasNewMessages == "false") {
                                     isRing = false
 
                                     val notificationManager =
@@ -333,7 +333,7 @@ class ForegroundService : Service() {
                                 }
                             }
                         } else {
-                            hasNewMessage.second?.let { Log.d("消息问题", it.message) }
+                            hasNewMessage.second?.let { Log.d("消息问题", it.hasNewMessages) }
                         }
                     } else {
                         val notificationManager =

@@ -239,8 +239,8 @@ data class ChatMessageResponse(
 data class ChatInfo(
     @SerializedName("status")
     val status: String,
-    @SerializedName("message")
-    val message: String,
+    @SerializedName("hasNewMessages")
+    val hasNewMessages: String,
     @SerializedName("totalMessageCount")
     val totalMessageCount: Int
 )
