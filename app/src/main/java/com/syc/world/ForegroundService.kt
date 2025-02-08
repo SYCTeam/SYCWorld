@@ -408,7 +408,7 @@ class ForegroundService : Service() {
         // 重启主进程
         val intent = Intent(this, RescueProcessService::class.java)
         startService(intent)
-        Log.d("进程问题", "已尝试启动MainProcessService")
+        Log.d("进程问题", "已尝试启动RescueProcessService")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -432,7 +432,7 @@ class ForegroundService : Service() {
                         readFromFileForForegroundService(
                             applicationContext,
                             "isLogin"
-                        ).toBooleanStrict()
+                        ).toBoolean()
                     )
                 } else if (readFromFileForForegroundService(
                         applicationContext,
@@ -443,7 +443,7 @@ class ForegroundService : Service() {
                         readFromFileForForegroundService(
                             applicationContext,
                             "isLogin"
-                        ).toBooleanStrict()
+                        ).toBoolean()
                     )
                 }
 
@@ -452,7 +452,7 @@ class ForegroundService : Service() {
                         readFromFileForForegroundService(
                             applicationContext,
                             "isInForeground"
-                        ).toBooleanStrict()
+                        ).toBoolean()
                     )
                 } else if (readFromFileForForegroundService(
                         applicationContext,
@@ -463,7 +463,7 @@ class ForegroundService : Service() {
                         readFromFileForForegroundService(
                             applicationContext,
                             "isInForeground"
-                        ).toBooleanStrict()
+                        ).toBoolean()
                     )
                 }
 
@@ -715,7 +715,7 @@ class RescueProcessService : Service() {
 
     private fun restartForegroundServiceProcess() {
         val intent = Intent(this, ForegroundService::class.java)
-        startService(intent)
+        startForegroundService(intent)
         Log.d("进程问题", "已尝试启动前台服务")
     }
 
