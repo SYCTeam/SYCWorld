@@ -31,6 +31,8 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -221,7 +223,7 @@ fun PersonInfo(
         TopAppBar(
             title = "个人信息",
             color = Color.Transparent,
-            modifier = Modifier.hazeChild(
+            modifier = Modifier.hazeEffect(
                 state = hazeState,
                 style = hazeStyle
             ),
@@ -246,7 +248,7 @@ fun PersonInfo(
             contentPadding = PaddingValues(top = padding.calculateTopPadding()),
             topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier
                 .fillMaxSize()
-                .haze(state = hazeState)
+                .hazeSource(state = hazeState)
         ) {
             item {
                 SmallTitle("编辑资料")

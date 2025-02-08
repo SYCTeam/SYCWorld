@@ -56,6 +56,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -123,7 +124,9 @@ fun Moments(
                         2 -> "hot"
                         else -> "random"
                     }, username = Global.username, password = Global.password).second
-                    postlist.add(post)
+                    if (post.size != 0) {
+                        postlist.add(post)
+                    }
                 }
             }
             if (postlist.size == 0) {
@@ -253,10 +256,12 @@ fun markdownTypography1(
         fontWeight = FontWeight.Bold,
         textDecoration = TextDecoration.Underline
     ),
+    textLink: TextLinkStyles = TextLinkStyles(style = link.toSpanStyle())
 ): MarkdownTypography = DefaultMarkdownTypography(
     h1 = h1, h2 = h2, h3 = h3, h4 = h4, h5 = h5, h6 = h6,
     text = text, quote = quote, code = code, inlineCode = inlineCode, paragraph = paragraph,
     ordered = ordered, bullet = bullet, list = list, link = link,
+    textLink = textLink,
 )
 
 @Composable
@@ -400,40 +405,8 @@ fun MomentsItem(
                 },
                 fontSize = 16.sp,
             )*/
-            val highlightsBuilder =
-                Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
             val pattern = Regex("!\\[Image]\\(([^)]+)\\)")
-            Markdown(
-                elements.replace(pattern, "").take(90)+if (elements.replace(pattern, "").length > 90) "..." else "",
-                colors = markdownColor(),
-                extendedSpans = markdownExtendedSpans {
-                    val animator = rememberSquigglyUnderlineAnimator()
-                    remember {
-                        ExtendedSpans(
-                            RoundedCornerSpanPainter(),
-                            SquigglyUnderlineSpanPainter(animator = animator)
-                        )
-                    }
-                },
-                components = markdownComponents(
-                    codeBlock = {
-                        MarkdownHighlightedCodeBlock(
-                            it.content,
-                            it.node,
-                            highlightsBuilder
-                        )
-                    },
-                    codeFence = {
-                        MarkdownHighlightedCodeFence(
-                            it.content,
-                            it.node,
-                            highlightsBuilder
-                        )
-                    },
-                ),
-                imageTransformer = Coil3ImageTransformerImpl,
-                typography = markdownTypography1()
-            )
+            Markdown(elements.replace(pattern, "").take(90)+if (elements.replace(pattern, "").length > 90) "..." else "")
             Spacer(modifier = Modifier.height(10.dp))
             val pic = pattern.findAll(elements)
                 .mapNotNull { it.groups[1]?.value }

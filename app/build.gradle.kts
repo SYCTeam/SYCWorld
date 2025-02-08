@@ -82,6 +82,8 @@ android {
 }
 
 dependencies {
+    implementation("com.jvziyaoyao.scale:image-viewer:1.1.0-alpha.5")
+    implementation("com.jvziyaoyao.scale:sampling-decoder:1.1.0-alpha.5")
     implementation(libs.multiplatform.markdown.renderer.code)
     implementation(libs.multiplatform.markdown.renderer.coil3)
     implementation(libs.multiplatform.markdown.renderer.android)
