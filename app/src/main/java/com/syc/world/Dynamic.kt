@@ -152,6 +152,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
     val comment = remember { mutableStateListOf<Comments>() }
     val zanok = remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val online = remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             comment.clear()
@@ -169,6 +170,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                 Global.setChatSelection3(false)
                 comment.addAll(post[0].comments)
                 zanok.value = post[0].islike
+                online.value = post[0].online
                 delay(0)
                 withContext(Dispatchers.Main) {
                     if (isReply.value) listState.animateScrollToItem(1)
@@ -224,7 +226,14 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                             )
                                         )
                                 )
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Image(
+                                    painter = painterResource(id = if (online.value) R.drawable.point_green else R.drawable.point_gray),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .offset(x = (-9).dp, y = 22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(0.dp))
                                 Column {
                                     val timeAgo = remember {
                                         calculateTimeAgo(time.longValue)

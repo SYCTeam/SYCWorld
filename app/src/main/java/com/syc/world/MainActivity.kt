@@ -66,6 +66,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -77,6 +78,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -116,6 +118,7 @@ import okhttp3.Request
 import org.json.JSONObject
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalPager
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationItem
@@ -124,6 +127,7 @@ import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.getWindowSize
 import java.io.BufferedReader
@@ -1504,15 +1508,8 @@ fun AllHome(
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
             composable("ChatUi") { ChatUi(navController) }
             composable("ChatSettings") { ChatSettings(navController) }
-            composable("Dynamic") {
-                Dynamic(
-                    navController,
-                    postId.intValue,
-                    hazeState,
-                    hazeStyle,
-                    isReply
-                )
-            }
+            composable("Dynamic") { Dynamic(navController, postId.intValue, hazeState, hazeStyle,isReply) }
+            composable("Notification") { Notification(navController, hazeState, hazeStyle) }
         }
     }
 }
@@ -1557,13 +1554,13 @@ fun Main(
     isReply: MutableState<Boolean>
 ) {
     val topAppBarScrollBehavior0 =
-        MiuixScrollBehavior(top.yukonga.miuix.kmp.basic.rememberTopAppBarState())
+        MiuixScrollBehavior(rememberTopAppBarState())
     val topAppBarScrollBehavior1 =
-        MiuixScrollBehavior(top.yukonga.miuix.kmp.basic.rememberTopAppBarState())
+        MiuixScrollBehavior(rememberTopAppBarState())
     val topAppBarScrollBehavior2 =
-        MiuixScrollBehavior(top.yukonga.miuix.kmp.basic.rememberTopAppBarState())
+        MiuixScrollBehavior(rememberTopAppBarState())
     val topAppBarScrollBehavior3 =
-        MiuixScrollBehavior(top.yukonga.miuix.kmp.basic.rememberTopAppBarState())
+        MiuixScrollBehavior(rememberTopAppBarState())
 
     val topAppBarScrollBehaviorList = listOf(
         topAppBarScrollBehavior0,
@@ -1640,6 +1637,20 @@ fun Main(
                         contentDescription = null,
                         modifier = Modifier.size(50.dp)
                     )
+                }, actions = {
+                    IconButton(
+                        onClick = {
+                            navController.navigate("Notification")
+                        },
+                        modifier = Modifier,
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.noti),
+                            contentDescription = null,
+                            modifier = Modifier.size(50.dp).padding(10.dp),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onBackground)
+                        )
+                    }
                 })
         }) { padding ->
         Box(
@@ -1722,6 +1733,6 @@ fun getColorMode(context: Context): Flow<Int> {
     }
 }
 
-val Context.dataStore: DataStore<androidx.datastore.preferences.core.Preferences> by preferencesDataStore(
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
     name = "settings"
 )
