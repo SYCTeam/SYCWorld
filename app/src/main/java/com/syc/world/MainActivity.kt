@@ -384,8 +384,6 @@ class MainActivity : ComponentActivity() {
             // 注册生命周期观察者
             lifecycle.addObserver(appLifecycleObserver)
 
-            var isNotice = false
-
             CoroutineScope(Dispatchers.IO).launch {
                 while (true) {
                     // 调用 isAppInForeground 方法
@@ -393,20 +391,7 @@ class MainActivity : ComponentActivity() {
 
                     writeToFile(applicationContext, "", "isInForeground", isInForeground.toString())
 
-                    if (!isInForeground && !isNotice) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                applicationContext,
-                                "酸夜沉空间正在后台运行...",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                        isNotice = true
-                    } else if (isInForeground) {
-                        isNotice = false
-                    }
-
-                    delay(500)
+                    delay(100)
                 }
             }
 

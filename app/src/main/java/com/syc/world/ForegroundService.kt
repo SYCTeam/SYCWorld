@@ -477,7 +477,7 @@ class ForegroundService : Service() {
                 if (readPasswordResult.trim().isNotEmpty()) {
                     GlobalForForegroundService.password = readPasswordResult
                 }
-                delay(500)
+                delay(100)
             }
         }
 
