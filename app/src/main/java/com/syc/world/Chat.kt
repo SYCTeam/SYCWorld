@@ -643,7 +643,7 @@ fun ChatUi(navController: NavController) {
     }
 
     LaunchedEffect(chatMessage.size, isLoading, isSend) {
-        if (chatMessage.isNotEmpty()) {
+        if (chatMessage.size > 0) {
             withContext(Dispatchers.IO) {
                 writeToFile(
                     context,

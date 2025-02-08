@@ -302,9 +302,8 @@ class ForegroundService : Service() {
         CoroutineScope(Dispatchers.IO).launch {
             var isRing = false
             while (true) {
-                if (isLogin.value) {
+                if (isLogin.value && !isInForeground.value) {
                     val localMessageCount: Int = readAndSumFileContents(applicationContext)
-                    Log.d("读取问题", "localMessageCount: $localMessageCount")
                     if (localMessageCount != 0 && !isInForeground.value) {
                         val hasNewMessage = checkChatMessage(
                             GlobalForForegroundService.username,
@@ -316,12 +315,8 @@ class ForegroundService : Service() {
                                 val message = hasNewMessage.second
                                 if (message?.hasNewMessages == "true" && !isRing) {
                                     Log.d("消息问题", "有新消息！")
-                                    val sendCount =
-                                        hasNewMessage.second!!.totalMessageCount - localMessageCount
-                                    sendCount.coerceAtMost(3)
-                                    sendChatMessageNotification(
-                                        sendCount
-                                    )
+                                    val sendCount = (hasNewMessage.second!!.totalMessageCount - localMessageCount).coerceAtMost(3)
+                                    sendChatMessageNotification(sendCount)
                                     isRing = true
                                 } else if (message?.hasNewMessages == "false") {
                                     isRing = false
