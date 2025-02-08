@@ -771,7 +771,7 @@ fun ChatUi(navController: NavController) {
 
                 val sendResult =
                     sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
-
+                isSendSuccessfully = true
                 text = ""
 
                 if (sendResult.first == "error") {
@@ -826,7 +826,6 @@ fun ChatUi(navController: NavController) {
                                 }
                             }
                         }
-                        isSendSuccessfully = true
                     }
                 }
             }
