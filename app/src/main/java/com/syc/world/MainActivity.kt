@@ -16,7 +16,6 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.media.AudioAttributes
-import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -45,7 +44,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.AlertDialog
@@ -60,13 +58,11 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -84,6 +80,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.OnLifecycleEvent
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -343,23 +343,68 @@ object Global {
     }
 }
 
+class AppLifecycleObserver : LifecycleObserver {
+
+    private var isAppInForeground = false
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_START)
+    fun onAppForegrounded() {
+        isAppInForeground = true
+    }
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
+    fun onAppBackgrounded() {
+        isAppInForeground = false
+    }
+
+    fun isAppInForeground(): Boolean {
+        return isAppInForeground
+    }
+}
+
 class MainActivity : ComponentActivity() {
+    @SuppressLint("CoroutineCreationDuringComposition")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.isNavigationBarContrastEnforced = false
         setContent {
 
+            ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver())
+
             requestPermissions(this)
 
+            // 初始化生命周期观察者
+            val appLifecycleObserver = AppLifecycleObserver()
 
-            // 前台服务，启动！！！
-            val service1Intent = Intent(this, ForegroundService::class.java)
-            startForegroundService(service1Intent)
+            // 注册生命周期观察者
+            lifecycle.addObserver(appLifecycleObserver)
 
-            // 守护进程，启动！！！
-            val service2Intent = Intent(this, RescueProcessService::class.java)
-            startService(service2Intent)
+            var isNotice = false
+
+            CoroutineScope(Dispatchers.IO).launch {
+                while (true) {
+                    // 调用 isAppInForeground 方法
+                    val isInForeground = appLifecycleObserver.isAppInForeground()
+
+                    writeToFile(applicationContext, "", "isInForeground", isInForeground.toString())
+
+                    if (!isInForeground && !isNotice) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                applicationContext,
+                                "酸夜沉空间正在后台运行...",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        isNotice = true
+                    } else if (isInForeground) {
+                        isNotice = false
+                    }
+
+                    delay(500)
+                }
+            }
 
 
             val isLogin = Global.isLogin.collectAsState()
@@ -722,10 +767,12 @@ fun createChatMessageNotification(context: Context, title: String, content: Stri
     val notificationChannel = NotificationChannel(channelId, channelName, importance).apply {
         // 设置自定义铃声（来自 res/raw/ring.mp3）
         val soundUri = Uri.parse("android.resource://${context.packageName}/raw/ring")
-        setSound(soundUri, AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-            .build())
+        setSound(
+            soundUri, AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+        )
 
         // 启用震动
         enableVibration(true)
@@ -754,8 +801,8 @@ fun createChatMessageNotification(context: Context, title: String, content: Stri
         .setSmallIcon(R.drawable.new_message) // 设置通知图标
         .setContentTitle(title) // 设置通知标题
         .setContentText(content) // 设置通知内容
-        .setOngoing(true) // 设置通知为常驻通知
-        .setAutoCancel(false) // 禁止自动消失
+        .setOngoing(false) // 设置通知为常驻通知
+        .setAutoCancel(true) // 禁止自动消失
         .setPriority(NotificationCompat.PRIORITY_HIGH) // 高优先级，确保通知被展示
         .setVibrate(longArrayOf(0, 500, 1000)) // 设置震动模式
         .setSound(Uri.parse("android.resource://${context.packageName}/raw/ring")) // 设置铃声
@@ -784,7 +831,7 @@ fun requestIgnoreBatteryOptimizations(context: Context) {
         if (intent.resolveActivity(context.packageManager) != null) {
             context.startActivity(intent)
         } else {
-            Toast.makeText(context, "此设备不支持忽略电池优化设置", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "此设备不支持忽略电池优化设置", Toast.LENGTH_LONG).show()
         }
     }
 }
@@ -1021,7 +1068,12 @@ fun monitorStepCount(context: Context) {
         try {
             while (isActive) {
                 withContext(Dispatchers.Main) {
-                    writeToFile(context, "", "stepCount", ForegroundService.GlobalForForegroundService.stepCount.toString())
+                    writeToFile(
+                        context,
+                        "",
+                        "stepCount",
+                        ForegroundService.GlobalForForegroundService.stepCount.toString()
+                    )
                 }
                 delay(500)
             }
@@ -1452,7 +1504,15 @@ fun AllHome(
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
             composable("ChatUi") { ChatUi(navController) }
             composable("ChatSettings") { ChatSettings(navController) }
-            composable("Dynamic") { Dynamic(navController, postId.intValue, hazeState, hazeStyle,isReply) }
+            composable("Dynamic") {
+                Dynamic(
+                    navController,
+                    postId.intValue,
+                    hazeState,
+                    hazeStyle,
+                    isReply
+                )
+            }
         }
     }
 }

@@ -474,13 +474,14 @@ fun ChatMessage(message: ChatMessage) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 10.dp, end = 10.dp, bottom = 15.dp),
+                            .padding(start = 5.dp, end = 65.dp, bottom = 15.dp),
                         horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxHeight(),
+                                .fillMaxHeight()
+                                .padding(start = 10.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             AsyncImage(
@@ -488,7 +489,8 @@ fun ChatMessage(message: ChatMessage) {
                                 contentDescription = null,
                                 modifier = Modifier
                                     .size(45.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
                             )
                         }
                         Box(
@@ -496,10 +498,11 @@ fun ChatMessage(message: ChatMessage) {
                                 .fillMaxHeight()
                                 .padding(start = 10.dp)
                                 .clip(RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.CenterStart
                         ) {
                             Surface(
                                 modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
                                     .fillMaxHeight(),
                                 color = if (isDarkMode) Color(0xFF313131) else Color.White
                             ) {
@@ -639,6 +642,28 @@ fun ChatUi(navController: NavController) {
         }
     }
 
+    LaunchedEffect(chatMessage) {
+        if (chatMessage.isNotEmpty() && !isLoading) {
+            withContext(Dispatchers.IO) {
+                while (true) {
+                    writeToFile(
+                        context,
+                        "/ChatMessage/Count",
+                        personNameBeingChat.value,
+                        chatMessage.size.toString()
+                    )
+                    writeToFile(
+                        context,
+                        "/ChatMessage/Message",
+                        personNameBeingChat.value,
+                        chatMessage.toString()
+                    )
+                    delay(500)
+                }
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         while (true) {
             withContext(Dispatchers.IO) {
@@ -694,18 +719,6 @@ fun ChatUi(navController: NavController) {
                                     chatMessage.add(newMessage)
                                     existingMessages.add(message to timestamp)
                                     lastMessageTimestamp = timestamp // 更新上一条消息的时间戳
-                                    writeToFile(
-                                        context,
-                                        "/ChatMessage/Count",
-                                        personNameBeingChat.value,
-                                        chatMessage.size.toString()
-                                    )
-                                    writeToFile(
-                                        context,
-                                        "/ChatMessage/Message",
-                                        personNameBeingChat.value,
-                                        chatMessage.toString()
-                                    )
                                     isLoading = false
                                 }
                             }
@@ -717,9 +730,13 @@ fun ChatUi(navController: NavController) {
         }
     }
 
+    var isSendSuccessfully by remember { mutableStateOf(true) }
+
     LaunchedEffect(isSend) {
         withContext(Dispatchers.IO) {
-            if (isSend && Global.userQQ.trim().isNotEmpty()) {
+            if (isSend && isSendSuccessfully && Global.userQQ.trim().isNotEmpty()) {
+
+                isSendSuccessfully = false
 
                 isSend = false
 
@@ -774,6 +791,7 @@ fun ChatUi(navController: NavController) {
                             getMessage(Global.username, Global.password, personNameBeingChat.value)
 
                         if (getMessageResult.first == "error" && (getMessageResult.second as? List<*>).isNullOrEmpty()) {
+                            chatMessage.removeAt(messageIndex)
                             withContext(Dispatchers.Main) {
                                 Toast.makeText(
                                     context,
@@ -811,6 +829,7 @@ fun ChatUi(navController: NavController) {
                                 }
                             }
                         }
+                        isSendSuccessfully = true
                     }
                 }
             }
@@ -1079,12 +1098,8 @@ fun ChatUi(navController: NavController) {
                     .imePadding(),
                 state = listState
             ) {
-                itemsIndexed(
-                    chatMessage,
-                    key = { _, message -> message.sendTime } // 使用 sendTime 作为唯一标识符
-                ) { _, message ->
-                    // 只在首次显示时触发动画
-                    ChatMessage(message)
+                itemsIndexed(chatMessage) { _, message ->
+                    ChatMessage(message = message)
                 }
             }
         }

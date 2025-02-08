@@ -236,6 +236,15 @@ data class ChatMessageResponse(
     val chatRecords: List<ChatRecord>
 )
 
+data class ChatInfo(
+    @SerializedName("status")
+    val status: String,
+    @SerializedName("message")
+    val message: String,
+    @SerializedName("totalMessageCount")
+    val totalMessageCount: Int
+)
+
 suspend fun getUrl(): String {
     val url = "https://sharechain.qq.com/93bd306d9c78bc6c4bc469c43c086cb6"
 

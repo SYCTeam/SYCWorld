@@ -25,6 +25,7 @@ okhttp = "4.12.0"
 playServicesFitness = "21.2.0"
 playServicesLocation = "21.3.0"
 composeTesting = "1.0.0-alpha01"
+lifecycleProcess = "2.8.7"
 
 [libraries]
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
@@ -59,6 +60,7 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 play-services-fitness = { module = "com.google.android.gms:play-services-fitness", version.ref = "playServicesFitness" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 androidx-compose-testing = { group = "androidx.xr.compose", name = "compose-testing", version.ref = "composeTesting" }
+androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -18,6 +18,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.google.gson.Gson
+import com.syc.world.ForegroundService.GlobalForForegroundService.isInForeground
 import com.syc.world.ForegroundService.GlobalForForegroundService.isLogin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +53,14 @@ class ForegroundService : Service() {
 
         fun setIsLogin(value: Boolean) {
             _isLogin.value = value
+        }
+
+        private val _isInForeground = MutableStateFlow(false)
+        val isInForeground: StateFlow<Boolean>
+            get() = _isInForeground
+
+        fun setIsInForeground(value: Boolean) {
+            _isInForeground.value = value
         }
 
     }
@@ -187,20 +196,17 @@ class ForegroundService : Service() {
         username: String,
         password: String,
         localMessageCount: Int,
-    ): Pair<String, String> {
-        val url = "${GlobalForForegroundService.url}/syc/receiveChatMessage.php".toHttpUrlOrNull() ?: return Pair(
-            "Error",
-            "Invalid URL"
-        )
+    ): Pair<String, ChatInfo?> {
+        val url = "${GlobalForForegroundService.url}/syc/receiveChatMessage.php".toHttpUrlOrNull()
+            ?: return Pair("Error", null) // 如果URL无效，返回错误和null
 
         val client = OkHttpClient()
 
         // 创建请求体，包含用户名和密码
-        val formBodyBuilder =
-            FormBody.Builder()
-                .add("username", username)
-                .add("password", password)
-                .add("localMessageCount", localMessageCount.toString())
+        val formBodyBuilder = FormBody.Builder()
+            .add("username", username)
+            .add("password", password)
+            .add("localMessageCount", localMessageCount.toString())
 
         val formBody = formBodyBuilder.build()
 
@@ -218,19 +224,19 @@ class ForegroundService : Service() {
                 val responseBody = response.body?.string() ?: ""
                 Log.d("聊天信息获取", responseBody)
                 try {
-                    val pinUserInfo: WebCommonInfo =
-                        Gson().fromJson(responseBody, WebCommonInfo::class.java)
-                    Pair(pinUserInfo.status, pinUserInfo.message)
+                    // 解析响应为 ChatInfo 对象
+                    val chatInfo: ChatInfo = Gson().fromJson(responseBody, ChatInfo::class.java)
+                    Pair(chatInfo.status, chatInfo) // 返回状态和解析后的 ChatInfo 对象
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    Pair("error", "Parsing error")
+                    Pair("error", null) // 解析错误时返回错误和 null
                 }
             } else {
-                Pair("error", response.message)
+                Pair("error", null) // 请求失败时返回错误和 null
             }
         } catch (e: IOException) {
             e.printStackTrace()
-            Pair("error", e.message ?: "Unknown error")
+            Pair("error", null) // 请求异常时返回错误和 null
         }
     }
 
@@ -251,7 +257,10 @@ class ForegroundService : Service() {
                 if (file.isFile) {
                     Log.d("读取问题", "正在读取文件: ${file.name}")  // 日志记录
 
-                    val fileContent = readFromFileForForegroundService(context, "ChatMessage/Count/${file.name}")  // 更新为相对路径
+                    val fileContent = readFromFileForForegroundService(
+                        context,
+                        "ChatMessage/Count/${file.name}"
+                    )  // 更新为相对路径
 
                     // 尝试将文件内容转换为整数并累加
                     val fileValue = fileContent.toIntOrNull()
@@ -272,24 +281,68 @@ class ForegroundService : Service() {
     }
 
 
+    private fun sendChatMessageNotification(count: Int) {
+        CoroutineScope(Dispatchers.IO).launch {
+            for (i in 1..count) {
+                createChatMessageNotification(
+                    applicationContext,
+                    "您有${count}条未读消息",
+                    "请前往\"消息\"界面查看"
+                )
+                delay(2000)
+            }
+        }
+    }
 
 
     private fun chatMessageNotification() {
-
         CoroutineScope(Dispatchers.IO).launch {
-            while (isLogin.value) {
-                val localMessageCount = readAndSumFileContents(applicationContext)
-                Log.d("读取问题", "localMessageCount: $localMessageCount")
-                val hasNewMessage = checkChatMessage(GlobalForForegroundService.username, GlobalForForegroundService.password, localMessageCount)
-                if (hasNewMessage.first == "success") {
-                    if (hasNewMessage.second == "true") {
-                        Log.d("消息问题", "有新消息！")
-                        createChatMessageNotification(applicationContext, "您收到了一条消息", "请前往\"消息\"界面查看")
-                    } else if (hasNewMessage.second == "false") {
-                        Log.d("消息问题", "没有新消息。")
+            var isRing = false
+            while (true) {
+                if (isLogin.value) {
+                    val localMessageCount: Int = readAndSumFileContents(applicationContext)
+                    Log.d("读取问题", "localMessageCount: $localMessageCount")
+                    if (localMessageCount != 0 && !isInForeground.value) {
+                        val hasNewMessage = checkChatMessage(
+                            GlobalForForegroundService.username,
+                            GlobalForForegroundService.password,
+                            localMessageCount
+                        )
+                        if (hasNewMessage.first == "success") {
+                            if (hasNewMessage.second != null) {
+                                val message = hasNewMessage.second
+                                if (message?.message == "true" && !isRing) {
+                                    Log.d("消息问题", "有新消息！")
+                                    val sendCount =
+                                        hasNewMessage.second!!.totalMessageCount - localMessageCount
+                                    sendCount.coerceAtMost(3)
+                                    sendChatMessageNotification(
+                                        sendCount
+                                    )
+                                    isRing = true
+                                } else if (message?.message == "false") {
+                                    isRing = false
+
+                                    val notificationManager =
+                                        getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+                                    val notificationId = 10002
+                                    notificationManager.cancel(notificationId)
+
+                                    Log.d("消息问题", "没有新消息。")
+                                }
+                            }
+                        } else {
+                            hasNewMessage.second?.let { Log.d("消息问题", it.message) }
+                        }
+                    } else {
+                        val notificationManager =
+                            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+                        val notificationId = 10002
+                        notificationManager.cancel(notificationId)
+                        Log.d("消息问题", "软件在前台，不发送通知")
                     }
-                } else {
-                    Log.d("消息问题", hasNewMessage.second)
                 }
                 delay(3000)
             }
@@ -393,6 +446,27 @@ class ForegroundService : Service() {
                         ).toBooleanStrict()
                     )
                 }
+
+                if (readFromFileForForegroundService(applicationContext, "isInForeground") == "true") {
+                    GlobalForForegroundService.setIsInForeground(
+                        readFromFileForForegroundService(
+                            applicationContext,
+                            "isInForeground"
+                        ).toBooleanStrict()
+                    )
+                } else if (readFromFileForForegroundService(
+                        applicationContext,
+                        "isInForeground"
+                    ) == "false"
+                ) {
+                    GlobalForForegroundService.setIsInForeground(
+                        readFromFileForForegroundService(
+                            applicationContext,
+                            "isInForeground"
+                        ).toBooleanStrict()
+                    )
+                }
+
                 val readUsernameResult =
                     readFromFileForForegroundService(applicationContext, "username")
                 if (readUsernameResult.trim().isNotEmpty()) {
