@@ -23,6 +23,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +52,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.runtime.Composable
@@ -79,12 +83,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -101,6 +108,8 @@ import com.mikepenz.markdown.compose.extendedspans.ExtendedSpans
 import com.mikepenz.markdown.compose.extendedspans.RoundedCornerSpanPainter
 import com.mikepenz.markdown.compose.extendedspans.SquigglyUnderlineSpanPainter
 import com.mikepenz.markdown.compose.extendedspans.rememberSquigglyUnderlineAnimator
+import com.mikepenz.markdown.model.DefaultMarkdownTypography
+import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.markdownExtendedSpans
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
@@ -435,44 +444,11 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                         Column(modifier = Modifier
                             .fillMaxWidth()
                             .background(CardDefaults.DefaultColor())) {
-                            val highlightsBuilder =
-                                Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
                             if (elements.value != "") {
-                                Column {
-                                    Markdown(
-                                        elements.value,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        colors = markdownColor(),
-                                        extendedSpans = markdownExtendedSpans {
-                                            val animator = rememberSquigglyUnderlineAnimator()
-                                            remember {
-                                                ExtendedSpans(
-                                                    RoundedCornerSpanPainter(),
-                                                    SquigglyUnderlineSpanPainter(animator = animator)
-                                                )
-                                            }
-                                        },
-                                        components = markdownComponents(
-                                            codeBlock = {
-                                                MarkdownHighlightedCodeBlock(
-                                                    it.content,
-                                                    it.node,
-                                                    highlightsBuilder
-                                                )
-                                            },
-                                            codeFence = {
-                                                MarkdownHighlightedCodeFence(
-                                                    it.content,
-                                                    it.node,
-                                                    highlightsBuilder
-                                                )
-                                            },
-                                        ),
-                                        imageTransformer = Coil3ImageTransformerImpl,
-                                        typography = markdownTypography1()
-                                    )
+                                Column(modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)) {
+                                    Markdown(elements.value)
                                 }
                             }
                             Row(modifier = Modifier.padding(16.dp)) {
@@ -526,7 +502,7 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                 Card(modifier = Modifier.padding(start = 54.dp, top = 0.dp, end = 20.dp, bottom = 10.dp),
                                     color = MiuixTheme.colorScheme.background.copy(alpha = 1f),
                                     cornerRadius = 8.dp) {
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
                                     ChildComments(parentId = parentComment.id, comments = comment.toList(), show = showreply, replyid = replyid, replyname = replyname)
                                     Column(
                                         modifier = Modifier
@@ -546,7 +522,6 @@ fun Dynamic(navController: NavController,postId: Int,hazeState: HazeState,hazeSt
                                             }
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
                                 }
                             }
                         }
@@ -654,6 +629,7 @@ private fun ChildComments(parentId: Int,comments: List<Comments>, show: MutableS
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableState<Boolean>, replyid: MutableState<Int>,replyname: MutableState<String>) {
     Column(
@@ -667,8 +643,8 @@ fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableS
     ) {
         Row(modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
-            Row(modifier = Modifier.weight(1f)) {
+            .padding(start = 8.dp, top = 0.dp, bottom = 4.dp)) {
+            FlowRow(modifier = Modifier.weight(1f)) {
                 if (twochild == null) {
                     Text(text =  comment.username+"：",
                         fontSize = 14.sp,
@@ -686,11 +662,14 @@ fun ChildCommentItem(comment: Comments, twochild: String? = null, show: MutableS
                         fontSize = 14.sp)
                 }
                 // 评论内容
-                Text(
+                /*Text(
                     text = comment.content,
                     modifier = Modifier.padding(),
                     fontSize = 14.sp
-                )
+                )*/
+                Column(modifier = Modifier.padding(top = 0.dp, end = 8.dp).offset(y = (-2).dp)) {
+                    Markdown2(comment.content)
+                }
             }
         }
     }
@@ -789,11 +768,14 @@ fun MainChildCommentItem(comment: Comments, twochildname: String? = null,twochil
                 }
 
                 // 评论内容
-                Text(
+                /*Text(
                     text = comment.content,
                     modifier = Modifier.padding(top = 4.dp),
                     fontSize = 15.sp
-                )
+                )*/
+                Column(modifier = Modifier.padding(top = 0.dp, end = 8.dp)) {
+                    Markdown1(comment.content)
+                }
 
                 val timeAgo = remember {
                     calculateTimeAgo(comment.timestamp * 1000L) // 注意 timestamp 是 Long 类型
@@ -870,11 +852,14 @@ fun CommentItem(comment: Comments, show: MutableState<Boolean>, replyid: Mutable
                 }
 
                 // 评论内容
-                Text(
+                /*Text(
                     text = comment.content,
                     modifier = Modifier.padding(top = 4.dp),
                     fontSize = 15.sp
-                )
+                )*/
+                Column(modifier = Modifier.padding(top = 0.dp, end = 8.dp)) {
+                    Markdown1(comment.content)
+                }
 
                 val timeAgo = remember {
                     calculateTimeAgo(comment.timestamp * 1000L) // 注意 timestamp 是 Long 类型
@@ -900,6 +885,224 @@ fun CommentItem(comment: Comments, show: MutableState<Boolean>, replyid: Mutable
         }
     }
 }
+
+@Composable
+fun Markdown1(content: String,modifier: Modifier = Modifier) {
+    val highlightsBuilder =
+        Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
+    Markdown(
+        content.replace(Regex("(?<!\\n\\n)(!\\[Image]\\(.*?\\))"),"\n\n$1"),
+        colors = markdownColor(),
+        modifier = Modifier,
+        extendedSpans = markdownExtendedSpans {
+            val animator = rememberSquigglyUnderlineAnimator()
+            remember {
+                ExtendedSpans(
+                    RoundedCornerSpanPainter(),
+                    SquigglyUnderlineSpanPainter(animator = animator)
+                )
+            }
+        },
+        components = markdownComponents(
+            codeBlock = {
+                MarkdownHighlightedCodeBlock(
+                    it.content,
+                    it.node,
+                    highlightsBuilder
+                )
+            },
+            codeFence = {
+                MarkdownHighlightedCodeFence(
+                    it.content,
+                    it.node,
+                    highlightsBuilder
+                )
+            },
+        ),
+        imageTransformer = Coil3ImageTransformerImpl,
+        typography = markdownTypography2()
+    )
+}
+
+@Composable
+fun markdownTypography2(
+    h1: TextStyle = MaterialTheme.typography.displayLarge.copy(
+        fontSize = 24.sp,
+        lineHeight = 30.sp
+    ),
+    h2: TextStyle = MaterialTheme.typography.displayMedium.copy(
+        fontSize = 21.sp,
+        lineHeight = 26.sp
+    ),
+    h3: TextStyle = MaterialTheme.typography.displaySmall.copy(
+        fontSize = 18.sp,
+        lineHeight = 22.sp
+    ),
+    h4: TextStyle = MaterialTheme.typography.headlineMedium.copy(
+        fontSize = 16.sp,
+        lineHeight = 20.sp
+    ),
+    h5: TextStyle = MaterialTheme.typography.headlineSmall.copy(
+        fontSize = 15.sp,
+        lineHeight = 19.sp
+    ),
+    h6: TextStyle = MaterialTheme.typography.titleLarge.copy(
+        fontSize = 13.sp,
+        lineHeight = 17.sp
+    ),
+    text: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 15.sp,
+        lineHeight = 19.sp
+    ),
+    code: TextStyle = MaterialTheme.typography.bodyMedium.copy(
+        fontSize = 13.sp,
+        lineHeight = 17.sp
+    ),
+    inlineCode: TextStyle = text,
+    quote: TextStyle = MaterialTheme.typography.bodyMedium.plus(
+        SpanStyle(fontStyle = FontStyle.Italic)
+    ).copy(
+        fontSize = 15.sp,
+        lineHeight = 19.sp
+    ),
+    paragraph: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 15.sp,
+        lineHeight = 19.sp
+    ),
+    ordered: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 15.sp,
+        lineHeight = 19.sp
+    ),
+    bullet: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 15.sp,
+        lineHeight = 19.sp
+    ),
+    list: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 15.sp,
+        lineHeight = 19.sp
+    ),
+    link: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 15.sp,
+        lineHeight = 19.sp,
+        fontWeight = FontWeight.Bold,
+        textDecoration = TextDecoration.Underline
+    ),
+    textLink: TextLinkStyles = TextLinkStyles(style = link.toSpanStyle())
+): MarkdownTypography = DefaultMarkdownTypography(
+    h1 = h1, h2 = h2, h3 = h3, h4 = h4, h5 = h5, h6 = h6,
+    text = text, quote = quote, code = code, inlineCode = inlineCode, paragraph = paragraph,
+    ordered = ordered, bullet = bullet, list = list, link = link,
+    textLink = textLink,
+)
+
+@Composable
+fun Markdown2(content: String,modifier: Modifier= Modifier) {
+    val highlightsBuilder =
+        Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
+    Markdown(
+        content.replace(Regex("(?<!\\n\\n)(!\\[Image]\\(.*?\\))"),"\n\n$1"),
+        colors = markdownColor(),
+        modifier = Modifier,
+        extendedSpans = markdownExtendedSpans {
+            val animator = rememberSquigglyUnderlineAnimator()
+            remember {
+                ExtendedSpans(
+                    RoundedCornerSpanPainter(),
+                    SquigglyUnderlineSpanPainter(animator = animator)
+                )
+            }
+        },
+        components = markdownComponents(
+            codeBlock = {
+                MarkdownHighlightedCodeBlock(
+                    it.content,
+                    it.node,
+                    highlightsBuilder
+                )
+            },
+            codeFence = {
+                MarkdownHighlightedCodeFence(
+                    it.content,
+                    it.node,
+                    highlightsBuilder
+                )
+            },
+        ),
+        imageTransformer = Coil3ImageTransformerImpl,
+        typography = markdownTypography3()
+    )
+}
+
+@Composable
+fun markdownTypography3(
+    h1: TextStyle = MaterialTheme.typography.displayLarge.copy(
+        fontSize = 22.sp,
+        lineHeight = 28.sp
+    ),
+    h2: TextStyle = MaterialTheme.typography.displayMedium.copy(
+        fontSize = 19.sp,
+        lineHeight = 24.sp
+    ),
+    h3: TextStyle = MaterialTheme.typography.displaySmall.copy(
+        fontSize = 17.sp,
+        lineHeight = 21.sp
+    ),
+    h4: TextStyle = MaterialTheme.typography.headlineMedium.copy(
+        fontSize = 15.sp,
+        lineHeight = 19.sp
+    ),
+    h5: TextStyle = MaterialTheme.typography.headlineSmall.copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    h6: TextStyle = MaterialTheme.typography.titleLarge.copy(
+        fontSize = 12.sp,
+        lineHeight = 16.sp
+    ),
+    text: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    code: TextStyle = MaterialTheme.typography.bodyMedium.copy(
+        fontSize = 12.sp,
+        lineHeight = 16.sp
+    ),
+    inlineCode: TextStyle = text,
+    quote: TextStyle = MaterialTheme.typography.bodyMedium.plus(
+        SpanStyle(fontStyle = FontStyle.Italic)
+    ).copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    paragraph: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    ordered: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    bullet: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    list: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp
+    ),
+    link: TextStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        fontWeight = FontWeight.Bold,
+        textDecoration = TextDecoration.Underline
+    ),
+    textLink: TextLinkStyles = TextLinkStyles(style = link.toSpanStyle())
+): MarkdownTypography = DefaultMarkdownTypography(
+    h1 = h1, h2 = h2, h3 = h3, h4 = h4, h5 = h5, h6 = h6,
+    text = text, quote = quote, code = code, inlineCode = inlineCode, paragraph = paragraph,
+    ordered = ordered, bullet = bullet, list = list, link = link,
+    textLink = textLink,
+)
 
 fun calculateTimeAgo(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp

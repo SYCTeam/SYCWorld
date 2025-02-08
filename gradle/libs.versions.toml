@@ -3,7 +3,7 @@ gson = "2.11.0"
 agp = "8.8.0"
 coilNetworkOkhttp = "3.0.4"
 haze = "1.2.2"
-kotlin = "2.1.0"
+kotlin = "2.1.10"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -16,9 +16,8 @@ miuix = "0.3.4"
 datastoreCoreAndroid = "1.1.2"
 datastorePreferencesCoreJvm = "1.1.2"
 datastorePreferences = "1.1.2"
-multiplatformMarkdownRendererAndroid = "0.30.0"
+multiplatformMarkdownRendererAndroid = "0.31.0-b04"
 multiplatformMarkdownRendererCode = "0.30.0"
-multiplatformMarkdownRendererCoil2 = "0.30.0"
 multiplatformMarkdownRendererCoil3 = "0.30.0"
 navigationCompose = "2.8.6"
 okhttp = "4.12.0"
@@ -54,7 +53,6 @@ miuix = { module = "top.yukonga.miuix.kmp:miuix", version.ref = "miuix" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 multiplatform-markdown-renderer-android = { module = "com.mikepenz:multiplatform-markdown-renderer-android", version.ref = "multiplatformMarkdownRendererAndroid" }
 multiplatform-markdown-renderer-code = { module = "com.mikepenz:multiplatform-markdown-renderer-code", version.ref = "multiplatformMarkdownRendererCode" }
-multiplatform-markdown-renderer-coil2 = { module = "com.mikepenz:multiplatform-markdown-renderer-coil2", version.ref = "multiplatformMarkdownRendererCoil2" }
 multiplatform-markdown-renderer-coil3 = { module = "com.mikepenz:multiplatform-markdown-renderer-coil3", version.ref = "multiplatformMarkdownRendererCoil3" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 play-services-fitness = { module = "com.google.android.gms:play-services-fitness", version.ref = "playServicesFitness" }

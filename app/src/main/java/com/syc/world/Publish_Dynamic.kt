@@ -113,39 +113,7 @@ fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeStat
                     }
                     AnimatedVisibility(selectedTab.intValue == 1) {
                         Column(modifier = Modifier.padding(6.dp)) {
-                            val highlightsBuilder =
-                                Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
-                            Markdown(
-                                element.value,
-                                colors = markdownColor(),
-                                extendedSpans = markdownExtendedSpans {
-                                    val animator = rememberSquigglyUnderlineAnimator()
-                                    remember {
-                                        ExtendedSpans(
-                                            RoundedCornerSpanPainter(),
-                                            SquigglyUnderlineSpanPainter(animator = animator)
-                                        )
-                                    }
-                                },
-                                components = markdownComponents(
-                                    codeBlock = {
-                                        MarkdownHighlightedCodeBlock(
-                                            it.content,
-                                            it.node,
-                                            highlightsBuilder
-                                        )
-                                    },
-                                    codeFence = {
-                                        MarkdownHighlightedCodeFence(
-                                            it.content,
-                                            it.node,
-                                            highlightsBuilder
-                                        )
-                                    },
-                                ),
-                                imageTransformer = Coil3ImageTransformerImpl,
-                                typography = markdownTypography1()
-                            )
+                            Markdown(element.value)
                         }
                     }
                     val send = remember { mutableStateOf(false) }
@@ -193,4 +161,41 @@ fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeStat
             }
         }
     }
+}
+
+@Composable
+fun Markdown(content: String) {
+    val highlightsBuilder =
+        Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
+    Markdown(
+        content.replace(Regex("(?<!\\n\\n)(!\\[Image]\\(.*?\\))"),"\n\n$1"),
+        colors = markdownColor(),
+        extendedSpans = markdownExtendedSpans {
+            val animator = rememberSquigglyUnderlineAnimator()
+            remember {
+                ExtendedSpans(
+                    RoundedCornerSpanPainter(),
+                    SquigglyUnderlineSpanPainter(animator = animator)
+                )
+            }
+        },
+        components = markdownComponents(
+            codeBlock = {
+                MarkdownHighlightedCodeBlock(
+                    it.content,
+                    it.node,
+                    highlightsBuilder
+                )
+            },
+            codeFence = {
+                MarkdownHighlightedCodeFence(
+                    it.content,
+                    it.node,
+                    highlightsBuilder
+                )
+            },
+        ),
+        imageTransformer = Coil3ImageTransformerImpl,
+        typography = markdownTypography1()
+    )
 }

@@ -649,7 +649,9 @@ fun LatestContentShow(postId: MutableState<Int>, navController: NavController) {
         withContext(Dispatchers.IO) {
             postlist.clear()
             val post = getPost("latest", username = Global.username, password = Global.password).second
-            postlist.add(post[0])
+            if (post.size != 0) {
+                postlist.add(post[0])
+            }
         }
     }
     Box(
