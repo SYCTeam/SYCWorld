@@ -345,7 +345,7 @@ object Global {
 
 class AppLifecycleObserver : LifecycleObserver {
 
-    private var isAppInForeground = false
+    private var isAppInForeground = true
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
     fun onAppForegrounded() {
