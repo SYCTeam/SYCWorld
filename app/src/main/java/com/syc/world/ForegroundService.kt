@@ -341,7 +341,9 @@ class ForegroundService : Service() {
 
                         val notificationId = 10002
                         notificationManager.cancel(notificationId)
-                        Log.d("消息问题", "软件在前台，不发送通知")
+                        if (isInForeground.value) {
+                            Log.d("消息问题", "软件在前台，不发送通知")
+                        }
                     }
                 }
                 delay(3000)

@@ -620,7 +620,7 @@ fun ChatUi(navController: NavController) {
 
     val listState = rememberLazyListState()
 
-    var isShowTime by remember { mutableStateOf(false) }
+    var isShowTime by remember { mutableStateOf(true) }
 
     var myMessage = ChatMessage(
         isShowTime,
@@ -672,7 +672,7 @@ fun ChatUi(navController: NavController) {
                     val getMessageResult =
                         getMessage(Global.username, Global.password, personNameBeingChat.value)
 
-                    if (getMessageResult.first == "error") {
+                    if (getMessageResult.first == "error" && getMessageResult.second.isNotEmpty()) {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 context,
@@ -740,25 +740,22 @@ fun ChatUi(navController: NavController) {
 
                 isSend = false
 
-                // 计算时间差，确保时间格式化无误
-                val lastMessageTime = LocalDateTime.parse(
-                    chatMessage.last().sendTime,
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                )
-                val currentMessageTime = LocalDateTime.parse(
-                    myMessage.sendTime,
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                )
+                if (chatMessage.isNotEmpty()) {
+                    // 计算时间差，确保时间格式化无误
+                    val lastMessageTime = LocalDateTime.parse(
+                        chatMessage.last().sendTime,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    )
+                    val currentMessageTime = LocalDateTime.parse(
+                        myMessage.sendTime,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    )
 
-                // 比较时间差，单位为分钟
-                val timeDifference = ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
+                    // 比较时间差，单位为分钟
+                    val timeDifference = ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
 
-                // 如果时间差超过 10 分钟，设置 isShowTime 为 true
-                isShowTime = if (timeDifference > 10) {
-                    true
-                } else {
-                    // 否则，不显示时间
-                    false
+                    isShowTime =
+                        timeDifference > 10
                 }
 
                 myMessage = ChatMessage(
