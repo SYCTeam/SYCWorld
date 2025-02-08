@@ -10,7 +10,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -648,7 +647,7 @@ class ForegroundService : Service() {
     }
 
     @SuppressLint("SdCardPath")
-    private fun buildForegroundNotification(text: String = "We are unstoppable."): Notification {
+    private fun buildForegroundNotification(): Notification {
         val channelId = "SYC"
         val channelName = "后台运行通知"
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
