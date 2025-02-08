@@ -240,9 +240,20 @@ data class ChatInfo(
     @SerializedName("status")
     val status: String,
     @SerializedName("hasNewMessages")
-    val hasNewMessages: String,
+    val hasNewMessages: Boolean,
     @SerializedName("totalMessageCount")
-    val totalMessageCount: Int
+    val totalMessageCount: Int,
+    @SerializedName("lastMessage")
+    val lastMessage: LastMessage
+)
+
+data class LastMessage(
+    @SerializedName("sender")
+    val sender: String,
+    @SerializedName("senderQQ")
+    val senderQQ: String,
+    @SerializedName("content")
+    val content: String
 )
 
 suspend fun getUrl(): String {

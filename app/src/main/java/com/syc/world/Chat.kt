@@ -1,6 +1,7 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.res.Configuration
 import android.util.Log
 import android.widget.Toast
@@ -84,6 +85,7 @@ import androidx.compose.ui.unit.times
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.google.gson.Gson
+import com.syc.world.ForegroundService.ChatNewMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -92,8 +94,10 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import java.text.SimpleDateFormat
+import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
@@ -128,6 +132,160 @@ fun getCurrentTime(): String {
     return currentTime.format(formatter)
 }
 
+fun getCurrentTimeForChatList(): String {
+    val currentTime = LocalDateTime.now()
+    val hour = currentTime.hour
+    val minute = currentTime.minute
+
+    // 判断时间段
+    val timePeriod = when (hour) {
+        in 0..5 -> "凌晨" // 0点到5点之间为凌晨
+        in 6..11 -> "早上" // 6点到11点之间为早上
+        in 12..17 -> "下午" // 12点到17点之间为下午
+        else -> "晚上" // 18点到23点之间为晚上
+    }
+
+    return "$timePeriod$hour:${minute.toString().padStart(2, '0')}"
+}
+
+fun formatTime(inputTime: String): String {
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+    try {
+        val inputDateTime = LocalDateTime.parse(inputTime, formatter)
+        val currentDateTime = LocalDateTime.now()
+
+        val daysBetween =
+            ChronoUnit.DAYS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
+
+        if (daysBetween == 1L) {
+            return "昨天"
+        }
+
+        if (daysBetween in 2L..6L) {
+            val dayOfWeek = inputDateTime.dayOfWeek
+            return when (dayOfWeek) {
+                DayOfWeek.MONDAY -> "周一"
+                DayOfWeek.TUESDAY -> "周二"
+                DayOfWeek.WEDNESDAY -> "周三"
+                DayOfWeek.THURSDAY -> "周四"
+                DayOfWeek.FRIDAY -> "周五"
+                DayOfWeek.SATURDAY -> "周六"
+                DayOfWeek.SUNDAY -> "周日"
+                else -> "未知"
+            }
+        }
+
+        val hour = inputDateTime.hour % 12 // 转换为12小时制
+        val minute = inputDateTime.minute
+
+        val timePeriod = when (hour) {
+            in 0..5 -> "凌晨"
+            in 6..11 -> "早上"
+            else -> "下午"
+        }
+
+        return "$timePeriod${hour.toString().padStart(2, '0')}:${
+            minute.toString().padStart(2, '0')
+        }"
+
+    } catch (e: DateTimeParseException) {
+        return inputTime
+    }
+}
+
+fun formatTimeInChat(inputTime: String): String {
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+    try {
+        val inputDateTime = LocalDateTime.parse(inputTime, formatter)
+        val currentDateTime = LocalDateTime.now()
+
+        val daysBetween =
+            ChronoUnit.DAYS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
+
+        val hour = inputDateTime.hour
+        val minute = inputDateTime.minute
+        val timePeriod = when (hour) {
+            in 0..5 -> "凌晨"
+            in 6..11 -> "早上"
+            in 12..17 -> "下午"
+            else -> "晚上"
+        }
+        val formattedTime = "$timePeriod ${hour % 12}:${minute.toString().padStart(2, '0')}"
+
+        if (daysBetween == 1L) {
+            return "昨天$formattedTime"
+        }
+
+        if (daysBetween in 2L..6L) {
+            val dayOfWeek = inputDateTime.dayOfWeek
+            val weekDay = when (dayOfWeek) {
+                DayOfWeek.MONDAY -> "周一"
+                DayOfWeek.TUESDAY -> "周二"
+                DayOfWeek.WEDNESDAY -> "周三"
+                DayOfWeek.THURSDAY -> "周四"
+                DayOfWeek.FRIDAY -> "周五"
+                DayOfWeek.SATURDAY -> "周六"
+                DayOfWeek.SUNDAY -> "周日"
+                else -> "未知"
+            }
+            return "$weekDay$formattedTime"
+        }
+
+        if (inputDateTime.year == currentDateTime.year) {
+            return "${inputDateTime.monthValue}月${inputDateTime.dayOfMonth}日 $formattedTime"
+        }
+
+        return "${inputDateTime.year}年${inputDateTime.monthValue}月${inputDateTime.dayOfMonth}日 $formattedTime"
+
+    } catch (e: DateTimeParseException) {
+        return inputTime
+    }
+}
+
+fun readChatMessagesFromFile(context: Context, senderName: String): List<ChatNewMessage> {
+    val fileName = "ChatMessage/NewMessage/$senderName.json"
+    val existingData = readFromFile(context, fileName)
+    return if (existingData.isNotEmpty()) {
+        Gson().fromJson(existingData, Array<ChatNewMessage>::class.java).toList()
+    } else {
+        emptyList()
+    }
+}
+
+fun getMessageFromFile(context: Context, senderName: String): List<ChatMessage> {
+    val fileName = "ChatMessage/Message/$senderName"
+    val existingData = readFromFile(context, fileName)
+
+    if (existingData.isNotEmpty()) {
+        val messageList = mutableListOf<ChatMessage>()
+
+        val regex =
+            """ChatMessage\(isShowTime=(\w+), chatName=([\w\u4e00-\u9fa5]+), sender=(\w+), senderQQ=(\d+), message=([\s\S]+?), sendTime=([\d\-:\s]+)\)""".toRegex()
+
+        val matches = regex.findAll(existingData)
+
+        matches.forEach { match ->
+            val isShowTime = match.groupValues[1].toBoolean()
+            val chatName = match.groupValues[2]
+            val senderType = SenderType.valueOf(match.groupValues[3])
+            val senderQQ = match.groupValues[4]
+            val message = match.groupValues[5]
+            val sendTime = match.groupValues[6]
+
+            val chatMessage =
+                ChatMessage(isShowTime, chatName, senderType, senderQQ, message, sendTime)
+            messageList.add(chatMessage)
+        }
+
+        return messageList
+    } else {
+        return emptyList()
+    }
+}
+
+
 @Composable
 fun Chat(
     topAppBarScrollBehavior: ScrollBehavior,
@@ -137,6 +295,7 @@ fun Chat(
     val context = LocalContext.current
     var isLoading by remember { mutableStateOf(true) }
     var chatGroups by remember { mutableStateOf(listOf<ChatGroup>()) }
+    val unreadCountInChat = Global.unreadCountInChat.collectAsState()
 
     LaunchedEffect(Unit) {
         Global.setChatIsChatMessageAnimation(false)
@@ -152,19 +311,49 @@ fun Chat(
                         ).show()
                     }
                 } else if (chatList.first == "success") {
+
                     isLoading = false
 
                     chatGroups = chatList.second.map { chatItem ->
-                        ChatGroup(
-                            chatItem.qq,
-                            "联系人",
-                            chatItem.username,
-                            "嘿！咱项目终于完成80%了！",
-                            "晚上7:26",
-                            chatItem.isPinned,
-                            chatItem.online,
-                            3,
-                        )
+                        val newMessage = readChatMessagesFromFile(context, chatItem.username)
+
+                        val latestMessage = newMessage.lastOrNull()?.content ?: ""
+
+                        val latestMessageTime =
+                            newMessage.lastOrNull()?.time ?: getCurrentTimeForChatList()
+
+                        val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
+
+                        if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
+                            Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
+                            // 创建 ChatGroup 对象
+                            ChatGroup(
+                                chatItem.qq,
+                                "联系人",
+                                chatItem.username,
+                                latestMessage,
+                                latestMessageTime,
+                                chatItem.isPinned,
+                                chatItem.online,
+                                newMessageCount
+                            )
+                        } else {
+                            val messageList = getMessageFromFile(context, chatItem.username)
+                            // 创建 ChatGroup 对象
+                            ChatGroup(
+                                chatItem.qq,
+                                "联系人",
+                                chatItem.username,
+                                messageList.lastOrNull()?.message ?: "",
+                                formatTime(
+                                    messageList.lastOrNull()?.sendTime
+                                        ?: getCurrentTimeForChatList()
+                                ),
+                                chatItem.isPinned,
+                                chatItem.online,
+                                newMessageCount
+                            )
+                        }
                     }
                 }
                 delay(3000)
@@ -186,9 +375,6 @@ fun Chat(
             }
         }
     }
-
-
-    Global.setUnreadCountInChat("4")
 
     Scaffold {
         if (!isLoading) {
@@ -303,6 +489,9 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                         interactionSource = MutableInteractionSource()
                     ) {
                         if (!isNavigate) {
+                            if (group.isUnread > 0) {
+                                deleteFile(context, "ChatMessage/NewMessage/${group.chatName}.json")
+                            }
                             Global.setPersonNameBeingChat(group.chatName)
                             Global.setPersonQQBeingChat(group.groupQQ)
                             Global.setPersonIsOnlineBeingChat(group.isOnline)
@@ -454,7 +643,7 @@ fun ChatMessage(message: ChatMessage) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = message.sendTime,
+                        text = formatTimeInChat(message.sendTime),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier,
                         overflow = TextOverflow.Ellipsis,
@@ -465,9 +654,9 @@ fun ChatMessage(message: ChatMessage) {
             if (message.sender == SenderType.Others) {
                 AnimatedVisibility(
                     visible = chatIsChatMessageAnimation.value,
-                    enter = fadeIn(tween(durationMillis = 300)) + slideInHorizontally(
+                    enter = fadeIn(tween(durationMillis = 500)) + slideInHorizontally(
                         initialOffsetX = { +300 },
-                        animationSpec = tween(durationMillis = 300)
+                        animationSpec = tween(durationMillis = 500)
                     ),
                     exit = fadeOut(tween(durationMillis = 300))
                 ) {
@@ -527,9 +716,9 @@ fun ChatMessage(message: ChatMessage) {
             } else if (message.sender == SenderType.Me) {
                 AnimatedVisibility(
                     visible = chatIsChatMessageAnimation.value,
-                    enter = fadeIn(tween(durationMillis = 300)) + slideInHorizontally(
+                    enter = fadeIn(tween(durationMillis = 500)) + slideInHorizontally(
                         initialOffsetX = { -300 },
-                        animationSpec = tween(durationMillis = 300)
+                        animationSpec = tween(durationMillis = 500)
                     ),
                     exit = fadeOut(tween(durationMillis = 300))
                 ) {
@@ -664,6 +853,11 @@ fun ChatUi(navController: NavController) {
     }
 
     LaunchedEffect(Unit) {
+        val messageList = getMessageFromFile(context, personNameBeingChat.value)
+        if (messageList.isNotEmpty()) {
+            chatMessage.addAll(messageList)
+        }
+
         while (true) {
             withContext(Dispatchers.IO) {
                 isLoading = true
@@ -1082,7 +1276,7 @@ fun ChatUi(navController: NavController) {
             LaunchedEffect(chatMessage.size) {
                 // 延迟一下再滚动到最后一项，确保消息已经渲染
                 if (chatMessage.isNotEmpty()) {
-                    delay(500)
+                    delay(1500)
                     listState.animateScrollToItem(chatMessage.size - 1)
                 }
             }

@@ -18,6 +18,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import com.syc.world.ForegroundService.GlobalForForegroundService.isInForeground
 import com.syc.world.ForegroundService.GlobalForForegroundService.isLogin
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +37,7 @@ import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStreamReader
 import java.text.SimpleDateFormat
+import java.time.LocalDateTime
 import java.util.Date
 import java.util.Locale
 import java.util.regex.Pattern
@@ -283,15 +285,49 @@ class ForegroundService : Service() {
         return totalSum
     }
 
+    // 定义消息数据类
+    data class ChatNewMessage(
+        @SerializedName("messageCount") val messageCount: Int,
+        @SerializedName("senderName") val senderName: String,
+        @SerializedName("content") val content: String,
+        @SerializedName("time") val time: String,
+    )
 
-    private fun sendChatMessageNotification(count: Int) {
+    private fun getCurrentTimeForChatList(): String {
+        val currentTime = LocalDateTime.now()
+        val hour = currentTime.hour
+        val minute = currentTime.minute
+
+        // 判断时间段
+        val timePeriod = when (hour) {
+            in 0..5 -> "凌晨" // 0点到5点之间为凌晨
+            in 6..11 -> "早上" // 6点到11点之间为早上
+            in 12..17 -> "下午" // 12点到17点之间为下午
+            else -> "晚上" // 18点到23点之间为晚上
+        }
+
+        return "$timePeriod$hour:${minute.toString().padStart(2, '0')}"
+    }
+
+    private fun sendChatMessageNotification(count: Int, senderName: String, senderQQ: String, senderContent: String) {
         CoroutineScope(Dispatchers.IO).launch {
             for (i in 1..count) {
-                createChatMessageNotification(
-                    applicationContext,
-                    "您有${count}条未读消息",
-                    "请前往\"消息\"界面查看"
-                )
+                if (!isInForeground.value) {
+                    createChatMessageNotification(
+                        "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
+                        applicationContext,
+                        "您有${count}条未读消息",
+                        "$senderName: $senderContent"
+                    )
+                }
+                val existingData = readFromFileForForegroundService(applicationContext, "ChatMessage/NewMessage/$senderName.json")
+                val messageList: MutableList<ChatNewMessage> = if (existingData.isNotEmpty()) {
+                    Gson().fromJson(existingData, Array<ChatNewMessage>::class.java).toMutableList()
+                } else {
+                    mutableListOf()
+                }
+                messageList.add(ChatNewMessage(count, senderName, senderContent, getCurrentTimeForChatList()))
+                writeToFile(applicationContext, "ChatMessage/NewMessage", "${senderName}.json", Gson().toJson(messageList))
                 delay(2000)
             }
         }
@@ -302,9 +338,9 @@ class ForegroundService : Service() {
         CoroutineScope(Dispatchers.IO).launch {
             var isRing = false
             while (true) {
-                if (isLogin.value && !isInForeground.value) {
+                if (isLogin.value) {
                     val localMessageCount: Int = readAndSumFileContents(applicationContext)
-                    if (localMessageCount != 0 && !isInForeground.value) {
+                    if (localMessageCount != 0) {
                         val hasNewMessage = checkChatMessage(
                             GlobalForForegroundService.username,
                             GlobalForForegroundService.password,
@@ -313,12 +349,12 @@ class ForegroundService : Service() {
                         if (hasNewMessage.first == "success") {
                             if (hasNewMessage.second != null) {
                                 val message = hasNewMessage.second
-                                if (message?.hasNewMessages == "true" && !isRing) {
+                                if (message?.hasNewMessages == true && !isRing) {
                                     Log.d("消息问题", "有新消息！")
                                     val sendCount = (hasNewMessage.second!!.totalMessageCount - localMessageCount).coerceAtMost(3)
-                                    sendChatMessageNotification(sendCount)
+                                    sendChatMessageNotification(sendCount, message.lastMessage.sender, message.lastMessage.senderQQ, message.lastMessage.content)
                                     isRing = true
-                                } else if (message?.hasNewMessages == "false") {
+                                } else if (message?.hasNewMessages == false) {
                                     isRing = false
 
                                     val notificationManager =
@@ -331,7 +367,7 @@ class ForegroundService : Service() {
                                 }
                             }
                         } else {
-                            hasNewMessage.second?.let { Log.d("消息问题", it.hasNewMessages) }
+                            hasNewMessage.second?.let { Log.d("消息问题", it.hasNewMessages.toString()) }
                         }
                     } else {
                         val notificationManager =
@@ -339,9 +375,6 @@ class ForegroundService : Service() {
 
                         val notificationId = 10002
                         notificationManager.cancel(notificationId)
-                        if (isInForeground.value) {
-                            Log.d("消息问题", "软件在前台，不发送通知")
-                        }
                     }
                 }
                 delay(3000)
