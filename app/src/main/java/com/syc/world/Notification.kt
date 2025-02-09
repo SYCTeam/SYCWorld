@@ -97,7 +97,7 @@ fun Notification(navController: NavController,hazeState: HazeState,hazeStyle: Ha
             itemsIndexed(notList) { _, content ->
                 notList(
                     qq = content.qq,
-                    content = content.content,
+                    content = content.content.replace(Regex("!\\[Image]\\(([^)]+)"),"[图片]"),
                     timestamp = content.time,
                     name = content.name,
                     type = content.type,
