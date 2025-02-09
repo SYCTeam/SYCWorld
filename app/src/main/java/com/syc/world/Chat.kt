@@ -155,89 +155,51 @@ fun formatTime(inputTime: String): String {
         val inputDateTime = LocalDateTime.parse(inputTime, formatter)
         val currentDateTime = LocalDateTime.now()
 
-        val daysBetween =
-            ChronoUnit.DAYS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
-
-        if (daysBetween == 1L) {
-            return "昨天"
-        }
-
-        if (daysBetween in 2L..6L) {
-            val dayOfWeek = inputDateTime.dayOfWeek
-            return when (dayOfWeek) {
-                DayOfWeek.MONDAY -> "周一"
-                DayOfWeek.TUESDAY -> "周二"
-                DayOfWeek.WEDNESDAY -> "周三"
-                DayOfWeek.THURSDAY -> "周四"
-                DayOfWeek.FRIDAY -> "周五"
-                DayOfWeek.SATURDAY -> "周六"
-                DayOfWeek.SUNDAY -> "周日"
-                else -> "未知"
-            }
-        }
-
-        val hour = inputDateTime.hour % 12 // 转换为12小时制
-        val minute = inputDateTime.minute
-
-        val timePeriod = when (hour) {
-            in 0..5 -> "凌晨"
-            in 6..11 -> "早上"
-            else -> "下午"
-        }
-
-        return "$timePeriod${hour.toString().padStart(2, '0')}:${
-            minute.toString().padStart(2, '0')
-        }"
-
-    } catch (e: DateTimeParseException) {
-        return inputTime
-    }
-}
-
-fun formatTimeInChat(inputTime: String): String {
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-
-    try {
-        val inputDateTime = LocalDateTime.parse(inputTime, formatter)
-        val currentDateTime = LocalDateTime.now()
-
-        val daysBetween =
-            ChronoUnit.DAYS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
+        val daysBetween = ChronoUnit.DAYS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
+        val yearsBetween = ChronoUnit.YEARS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
 
         val hour = inputDateTime.hour
         val minute = inputDateTime.minute
         val timePeriod = when (hour) {
             in 0..5 -> "凌晨"
             in 6..11 -> "早上"
-            in 12..17 -> "下午"
-            else -> "晚上"
-        }
-        val formattedTime = "$timePeriod ${hour % 12}:${minute.toString().padStart(2, '0')}"
-
-        if (daysBetween == 1L) {
-            return "昨天$formattedTime"
+            12 -> "中午"
+            in 13..17 -> "下午"
+            else -> "晚上" // 18..23
         }
 
-        if (daysBetween in 2L..6L) {
-            val dayOfWeek = inputDateTime.dayOfWeek
-            val weekDay = when (dayOfWeek) {
-                DayOfWeek.MONDAY -> "周一"
-                DayOfWeek.TUESDAY -> "周二"
-                DayOfWeek.WEDNESDAY -> "周三"
-                DayOfWeek.THURSDAY -> "周四"
-                DayOfWeek.FRIDAY -> "周五"
-                DayOfWeek.SATURDAY -> "周六"
-                DayOfWeek.SUNDAY -> "周日"
-                else -> "未知"
+        val formattedHour = if (hour == 12) 12 else hour % 12
+        val formattedTime = "$timePeriod${formattedHour}:${minute.toString().padStart(2, '0')}"
+
+        return when {
+            daysBetween == 0L -> {
+                // 今天
+                formattedTime
             }
-            return "$weekDay$formattedTime"
+            daysBetween in 1L..6L -> {
+                // 过去一周内
+                val dayOfWeek = inputDateTime.dayOfWeek
+                val weekDay = when (dayOfWeek) {
+                    DayOfWeek.MONDAY -> "周一"
+                    DayOfWeek.TUESDAY -> "周二"
+                    DayOfWeek.WEDNESDAY -> "周三"
+                    DayOfWeek.THURSDAY -> "周四"
+                    DayOfWeek.FRIDAY -> "周五"
+                    DayOfWeek.SATURDAY -> "周六"
+                    DayOfWeek.SUNDAY -> "周日"
+                    else -> "未知"
+                }
+                "$weekDay $formattedTime"
+            }
+            yearsBetween == 0L -> {
+                // 过去一年内
+                "${inputDateTime.monthValue}月${inputDateTime.dayOfMonth}日 $formattedTime"
+            }
+            else -> {
+                // 一年以前
+                "${inputDateTime.year}年${inputDateTime.monthValue}月${inputDateTime.dayOfMonth}日 $formattedTime"
+            }
         }
-
-        if (inputDateTime.year == currentDateTime.year) {
-            return "${inputDateTime.monthValue}月${inputDateTime.dayOfMonth}日 $formattedTime"
-        }
-
-        return "${inputDateTime.year}年${inputDateTime.monthValue}月${inputDateTime.dayOfMonth}日 $formattedTime"
 
     } catch (e: DateTimeParseException) {
         return inputTime
@@ -262,20 +224,21 @@ fun getMessageFromFile(context: Context, senderName: String): List<ChatMessage> 
         val messageList = mutableListOf<ChatMessage>()
 
         val regex =
-            """ChatMessage\(isShowTime=(\w+), chatName=([\w\u4e00-\u9fa5]+), sender=(\w+), senderQQ=(\d+), message=([\s\S]+?), sendTime=([\d\-:\s]+)\)""".toRegex()
+            """ChatMessage\(isFake=(\w+), isShowTime=(\w+), chatName=([\w\u4e00-\u9fa5]+), sender=(\w+), senderQQ=(\d+), message=([\s\S]+?), sendTime=([\d\-:\s]+)\)""".toRegex()
 
         val matches = regex.findAll(existingData)
 
         matches.forEach { match ->
-            val isShowTime = match.groupValues[1].toBoolean()
-            val chatName = match.groupValues[2]
-            val senderType = SenderType.valueOf(match.groupValues[3])
-            val senderQQ = match.groupValues[4]
-            val message = match.groupValues[5]
-            val sendTime = match.groupValues[6]
+            val isFake = match.groupValues[1].toBoolean()
+            val isShowTime = match.groupValues[2].toBoolean()
+            val chatName = match.groupValues[3]
+            val senderType = SenderType.valueOf(match.groupValues[4])
+            val senderQQ = match.groupValues[5]
+            val message = match.groupValues[6]
+            val sendTime = match.groupValues[7]
 
             val chatMessage =
-                ChatMessage(isShowTime, chatName, senderType, senderQQ, message, sendTime)
+                ChatMessage(isFake, isShowTime, chatName, senderType, senderQQ, message, sendTime)
             messageList.add(chatMessage)
         }
 
@@ -422,6 +385,7 @@ data class ChatGroup(
 
 // 群组数据类
 data class ChatMessage(
+    val isFake: Boolean,
     val isShowTime: Boolean,
     val chatName: String,
     val sender: SenderType,
@@ -654,7 +618,7 @@ fun ChatMessage(message: ChatMessage) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = formatTimeInChat(message.sendTime),
+                        text = formatTime(message.sendTime),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier,
                         overflow = TextOverflow.Ellipsis,
@@ -823,6 +787,7 @@ fun ChatUi(navController: NavController) {
     var isShowTime by remember { mutableStateOf(true) }
 
     var myMessage = ChatMessage(
+        true,
         isShowTime,
         personNameBeingChat.value,
         SenderType.Me,
@@ -832,13 +797,10 @@ fun ChatUi(navController: NavController) {
     )
 
 
-    val messageIndex = chatMessage.size
-
-
     LaunchedEffect(chatMessage.size, isLoading, text) {
         if (chatMessage.isNotEmpty() && !isLoading || (chatMessage.isNotEmpty() && isFocusTextField)
         ) {
-            listState.animateScrollToItem(chatMessage.size - 1)
+            listState.scrollToItem(chatMessage.size - 1, Int.MAX_VALUE)
         }
     }
 
@@ -910,6 +872,7 @@ fun ChatUi(navController: NavController) {
                             // 如果消息不存在于已存在的列表中，则创建新消息
                             if (!existingMessages.contains(message to timestamp)) {
                                 val newMessage = ChatMessage(
+                                    false,
                                     isFirstMessage,
                                     personNameBeingChat.value,
                                     senderType,
@@ -937,6 +900,7 @@ fun ChatUi(navController: NavController) {
     var isSendSuccessfully by remember { mutableStateOf(true) }
 
     LaunchedEffect(isSend) {
+        val messageIndex = chatMessage.size
         withContext(Dispatchers.IO) {
             if (isSend && isSendSuccessfully && Global.userQQ.trim().isNotEmpty()) {
 
@@ -962,6 +926,7 @@ fun ChatUi(navController: NavController) {
                 }
 
                 myMessage = ChatMessage(
+                    true,
                     isShowTime,
                     personNameBeingChat.value,
                     SenderType.Me,
@@ -974,6 +939,7 @@ fun ChatUi(navController: NavController) {
 
                 val sendResult =
                     sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
+
                 text = ""
 
                 if (sendResult.first == "error") {
@@ -1001,8 +967,9 @@ fun ChatUi(navController: NavController) {
                         } else {
                             val existingMessages = mutableListOf<Pair<String, String>>()
 
-                            chatMessage.forEach { existingMessages.add(it.message to it.sendTime) }
-                            isSendSuccessfully = true
+                            chatMessage.filter {
+                                !it.isFake
+                            }.forEach { existingMessages.add(it.message to it.sendTime) }
                             getMessageResult.second.forEach { chatRecord ->
                                 val senderQQ = chatRecord.senderQQ
                                 val message = chatRecord.message
@@ -1014,6 +981,7 @@ fun ChatUi(navController: NavController) {
                                 }
                                 if (!existingMessages.contains(message to timestamp)) {
                                     val newMessage = ChatMessage(
+                                        false,
                                         isShowTime,
                                         personNameBeingChat.value,
                                         senderType,
@@ -1021,12 +989,17 @@ fun ChatUi(navController: NavController) {
                                         message,
                                         timestamp
                                     )
+
                                     chatMessage.removeAt(messageIndex)
+                                    chatMessage.removeAll {
+                                        it.isFake
+                                    }
                                     chatMessage.add(newMessage)
                                     existingMessages.add(message to timestamp)
                                 }
-                                isSend = false
                             }
+                            isSend = false
+                            isSendSuccessfully = true
                         }
                     }
                 }
@@ -1280,12 +1253,10 @@ fun ChatUi(navController: NavController) {
                 color = Color.Gray
             )
 
-            // 确保在每次消息更新时自动滚动到最后一项
             LaunchedEffect(chatMessage.size) {
-                // 延迟一下再滚动到最后一项，确保消息已经渲染
                 if (chatMessage.isNotEmpty()) {
                     delay(1500)
-                    listState.animateScrollToItem(chatMessage.size - 1)
+                    listState.scrollToItem(chatMessage.size - 1, Int.MAX_VALUE)
                 }
             }
 
@@ -1404,7 +1375,7 @@ fun ChatUi(navController: NavController) {
                             ),
                             keyboardActions = KeyboardActions(
                                 onSend = {
-                                    if (text != "") {
+                                    if (text != "" && isSendSuccessfully) {
                                         isSend = true
                                     }
                                 }
@@ -1479,7 +1450,7 @@ fun ChatUi(navController: NavController) {
                                 .height(34.dp)
                                 .width(buttonSize)
                                 .clickable {
-                                    if (text != "") {
+                                    if (text != "" && isSendSuccessfully) {
                                         isSend = true
                                     }
                                 },
@@ -1528,14 +1499,12 @@ fun ChatSettings(navController: NavController) {
     val personNameBeingChat = Global.personNameBeingChat.collectAsState()
     val personQQBeingChat = Global.personQQBeingChat.collectAsState()
 
-    var isFirstRun by remember { mutableStateOf(true) }
 
     val chatSelection1 = Global.chatSelection1.collectAsState()
     val chatSelection2 = Global.chatSelection2.collectAsState()
     val chatSelection3 = Global.chatSelection3.collectAsState()
 
     LaunchedEffect(chatSelection1.value, chatSelection2.value, chatSelection3.value) {
-        if (!isFirstRun) {
             withContext(Dispatchers.IO) {
                 val selectionJsonDetail = Gson().toJson(
                     SelectionDetail(
@@ -1567,9 +1536,6 @@ fun ChatSettings(navController: NavController) {
                 }
 
             }
-        } else {
-            isFirstRun = false
-        }
     }
 
     LaunchedEffect(chatSelection3.value) {
