@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -155,8 +156,10 @@ fun formatTime(inputTime: String): String {
         val inputDateTime = LocalDateTime.parse(inputTime, formatter)
         val currentDateTime = LocalDateTime.now()
 
-        val daysBetween = ChronoUnit.DAYS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
-        val yearsBetween = ChronoUnit.YEARS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
+        val daysBetween =
+            ChronoUnit.DAYS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
+        val yearsBetween =
+            ChronoUnit.YEARS.between(inputDateTime.toLocalDate(), currentDateTime.toLocalDate())
 
         val hour = inputDateTime.hour
         val minute = inputDateTime.minute
@@ -176,6 +179,7 @@ fun formatTime(inputTime: String): String {
                 // 今天
                 formattedTime
             }
+
             daysBetween in 1L..6L -> {
                 // 过去一周内
                 val dayOfWeek = inputDateTime.dayOfWeek
@@ -191,10 +195,12 @@ fun formatTime(inputTime: String): String {
                 }
                 "$weekDay $formattedTime"
             }
+
             yearsBetween == 0L -> {
                 // 过去一年内
                 "${inputDateTime.monthValue}月${inputDateTime.dayOfMonth}日 $formattedTime"
             }
+
             else -> {
                 // 一年以前
                 "${inputDateTime.year}年${inputDateTime.monthValue}月${inputDateTime.dayOfMonth}日 $formattedTime"
@@ -232,8 +238,18 @@ fun getMessageFromFile(context: Context, senderName: String): List<ChatMessage> 
             val isFake = match.groupValues[1].toBoolean()
             val isShowTime = match.groupValues[2].toBoolean()
             val chatName = match.groupValues[3]
-            val senderType = SenderType.valueOf(match.groupValues[4])
-            val senderQQ = match.groupValues[5]
+            val senderType = try {
+                SenderType.valueOf(match.groupValues[4])
+            } catch (e: IllegalArgumentException) {
+                Log.e("getMessageFromFile", "Invalid SenderType: ${match.groupValues[4]}")
+                SenderType.Others
+
+            }
+            val senderQQ = try {
+                match.groupValues[5]
+            } catch (e: Exception) {
+                "0"
+            }
             val message = match.groupValues[6]
             val sendTime = match.groupValues[7]
 
@@ -682,6 +698,12 @@ fun ChatMessage(message: ChatMessage) {
                                         modifier = Modifier
                                             .padding(10.dp)
                                             .fillMaxHeight()
+                                            .animateContentSize(
+                                                animationSpec = tween(
+                                                    durationMillis = 300,
+                                                    easing = FastOutSlowInEasing
+                                                )
+                                            )
                                     )
                                 }
                             }
@@ -728,6 +750,12 @@ fun ChatMessage(message: ChatMessage) {
                                         modifier = Modifier
                                             .padding(10.dp)
                                             .fillMaxHeight()
+                                            .animateContentSize(
+                                                animationSpec = tween(
+                                                    durationMillis = 300,
+                                                    easing = FastOutSlowInEasing
+                                                )
+                                            )
                                     )
                                 }
                             }
@@ -894,15 +922,22 @@ fun ChatUi(navController: NavController) {
                 }
             }
             delay(3000)
+
         }
     }
-
     var isSendSuccessfully by remember { mutableStateOf(true) }
-
+    var isMessageAdded by remember { mutableStateOf(false) }
     LaunchedEffect(isSend) {
         val messageIndex = chatMessage.size
         withContext(Dispatchers.IO) {
-            if (isSend && isSendSuccessfully && Global.userQQ.trim().isNotEmpty()) {
+            if (isSend && isSendSuccessfully && Global.userQQ.trim().isNotEmpty() && text.trim()
+                    .isNotEmpty()
+            ) {
+
+                val sendResult =
+                    sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
+
+                text = ""
 
                 isSendSuccessfully = false
 
@@ -935,12 +970,14 @@ fun ChatUi(navController: NavController) {
                     getCurrentTime()
                 )
 
-                chatMessage.add(myMessage)
+                chatMessage.removeAll {
+                    it.isFake
+                }
 
-                val sendResult =
-                    sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
-
-                text = ""
+                if (!isMessageAdded) {
+                    chatMessage.add(myMessage)
+                    isMessageAdded = true
+                }
 
                 if (sendResult.first == "error") {
                     withContext(Dispatchers.Main) {
@@ -990,7 +1027,9 @@ fun ChatUi(navController: NavController) {
                                         timestamp
                                     )
 
-                                    chatMessage.removeAt(messageIndex)
+                                    if (chatMessage.size > messageIndex) {
+                                        chatMessage.removeAt(messageIndex)
+                                    }
                                     chatMessage.removeAll {
                                         it.isFake
                                     }
@@ -998,12 +1037,13 @@ fun ChatUi(navController: NavController) {
                                     existingMessages.add(message to timestamp)
                                 }
                             }
-                            isSend = false
-                            isSendSuccessfully = true
                         }
                     }
                 }
             }
+            isSend = false
+            isSendSuccessfully = true
+            isMessageAdded = false
         }
     }
 
@@ -1375,7 +1415,7 @@ fun ChatUi(navController: NavController) {
                             ),
                             keyboardActions = KeyboardActions(
                                 onSend = {
-                                    if (text != "" && isSendSuccessfully) {
+                                    if (text.trim().isNotEmpty() && isSendSuccessfully) {
                                         isSend = true
                                     }
                                 }
@@ -1450,7 +1490,7 @@ fun ChatUi(navController: NavController) {
                                 .height(34.dp)
                                 .width(buttonSize)
                                 .clickable {
-                                    if (text != "" && isSendSuccessfully) {
+                                    if (text.trim().isNotEmpty() && isSendSuccessfully) {
                                         isSend = true
                                     }
                                 },
@@ -1505,37 +1545,37 @@ fun ChatSettings(navController: NavController) {
     val chatSelection3 = Global.chatSelection3.collectAsState()
 
     LaunchedEffect(chatSelection1.value, chatSelection2.value, chatSelection3.value) {
-            withContext(Dispatchers.IO) {
-                val selectionJsonDetail = Gson().toJson(
-                    SelectionDetail(
-                        chatSelection2.value,
-                        chatSelection3.value
-                    )
+        withContext(Dispatchers.IO) {
+            val selectionJsonDetail = Gson().toJson(
+                SelectionDetail(
+                    chatSelection2.value,
+                    chatSelection3.value
                 )
-                val selectionJsonGlobal = Gson().toJson(
-                    SelectionGlobal(
-                        chatSelection1.value
-                    )
+            )
+            val selectionJsonGlobal = Gson().toJson(
+                SelectionGlobal(
+                    chatSelection1.value
                 )
-                if (isJson(selectionJsonDetail)) {
-                    writeToFile(
-                        context,
-                        "ChatSettings/${personNameBeingChat.value}",
-                        "chatSettings.json",
-                        selectionJsonDetail
-                    )
-                }
-
-                if (isJson(selectionJsonGlobal)) {
-                    writeToFile(
-                        context,
-                        "ChatSettings",
-                        "chatGlobalSettings.json",
-                        selectionJsonGlobal
-                    )
-                }
-
+            )
+            if (isJson(selectionJsonDetail)) {
+                writeToFile(
+                    context,
+                    "ChatSettings/${personNameBeingChat.value}",
+                    "chatSettings.json",
+                    selectionJsonDetail
+                )
             }
+
+            if (isJson(selectionJsonGlobal)) {
+                writeToFile(
+                    context,
+                    "ChatSettings",
+                    "chatGlobalSettings.json",
+                    selectionJsonGlobal
+                )
+            }
+
+        }
     }
 
     LaunchedEffect(chatSelection3.value) {
