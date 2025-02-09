@@ -426,15 +426,6 @@ class ForegroundService : Service() {
                     title, content
                 )
             }
-            /*val existingData = readFromFileForForegroundService(applicationContext, "Moments/list.json")
-            val messageList: MutableList<MomentsMessage> = if (existingData.isNotEmpty()) {
-                Gson().fromJson(existingData, Array<MomentsMessage>::class.java).toMutableList()
-            } else {
-                mutableListOf()
-            }
-            messageList.add(MomentsMessage(count, senderName, senderContent, getCurrentTimeForChatList()))
-            writeToFile(applicationContext, "ChatMessage/NewMessage", "${senderName}.json", Gson().toJson(messageList))
-            delay(2000)*/
         }
     }
 

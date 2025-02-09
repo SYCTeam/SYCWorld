@@ -12,9 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -37,6 +40,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.delay
 import okhttp3.OkHttpClient
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.LazyColumn
@@ -52,16 +56,13 @@ import top.yukonga.miuix.kmp.icon.icons.ArrowBack
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.system.exitProcess
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Notification(navController: NavController,hazeState: HazeState,hazeStyle: HazeStyle,postId: MutableState<Int>,isReply: MutableState<Boolean>) {
     val TopAppBarState = MiuixScrollBehavior(rememberTopAppBarState())
     val context = LocalContext.current
-    val readResult = readFromFile(context, "Moments/list.json")
-    val gson = Gson()
     val notList = remember { mutableStateListOf<MomentsMessage>() }
-    if (readResult.isNotEmpty()) {
-        notList.addAll(gson.fromJson(readResult, Array<MomentsMessage>::class.java).toList().sortedByDescending { it.time })
-    }
+
     Scaffold(topBar = {
         SmallTopAppBar(
             title = "通知",
@@ -87,25 +88,42 @@ fun Notification(navController: NavController,hazeState: HazeState,hazeStyle: Ha
             }
         )
     }) { padding ->
-        LazyColumn(
-            contentPadding = PaddingValues(top = padding.calculateTopPadding()),
-            topAppBarScrollBehavior = TopAppBarState,
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(state = hazeState),
+        val isRefreshing = remember { mutableStateOf(false) }
+        LaunchedEffect(isRefreshing.value) {
+            notList.clear()
+            val readResult = readFromFile(context, "Moments/list.json")
+            val gson = Gson()
+            if (readResult.isNotEmpty()) {
+                notList.addAll(gson.fromJson(readResult, Array<MomentsMessage>::class.java).toList().sortedByDescending { it.time })
+            }
+            isRefreshing.value = false
+        }
+        PullToRefreshBox(
+            isRefreshing = isRefreshing.value,
+            onRefresh = {
+                isRefreshing.value = true
+            }
         ) {
-            itemsIndexed(notList) { _, content ->
-                notList(
-                    qq = content.qq,
-                    content = content.content.replace(Regex("!\\[Image]\\(([^)]+)"),"[图片]"),
-                    timestamp = content.time,
-                    name = content.name,
-                    type = content.type,
-                    navController = navController,
-                    postId = postId,
-                    listPostId = content.postId,
-                    isReply = isReply
-                )
+            LazyColumn(
+                contentPadding = PaddingValues(top = padding.calculateTopPadding()),
+                topAppBarScrollBehavior = TopAppBarState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .hazeSource(state = hazeState),
+            ) {
+                itemsIndexed(notList) { _, content ->
+                    notList(
+                        qq = content.qq,
+                        content = content.content.replace(Regex("!\\[Image]\\(([^)]+)"),"[图片]"),
+                        timestamp = content.time,
+                        name = content.name,
+                        type = content.type,
+                        navController = navController,
+                        postId = postId,
+                        listPostId = content.postId,
+                        isReply = isReply
+                    )
+                }
             }
         }
     }
