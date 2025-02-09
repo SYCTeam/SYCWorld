@@ -346,6 +346,14 @@ object Global {
     fun setChatIsChatMessageAnimation(value: Boolean) {
         _chatIsChatMessageAnimation.value = value
     }
+
+    private val _isDeleteChatMessageOpen = MutableStateFlow(false)
+    val isDeleteChatMessageOpen: StateFlow<Boolean>
+        get() = _isDeleteChatMessageOpen
+
+    fun setIsDeleteChatMessageOpen(value: Boolean) {
+        _isDeleteChatMessageOpen.value = value
+    }
 }
 
 class AppLifecycleObserver : LifecycleObserver {
@@ -396,7 +404,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-
             val isLogin = Global.isLogin.collectAsState()
             var showBodySensorsPermissionDialog by remember { mutableStateOf(false) }
             var showActivityRecognitionPermissionDialog by remember { mutableStateOf(false) }
@@ -417,6 +424,25 @@ class MainActivity : ComponentActivity() {
                             restartForegroundServiceProcess(context)
                         }
                         delay(500)
+                    }
+                }
+            }
+
+            val isDeleteChatMessageOpen = Global.isDeleteChatMessageOpen.collectAsState()
+
+            // 循环获取后端配置
+            LaunchedEffect(Unit) {
+                withContext(Dispatchers.IO) {
+                    while (true) {
+                        Global.setIsDeleteChatMessageOpen(getDeleteMessageListSwitch().toBooleanStrictOrNull() == true) // 获取是否删除聊天记录
+
+                        if (isDeleteChatMessageOpen.value) {
+                                deleteFile(
+                                context, "ChatMessage/Message/"
+                            )
+                        }
+
+                        delay(3000)
                     }
                 }
             }
@@ -627,14 +653,19 @@ fun writeToFile(context: Context, child: String, filename: String, content: Stri
 }
 
 fun deleteFile(context: Context, filename: String): Boolean {
-    // 获取文件路径
+    // 获取文件或目录的路径
     val file = File(context.filesDir, filename)
 
     return if (file.exists()) {
-        // 尝试删除文件
-        file.delete()
+        // 如果是文件，直接删除
+        if (file.isFile) {
+            file.delete()
+        } else {
+            // 如果是目录，递归删除目录及其中的所有文件
+            file.deleteRecursively()
+        }
     } else {
-        false // 文件不存在，返回 false
+        false // 文件或目录不存在，返回 false
     }
 }
 
@@ -768,6 +799,72 @@ suspend fun createChatMessageNotification(
 
     val channelId = "SYC_ChatMessage"
     val channelName = "酸夜沉空间消息通知服务"
+    val importance = NotificationManager.IMPORTANCE_HIGH
+
+    val channel = NotificationChannel(channelId, channelName, importance).apply {
+        val soundUri = Uri.parse("android.resource://${context.packageName}/raw/ring")
+        setSound(
+            soundUri,
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+        )
+        enableVibration(true)
+        vibrationPattern = longArrayOf(0, 500, 1000)
+        setShowBadge(false)
+        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+    }
+    notificationManager.createNotificationChannel(channel)
+
+    val intent = Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    }
+    val pendingIntent = PendingIntent.getActivity(
+        context, 0, intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    val avatarBitmap = withContext(Dispatchers.IO) {
+        Glide.with(context)
+            .asBitmap()
+            .load(imageUrl)
+            .circleCrop()
+            .submit()
+            .get()
+    }
+
+    val notificationBuilder = NotificationCompat.Builder(context, channelId)
+        .setSmallIcon(R.drawable.new_message)
+        .setLargeIcon(avatarBitmap)
+        .setContentTitle(title)
+        .setContentText(content)
+        .setContentIntent(pendingIntent)
+        .setOngoing(false)
+        .setAutoCancel(true)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setVibrate(longArrayOf(0, 500, 1000))
+        .setSound(Uri.parse("android.resource://${context.packageName}/raw/ring"))
+        .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
+        .setWhen(timestamp) // 设置消息时间
+        .setShowWhen(true) // 确保时间显示
+
+    notificationManager.notify(10002, notificationBuilder.build())
+}
+
+@SuppressLint("ServiceCast")
+suspend fun createMomentsMessageNotification(
+    imageUrl: String,
+    context: Context,
+    title: String,
+    content: String,
+    timestamp: Long = System.currentTimeMillis()
+) {
+    val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    val channelId = "SYC_MomentsMessage"
+    val channelName = "酸夜沉空间动态通知服务"
     val importance = NotificationManager.IMPORTANCE_HIGH
 
     val channel = NotificationChannel(channelId, channelName, importance).apply {

@@ -1149,3 +1149,35 @@ fun sendComment(username: String, password: String, postId: Int, parentCommentId
         Pair("error", e.message ?: "Unknown error")
     }
 }
+
+suspend fun getDeleteMessageListSwitch(): String {
+    val url = "https://sharechain.qq.com/b0938a13f293855a8f210b0759706661"
+
+    return withContext(Dispatchers.IO) {
+        val client = OkHttpClient()
+        val request = Request.Builder().url(url).build()
+
+        try {
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: "【ISDELETE】false【ISDELETE】"
+                val pattern = Pattern.compile("【ISDELETE】(.*?)【ISDELETE】", Pattern.DOTALL)
+                val matcher = pattern.matcher(responseBody)
+
+                if (matcher.find()) {
+                    println("ISDELETE: ${matcher.group(1)}")
+                    matcher.group(1) ?: "false"
+                } else {
+                    "false"
+                }
+            } else {
+                "false"
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            "false"
+        } catch (_: CancellationException) {
+            "false"
+        }
+    }
+}

@@ -443,6 +443,7 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
     val context = LocalContext.current
     val isDarkMode =
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    val unreadCountInChat = Global.unreadCountInChat.collectAsState()
     var isNavigate by remember { mutableStateOf(false) }
 
     var imageChange by remember { mutableStateOf(false) }
@@ -490,6 +491,16 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                     ) {
                         if (!isNavigate) {
                             if (group.isUnread > 0) {
+                                val newMessage = readChatMessagesFromFile(context, group.chatName)
+
+                                val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
+
+                                if (newMessage.isNotEmpty()) {
+                                    if (unreadCountInChat.value.toIntOrNull() != null) {
+                                        Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
+                                    }
+                                }
+
                                 deleteFile(context, "ChatMessage/NewMessage/${group.chatName}.json")
                             }
                             Global.setPersonNameBeingChat(group.chatName)
@@ -965,7 +976,6 @@ fun ChatUi(navController: NavController) {
 
                 val sendResult =
                     sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
-                isSendSuccessfully = true
                 text = ""
 
                 if (sendResult.first == "error") {
@@ -1004,7 +1014,7 @@ fun ChatUi(navController: NavController) {
                                 } else {
                                     SenderType.Me
                                 }
-
+                                isSendSuccessfully = true
                                 if (!existingMessages.contains(message to timestamp)) {
                                     val newMessage = ChatMessage(
                                         isShowTime,
