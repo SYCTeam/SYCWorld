@@ -1800,7 +1800,8 @@ fun Main(
                         tabs = tabTexts,
                         backgroundColor = Color.Transparent,
                         selectedTabIndex = selectedTab.intValue,
-                        cornerRadius = 0.dp,
+                        selectedBackgroundColor = MiuixTheme. colorScheme. surface.copy(alpha = 0.8f),
+                        cornerRadius = 20.dp,
                         modifier = Modifier
                             .fillMaxWidth()
                     ) {

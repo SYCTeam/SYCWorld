@@ -698,6 +698,7 @@ fun postMoment(username: String, password: String, content: String): Pair<String
     val formBody = FormBody.Builder()
         .add("username", username)
         .add("password", password)
+        .add("content",content)
         .build()
 
     Log.d("发布动态", url.toString())

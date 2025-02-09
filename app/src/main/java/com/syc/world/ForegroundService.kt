@@ -373,8 +373,13 @@ class ForegroundService : Service() {
                                             "${post.second?.likeNotifications?.get(0)?.users?.get(0)}给你的${likeposts}个帖子点赞啦","快去看看吧")
                                     }
                                 } else {
-                                    sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
-                                        "${post.second?.likeNotifications?.get(0)?.users?.get(0)}等${alllikelist.size}个人给你的${likeposts}个帖子点赞啦","快去看看吧")
+                                    if (likeposts == 1) {
+                                        sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)}等${alllikelist.size}个人给你的帖子点赞啦","快去看看吧")
+                                    } else {
+                                        sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)}等${alllikelist.size}个人给你的${likeposts}个帖子点赞啦","快去看看吧")
+                                    }
                                 }
                             }
                         }

@@ -140,7 +140,7 @@ fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeStat
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(
                                             context,
-                                            "发送失败，请稍后再试。",
+                                            "发送失败，原因：${post.second}",
                                             Toast.LENGTH_LONG
                                         ).show()
                                     }
