@@ -1693,7 +1693,7 @@ fun Main(
     val items = listOf(
         NavigationItem("首页", ImageVector.vectorResource(id = R.drawable.home)),
         NavigationItem("消息", ImageVector.vectorResource(id = R.drawable.chat)),
-        NavigationItem("动态", ImageVector.vectorResource(id = R.drawable.zone)),
+        if (pagerState.currentPage == 2) NavigationItem("刷新", ImageVector.vectorResource(id = R.drawable.refresh)) else NavigationItem("动态", ImageVector.vectorResource(id = R.drawable.zone)),
         NavigationItem("我的", ImageVector.vectorResource(id = R.drawable.my))
     )
     LaunchedEffect(pagerState) {
@@ -1724,11 +1724,23 @@ fun Main(
                     state = hazeState,
                     style = hazeStyle
                 ),
+                showDivider = false,
                 selected = targetPage,
                 onClick = { index ->
-                    targetPage = index
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(index)
+                    if (index == 2) {
+                        if (pagerState.currentPage == 2) {
+                            isTab.value = true
+                        } else {
+                            targetPage = index
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        }
+                    } else {
+                        targetPage = index
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
                     }
                 }
             )
