@@ -325,6 +325,7 @@ fun MomentsItem(
             .padding(vertical = 6.dp, horizontal = 10.dp)
             .fillMaxWidth()
             .clickable {
+                isReply.value = false
                 morepostId.value = postId
                 navController.navigate("Dynamic")
             }

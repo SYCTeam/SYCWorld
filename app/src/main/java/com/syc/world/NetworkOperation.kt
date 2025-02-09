@@ -277,9 +277,8 @@ data class CommentNotification(
     val from: String,
     val content: String,
     val timestamp: Long,
-    val ip: String,
     @SerializedName("parentCommentContent") val parentCommentContent: String,
-    val fromUserQQ: String
+    val qq: Long
 )
 
 suspend fun getUrl(): String {

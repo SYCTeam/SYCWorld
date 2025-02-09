@@ -289,8 +289,9 @@ class ForegroundService : Service() {
         val name: String,
         val qq: Long,
         val content: String,
-        val time: String,
-        val postId: Int
+        val time: Long,
+        val postId: Int,
+        val type: String
     )
 
     // 定义消息数据类
@@ -353,7 +354,7 @@ class ForegroundService : Service() {
                         if (post.second != null) {
                             if (post.second?.likeNotifications?.size != 0) {
                                 var alllike = 0
-                                var alllikelist = emptyList<String>()
+                                val alllikelist = emptyList<String>().toMutableList()
                                 var likeposts = 0
                                 post.second?.likeNotifications?.forEachIndexed { it, _ ->
                                     alllike += post.second?.likeNotifications?.get(it)!!.count
@@ -361,25 +362,51 @@ class ForegroundService : Service() {
                                         if (s !in alllikelist) {
                                             alllikelist += s
                                         }
+                                        val existingData = readFromFileForForegroundService(applicationContext, "Moments/list.json")
+                                        val messageList: MutableList<MomentsMessage> = if (existingData.isNotEmpty()) {
+                                            Gson().fromJson(existingData, Array<MomentsMessage>::class.java).toMutableList()
+                                        } else {
+                                            mutableListOf()
+                                        }
+                                        messageList.add(MomentsMessage(s, post.second?.likeNotifications?.get(it)!!.qq.get(index).toLong(),
+                                            post.second?.likeNotifications?.get(it)!!.postContentPreview,
+                                            System.currentTimeMillis(), post.second?.likeNotifications?.get(it)!!.postId,"like"))
+                                        writeToFile(applicationContext, "Moments", "list.json", Gson().toJson(messageList))
                                     }
                                     likeposts += 1
                                 }
                                 if (alllikelist.size == 1) {
                                     if (likeposts == 1) {
                                         sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
-                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)}给你的帖子点赞啦","快去看看吧")
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 给你的帖子点赞啦","快去看看吧")
                                     } else {
                                         sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
-                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)}给你的${likeposts}个帖子点赞啦","快去看看吧")
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 给你的${likeposts}个帖子点赞啦","快去看看吧")
                                     }
                                 } else {
                                     if (likeposts == 1) {
                                         sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
-                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)}等${alllikelist.size}个人给你的帖子点赞啦","快去看看吧")
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 等${alllikelist.size}个人给你的帖子点赞啦","快去看看吧")
                                     } else {
                                         sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
-                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)}等${alllikelist.size}个人给你的${likeposts}个帖子点赞啦","快去看看吧")
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 等${alllikelist.size}个人给你的${likeposts}个帖子点赞啦","快去看看吧")
                                     }
+                                }
+                            }
+                            if (post.second?.commentNotifications?.size != 0) {
+                                post.second?.commentNotifications?.forEachIndexed { it, context ->
+                                    sendMomentsNotification(context.qq.toString(),
+                                        "${context.from} 评论了你的动态",context.content)
+                                    val existingData = readFromFileForForegroundService(applicationContext, "Moments/list.json")
+                                    val messageList: MutableList<MomentsMessage> = if (existingData.isNotEmpty()) {
+                                        Gson().fromJson(existingData, Array<MomentsMessage>::class.java).toMutableList()
+                                    } else {
+                                        mutableListOf()
+                                    }
+                                    messageList.add(MomentsMessage(context.from, context.qq,
+                                        context.content,
+                                        System.currentTimeMillis(), context.postId,"comment"))
+                                    writeToFile(applicationContext, "Moments", "list.json", Gson().toJson(messageList))
                                 }
                             }
                         }

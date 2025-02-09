@@ -1622,7 +1622,7 @@ fun AllHome(
             composable("ChatUi") { ChatUi(navController) }
             composable("ChatSettings") { ChatSettings(navController) }
             composable("Dynamic") { Dynamic(navController, postId.intValue, hazeState, hazeStyle,isReply) }
-            composable("Notification") { Notification(navController, hazeState, hazeStyle) }
+            composable("Notification") { Notification(navController, hazeState, hazeStyle,postId,isReply) }
         }
     }
 }
