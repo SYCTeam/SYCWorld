@@ -942,14 +942,16 @@ fun MyselfInformation(ui: MutableState<Int>) {
                     val userInfoFirst = getUserInformation(userName)
                     if (isJson(userInfoFirst)) {
                         val userInfo = parseUserInfo(userInfoFirst)
-                        if (userInfo != null && userInfo.registerIp.isNotEmpty() && userInfo.synopsis.isNotEmpty() && userInfo.loginCount.isNotEmpty() && userInfo.online.isNotEmpty() && userInfo.qq.isNotEmpty() && userInfo.stepCount.isNotEmpty() && userInfo.username.isNotEmpty()) {
-                            synopsis = userInfo.synopsis
-                            userQQ = userInfo.qq
-                            loginCounts = userInfo.loginCount
-                            registerTime = transToString(userInfo.registerTime)
-                            Log.d("IP获取", "开始获取IP地址:${userInfo.registerIp}")
-                            registerAddress = getAddressFromIp(userInfo.registerIp)
-                            Log.d("IP获取", "获取完成！")
+                        if (userInfo != null) {
+                            if (userInfo.registerIp.isNotEmpty() && userInfo.synopsis.isNotEmpty() && userInfo.loginCount.isNotEmpty() && userInfo.online.isNotEmpty() && userInfo.qq.isNotEmpty() && userInfo.stepCount.isNotEmpty() && userInfo.username.isNotEmpty()) {
+                                synopsis = userInfo.synopsis
+                                userQQ = userInfo.qq
+                                loginCounts = userInfo.loginCount
+                                registerTime = transToString(userInfo.registerTime)
+                                Log.d("IP获取", "开始获取IP地址:${userInfo.registerIp}")
+                                registerAddress = getAddressFromIp(userInfo.registerIp)
+                                Log.d("IP获取", "获取完成！")
+                            }
                         }
                     }
                 }
