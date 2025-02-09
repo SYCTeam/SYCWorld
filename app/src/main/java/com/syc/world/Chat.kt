@@ -229,33 +229,33 @@ fun getMessageFromFile(context: Context, senderName: String): List<ChatMessage> 
     if (existingData.isNotEmpty()) {
         val messageList = mutableListOf<ChatMessage>()
 
+        // Improved regex to match ChatMessage strings more accurately
         val regex =
-            """ChatMessage\(isFake=(\w+), isShowTime=(\w+), chatName=([\w\u4e00-\u9fa5]+), sender=(\w+), senderQQ=(\d+), message=([\s\S]+?), sendTime=([\d\-:\s]+)\)""".toRegex()
+            """ChatMessage\(isFake=(\w+), isShowTime=(\w+), chatName=([\w\u4e00-\u9fa5]+), sender=(\w+), senderQQ=(\w+), message=([^)]+), sendTime=([\d\-:\s]+)\)""".toRegex()
 
         val matches = regex.findAll(existingData)
 
         matches.forEach { match ->
-            val isFake = match.groupValues[1].toBoolean()
-            val isShowTime = match.groupValues[2].toBoolean()
-            val chatName = match.groupValues[3]
-            val senderType = try {
-                SenderType.valueOf(match.groupValues[4])
-            } catch (e: IllegalArgumentException) {
-                Log.e("getMessageFromFile", "Invalid SenderType: ${match.groupValues[4]}")
-                SenderType.Others
+            try {
+                val isFake = match.groupValues[1].toBoolean()
+                val isShowTime = match.groupValues[2].toBoolean()
+                val chatName = match.groupValues[3]
+                val senderType = try {
+                    SenderType.valueOf(match.groupValues[4])
+                } catch (e: IllegalArgumentException) {
+                    Log.e("getMessageFromFile", "Invalid SenderType: ${match.groupValues[4]}")
+                    SenderType.Others
+                }
+                val senderQQ = match.groupValues[5]
+                val message = match.groupValues[6]
+                val sendTime = match.groupValues[7]
 
-            }
-            val senderQQ = try {
-                match.groupValues[5]
+                val chatMessage =
+                    ChatMessage(isFake, isShowTime, chatName, senderType, senderQQ, message, sendTime)
+                messageList.add(chatMessage)
             } catch (e: Exception) {
-                "0"
+                Log.e("getMessageFromFile", "Error parsing ChatMessage: ${match.value}", e)
             }
-            val message = match.groupValues[6]
-            val sendTime = match.groupValues[7]
-
-            val chatMessage =
-                ChatMessage(isFake, isShowTime, chatName, senderType, senderQQ, message, sendTime)
-            messageList.add(chatMessage)
         }
 
         return messageList
@@ -263,7 +263,6 @@ fun getMessageFromFile(context: Context, senderName: String): List<ChatMessage> 
         return emptyList()
     }
 }
-
 
 @Composable
 fun Chat(
@@ -318,6 +317,7 @@ fun Chat(
                             )
                         } else {
                             val messageList = getMessageFromFile(context, chatItem.username)
+                            Log.d("列表问题", messageList.lastOrNull()?.message ?: "6666")
                             // 创建 ChatGroup 对象
                             ChatGroup(
                                 chatItem.qq,
@@ -1308,7 +1308,9 @@ fun ChatUi(navController: NavController) {
                 state = listState
             ) {
                 itemsIndexed(chatMessage) { _, message ->
+                    if (message.message.trim().isNotEmpty()) {
                     ChatMessage(message = message)
+                        }
                 }
             }
         }
