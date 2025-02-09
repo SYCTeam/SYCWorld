@@ -285,6 +285,14 @@ class ForegroundService : Service() {
         return totalSum
     }
 
+    data class MomentsMessage(
+        val name: String,
+        val qq: Long,
+        val content: String,
+        val time: String,
+        val postId: Int
+    )
+
     // 定义消息数据类
     data class ChatNewMessage(
         @SerializedName("messageCount") val messageCount: Int,
@@ -333,6 +341,117 @@ class ForegroundService : Service() {
         }
     }
 
+    private fun Moments() {
+        CoroutineScope(Dispatchers.IO).launch {
+            while (true) {
+                if (isLogin.value) {
+                    val post = checkMoments(
+                        GlobalForForegroundService.username,
+                        GlobalForForegroundService.password
+                    )
+                    if (post.first == "成功获取通知") {
+                        if (post.second != null) {
+                            if (post.second?.likeNotifications?.size != 0) {
+                                var alllike = 0
+                                var alllikelist = emptyList<String>()
+                                var likeposts = 0
+                                post.second?.likeNotifications?.forEachIndexed { it, _ ->
+                                    alllike += post.second?.likeNotifications?.get(it)!!.count
+                                    post.second?.likeNotifications?.get(it)!!.users.forEachIndexed { index, s ->
+                                        if (s !in alllikelist) {
+                                            alllikelist += s
+                                        }
+                                    }
+                                    likeposts += 1
+                                }
+                                if (alllikelist.size == 1) {
+                                    if (likeposts == 1) {
+                                        sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)}给你的帖子点赞啦","快去看看吧")
+                                    } else {
+                                        sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)}给你的${likeposts}个帖子点赞啦","快去看看吧")
+                                    }
+                                } else {
+                                    sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                        "${post.second?.likeNotifications?.get(0)?.users?.get(0)}等${alllikelist.size}个人给你的${likeposts}个帖子点赞啦","快去看看吧")
+                                }
+                            }
+                        }
+                    }
+                }
+                delay(3000)
+            }
+        }
+    }
+
+    private fun sendMomentsNotification(senderQQ: String,title: String, content: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            createChatMessageNotification(
+                "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
+                applicationContext,
+                title, content
+            )
+            if (!isInForeground.value) {
+
+            }
+            /*val existingData = readFromFileForForegroundService(applicationContext, "Moments/list.json")
+            val messageList: MutableList<MomentsMessage> = if (existingData.isNotEmpty()) {
+                Gson().fromJson(existingData, Array<MomentsMessage>::class.java).toMutableList()
+            } else {
+                mutableListOf()
+            }
+            messageList.add(MomentsMessage(count, senderName, senderContent, getCurrentTimeForChatList()))
+            writeToFile(applicationContext, "ChatMessage/NewMessage", "${senderName}.json", Gson().toJson(messageList))
+            delay(2000)*/
+        }
+    }
+
+    private fun checkMoments(
+        username: String,
+        password: String
+    ): Pair<String, MomentResponse?> {
+        val url = "${GlobalForForegroundService.url}/syc/getMomentsMessage.php".toHttpUrlOrNull()
+            ?: return Pair("Error", null) // 如果URL无效，返回错误和null
+
+        val client = OkHttpClient()
+
+        // 创建请求体，包含用户名和密码
+        val formBodyBuilder = FormBody.Builder()
+            .add("username", username)
+            .add("password", password)
+
+        val formBody = formBodyBuilder.build()
+
+        Log.d("动态通知获取", url.toString())
+
+        // 构建请求
+        val request = Request.Builder()
+            .url(url)
+            .post(formBody)
+            .build()
+
+        return try {
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: ""
+                Log.d("动态通知获取", responseBody)
+                try {
+                    // 解析响应为 ChatInfo 对象
+                    val MomentResponse: MomentResponse = Gson().fromJson(responseBody, MomentResponse::class.java)
+                    Pair(MomentResponse.message, MomentResponse) // 返回状态和解析后的 ChatInfo 对象
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Pair("error", null) // 解析错误时返回错误和 null
+                }
+            } else {
+                Pair("error", null) // 请求失败时返回错误和 null
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Pair("error", null) // 请求异常时返回错误和 null
+        }
+    }
 
     private fun chatMessageNotification() {
         CoroutineScope(Dispatchers.IO).launch {
@@ -457,6 +576,7 @@ class ForegroundService : Service() {
         var nextExecutionTime = 5 * 60 * 1000
 
         chatMessageNotification()
+        Moments()
 
         CoroutineScope(Dispatchers.IO).launch {
             while (true) {

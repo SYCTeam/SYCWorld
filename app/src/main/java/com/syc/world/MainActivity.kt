@@ -27,6 +27,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
@@ -1794,7 +1795,7 @@ fun Main(
                             )
                         }
                     })
-                if (pagerState.currentPage == 2) {
+                AnimatedVisibility(pagerState.currentPage == 2) {
                     TabRow(
                         tabs = tabTexts,
                         backgroundColor = Color.Transparent,

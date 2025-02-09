@@ -256,6 +256,32 @@ data class LastMessage(
     val content: String
 )
 
+data class MomentResponse(
+    val status: Int,
+    val message: String,
+    @SerializedName("likeNotifications") val likeNotifications: List<LikeNotification>,
+    @SerializedName("commentNotifications") val commentNotifications: List<CommentNotification>
+)
+
+data class LikeNotification(
+    val postId: Int,
+    val count: Int,
+    val users: List<String>,
+    @SerializedName("postContentPreview") val postContentPreview: String,
+    val qq: List<String>
+)
+
+data class CommentNotification(
+    val postId: Int,
+    val commentId: Int,
+    val from: String,
+    val content: String,
+    val timestamp: Long,
+    val ip: String,
+    @SerializedName("parentCommentContent") val parentCommentContent: String,
+    val fromUserQQ: String
+)
+
 suspend fun getUrl(): String {
     val url = "https://sharechain.qq.com/93bd306d9c78bc6c4bc469c43c086cb6"
 
@@ -672,7 +698,6 @@ fun postMoment(username: String, password: String, content: String): Pair<String
     val formBody = FormBody.Builder()
         .add("username", username)
         .add("password", password)
-        .add("content",content)
         .build()
 
     Log.d("发布动态", url.toString())
