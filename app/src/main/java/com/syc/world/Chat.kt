@@ -942,8 +942,6 @@ fun ChatUi(navController: NavController) {
 
                 isSendSuccessfully = false
 
-                isSend = false
-
                 if (chatMessage.isNotEmpty()) {
                     // 计算时间差，确保时间格式化无误
                     val lastMessageTime = LocalDateTime.parse(
@@ -1004,7 +1002,7 @@ fun ChatUi(navController: NavController) {
                             val existingMessages = mutableListOf<Pair<String, String>>()
 
                             chatMessage.forEach { existingMessages.add(it.message to it.sendTime) }
-
+                            isSendSuccessfully = true
                             getMessageResult.second.forEach { chatRecord ->
                                 val senderQQ = chatRecord.senderQQ
                                 val message = chatRecord.message
@@ -1014,7 +1012,6 @@ fun ChatUi(navController: NavController) {
                                 } else {
                                     SenderType.Me
                                 }
-                                isSendSuccessfully = true
                                 if (!existingMessages.contains(message to timestamp)) {
                                     val newMessage = ChatMessage(
                                         isShowTime,
@@ -1028,6 +1025,7 @@ fun ChatUi(navController: NavController) {
                                     chatMessage.add(newMessage)
                                     existingMessages.add(message to timestamp)
                                 }
+                                isSend = false
                             }
                         }
                     }

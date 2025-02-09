@@ -316,8 +316,8 @@ class ForegroundService : Service() {
                     createChatMessageNotification(
                         "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
                         applicationContext,
-                        "您有${count}条未读消息",
-                        "$senderName: $senderContent"
+                        "$senderName (${count})",
+                        senderContent
                     )
                 }
                 val existingData = readFromFileForForegroundService(applicationContext, "ChatMessage/NewMessage/$senderName.json")

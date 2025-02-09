@@ -440,6 +440,9 @@ class MainActivity : ComponentActivity() {
                                 deleteFile(
                                 context, "ChatMessage/Message/"
                             )
+                            deleteFile(
+                                context, "ChatMessage/Count/"
+                            )
                         }
 
                         delay(3000)
@@ -915,7 +918,7 @@ suspend fun createMomentsMessageNotification(
         .setWhen(timestamp) // 设置消息时间
         .setShowWhen(true) // 确保时间显示
 
-    notificationManager.notify(10002, notificationBuilder.build())
+    notificationManager.notify(10003, notificationBuilder.build())
 }
 
 // 电池优化
