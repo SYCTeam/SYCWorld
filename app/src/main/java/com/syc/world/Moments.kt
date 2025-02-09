@@ -34,9 +34,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -47,11 +51,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -87,49 +93,49 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.concurrent.TimeUnit
 
+@SuppressLint("Range")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Moments(
     topAppBarScrollBehavior: ScrollBehavior,
     padding: PaddingValues,
     postId: MutableState<Int>,
     navController: NavController,
-    isReply: MutableState<Boolean>
+    isReply: MutableState<Boolean>,
+    selectedTab: MutableState<Int>,
+    postlist: SnapshotStateList<List<Post>>,
+    isTab: MutableState<Boolean>
 ) {
     Scaffold() {
-        Column(modifier = Modifier.padding(PaddingValues(top = padding.calculateTopPadding()))) {
-            val tabTexts = listOf("默认", "最新", "热度")
-            val selectedTab = rememberSaveable { mutableIntStateOf(0) }
-            TabRow(
-                tabs = tabTexts,
-                selectedTabIndex = selectedTab.intValue,
-                modifier = Modifier
-                    .fillMaxWidth()
-            ) {
-                selectedTab.intValue = it
-            }
-            val postlist = remember { mutableStateListOf(emptyList<Post>()) }
-            LaunchedEffect(selectedTab.intValue) {
-                withContext(Dispatchers.IO) {
-                    postlist.clear()
-                    val post = getPost(when (selectedTab.intValue) {
-                        0 -> "random"
-                        1 -> "latest"
-                        2 -> "hot"
-                        else -> "random"
-                    }, username = Global.username, password = Global.password).second
-                    if (post.size != 0) {
-                        postlist.add(post)
+        Column(modifier = Modifier.padding(PaddingValues(top = 0.dp))) {
+            LaunchedEffect(isTab.value) {
+                if (isTab.value || postlist.size == 0) {
+                    isTab.value = true
+                    withContext(Dispatchers.IO) {
+                        postlist.clear()
+                        val post = getPost(when (selectedTab.value) {
+                            0 -> "random"
+                            1 -> "latest"
+                            2 -> "hot"
+                            else -> "random"
+                        }, username = Global.username, password = Global.password).second
+                        if (post.size != 0) {
+                            postlist.add(post)
+                        }
                     }
+                    isTab.value = false
                 }
             }
-            if (postlist.size == 0) {
+            if (isTab.value) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -154,9 +160,15 @@ fun Moments(
                 }
             } else {
                 val context = LocalContext.current
+                val listState = rememberLazyListState()
+                val nestedScrollConnection = remember { topAppBarScrollBehavior.nestedScrollConnection }
+
                 LazyColumn(
-                    topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
+                    state = listState, modifier = Modifier.nestedScroll(nestedScrollConnection)
                 ) {
+                    item {
+                        Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
+                    }
                     items(postlist.size) {
                         for (post in postlist[it]) {
                             val ipAddress = remember { mutableStateOf(post.ip) }

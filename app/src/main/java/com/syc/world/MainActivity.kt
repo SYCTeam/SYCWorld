@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -58,11 +59,14 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -125,6 +129,7 @@ import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -1567,6 +1572,8 @@ fun AllHome(
     Column {
         val postId = remember { mutableIntStateOf(0) }
         val isReply = remember { mutableStateOf(false) }
+        val postlist = remember { mutableStateListOf(emptyList<Post>()) }
+        postlist.clear()
         NavHost(navController = navController, startDestination = "loading", enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { windowWidth },
@@ -1604,7 +1611,8 @@ fun AllHome(
                     hazeState,
                     hazeStyle,
                     postId = postId,
-                    isReply = isReply
+                    isReply = isReply,
+                    postList = postlist
                 )
             }
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
@@ -1655,7 +1663,8 @@ fun Main(
     hazeState: HazeState,
     hazeStyle: HazeStyle,
     postId: MutableState<Int>,
-    isReply: MutableState<Boolean>
+    isReply: MutableState<Boolean>,
+    postList: SnapshotStateList<List<Post>>
 ) {
     val topAppBarScrollBehavior0 =
         MiuixScrollBehavior(rememberTopAppBarState())
@@ -1684,7 +1693,7 @@ fun Main(
     val items = listOf(
         NavigationItem("首页", ImageVector.vectorResource(id = R.drawable.home)),
         NavigationItem("消息", ImageVector.vectorResource(id = R.drawable.chat)),
-        NavigationItem("动态", ImageVector.vectorResource(id = R.drawable.zone)),
+        if (pagerState.currentPage == 2) NavigationItem("刷新", ImageVector.vectorResource(id = R.drawable.refresh)) else NavigationItem("动态", ImageVector.vectorResource(id = R.drawable.zone)),
         NavigationItem("我的", ImageVector.vectorResource(id = R.drawable.my))
     )
     LaunchedEffect(pagerState) {
@@ -1692,6 +1701,9 @@ fun Main(
             targetPage = pagerState.currentPage
         }
     }
+    val tabTexts = listOf("默认", "最新", "热度")
+    val selectedTab = rememberSaveable { mutableIntStateOf(0) }
+    val isTab = remember { mutableStateOf(false) }
     Scaffold(modifier = modifier.fillMaxSize(),
         floatingActionButton = {
             if (pagerState.currentPage == 2) {
@@ -1712,50 +1724,91 @@ fun Main(
                     state = hazeState,
                     style = hazeStyle
                 ),
+                showDivider = false,
                 selected = targetPage,
                 onClick = { index ->
-                    targetPage = index
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(index)
+                    if (index == 2) {
+                        if (pagerState.currentPage == 2) {
+                            isTab.value = true
+                        } else {
+                            targetPage = index
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        }
+                    } else {
+                        targetPage = index
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
                     }
                 }
             )
         }, topBar = {
-            TopAppBar(scrollBehavior = currentScrollBehavior,
-                color = Color.Transparent,
-                title = when (pagerState.currentPage) {
-                    0 -> "首页"
-                    1 -> "消息"
-                    2 -> "动态"
-                    else -> "我的"
-                },
-                modifier = Modifier.hazeEffect(
+            Column(modifier = if (pagerState.currentPage == 2) {
+                Modifier.hazeEffect(
                     state = hazeState,
-                    style = hazeStyle, block = fun HazeEffectScope.() {
+                    style = hazeStyle, block =
+                    fun HazeEffectScope.() {
                         progressive =
                             HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f)
-                    }),
-                navigationIcon = {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                        contentDescription = null,
-                        modifier = Modifier.size(50.dp)
-                    )
-                }, actions = {
-                    IconButton(
-                        onClick = {
-                            navController.navigate("Notification")
-                        },
-                        modifier = Modifier,
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.noti),
-                            contentDescription = null,
-                            modifier = Modifier.size(50.dp).padding(10.dp),
-                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onBackground)
-                        )
                     }
-                })
+                )
+            } else Modifier) {
+                TopAppBar(scrollBehavior = currentScrollBehavior,
+                    color = Color.Transparent,
+                    title = when (pagerState.currentPage) {
+                        0 -> "首页"
+                        1 -> "消息"
+                        2 -> "动态"
+                        else -> "我的"
+                    },
+                    modifier = if (pagerState.currentPage != 2) {
+                        Modifier.hazeEffect(
+                            state = hazeState,
+                            style = hazeStyle, block =
+                            fun HazeEffectScope.() {
+                                progressive =
+                                    HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f)
+                            }
+                        )
+                    } else Modifier,
+                    navigationIcon = {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                            contentDescription = null,
+                            modifier = Modifier.size(50.dp)
+                        )
+                    }, actions = {
+                        IconButton(
+                            onClick = {
+                                navController.navigate("Notification")
+                            },
+                            modifier = Modifier,
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.noti),
+                                contentDescription = null,
+                                modifier = Modifier.size(50.dp).padding(10.dp),
+                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onBackground)
+                            )
+                        }
+                    })
+                if (pagerState.currentPage == 2) {
+                    TabRow(
+                        tabs = tabTexts,
+                        backgroundColor = Color.Transparent,
+                        selectedTabIndex = selectedTab.intValue,
+                        cornerRadius = 0.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                    ) {
+                        selectedTab.intValue = it
+                        isTab.value = true
+                    }
+                }
+            }
+
         }) { padding ->
         Box(
             modifier = Modifier.hazeSource(state = hazeState)
@@ -1768,7 +1821,10 @@ fun Main(
                 navController = navController,
                 colorMode = colorMode,
                 postId = postId,
-                isReply = isReply
+                isReply = isReply,
+                selectedTab = selectedTab,
+                postList = postList,
+                isTab = isTab
             )
         }
     }
@@ -1783,7 +1839,10 @@ fun AppHorizontalPager(
     navController: NavController,
     colorMode: MutableState<Int>,
     postId: MutableState<Int>,
-    isReply: MutableState<Boolean>
+    isReply: MutableState<Boolean>,
+    selectedTab: MutableState<Int>,
+    postList: SnapshotStateList<List<Post>>,
+    isTab: MutableState<Boolean>
 ) {
     HorizontalPager(
         modifier = modifier,
@@ -1809,7 +1868,10 @@ fun AppHorizontalPager(
                     padding = padding,
                     navController = navController,
                     postId = postId,
-                    isReply = isReply
+                    isReply = isReply,
+                    selectedTab = selectedTab,
+                    postlist = postList,
+                    isTab = isTab
                 )
 
                 else -> Person(
