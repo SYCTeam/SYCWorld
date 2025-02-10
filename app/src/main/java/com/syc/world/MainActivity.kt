@@ -864,6 +864,7 @@ suspend fun createChatMessageNotification(
         .setSound(Uri.parse("android.resource://${context.packageName}/raw/ring"))
         .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
         .setWhen(timestamp) // 设置消息时间
+        .setAutoCancel(false)
         .setShowWhen(true) // 确保时间显示
 
     notificationManager.notify(10002, notificationBuilder.build())
