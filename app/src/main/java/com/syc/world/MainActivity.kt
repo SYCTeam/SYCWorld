@@ -613,7 +613,8 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     AllHome(
                         colorMode = colorMode,
-                        modifier = Modifier.padding()
+                        modifier = Modifier.padding(),
+                        intent = intent
                     )
                 }
             }
@@ -801,7 +802,8 @@ suspend fun createChatMessageNotification(
     context: Context,
     title: String,
     content: String,
-    timestamp: Long = System.currentTimeMillis()
+    timestamp: Long = System.currentTimeMillis(),
+    link: String? = null // 传入链接，默认为 null
 ) {
     val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -826,9 +828,15 @@ suspend fun createChatMessageNotification(
     }
     notificationManager.createNotificationChannel(channel)
 
-    val intent = Intent(context, MainActivity::class.java).apply {
-        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    // 如果链接不为空，使用传入的链接；否则，使用默认的 MainActivity
+    val intent = if (!link.isNullOrEmpty()) {
+        Intent(Intent.ACTION_VIEW, Uri.parse(link))  // 打开传入的链接
+    } else {
+        Intent(context, MainActivity::class.java).apply {  // 否则，跳转到 MainActivity
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
     }
+
     val pendingIntent = PendingIntent.getActivity(
         context, 0, intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -1443,7 +1451,8 @@ class SpringEasing @JvmOverloads constructor(
 @Composable
 fun AllHome(
     modifier: Modifier = Modifier,
-    colorMode: MutableState<Int> = remember { mutableIntStateOf(0) }
+    colorMode: MutableState<Int> = remember { mutableIntStateOf(0) },
+    intent: Intent? = null
 ) {
     val context = LocalContext.current
     // 读取账号
@@ -1500,6 +1509,10 @@ fun AllHome(
     val easing = SpringEasing(0.95f, 0.4f)//CubicBezierEasing(0.4f, 0.95f, 0.2f, 1f)
     val duration = easing.duration.toInt()
     val client = OkHttpClient()
+    val postId = remember { mutableIntStateOf(0) }
+    val isReply = remember { mutableStateOf(false) }
+    val postlist = remember { mutableStateListOf(emptyList<Post>()) }
+    postlist.clear()
     LaunchedEffect(password.value) {
         while (Global.url == "") {
             withContext(Dispatchers.IO) {
@@ -1543,6 +1556,7 @@ fun AllHome(
                 }
             }
             if (result != "") {
+                Log.d("stzy", result)
                 val jsonObject = JSONObject(result)
                 if (jsonObject.getString("status") == "success") {
                     Global.username = name.value
@@ -1568,13 +1582,23 @@ fun AllHome(
                 }
             }
         }
+        intent?.data?.let {
+            Log.d("导航", "host:${it.host} path:${it.path} scheme:${it.scheme} query:${it.query} fragment:${it.fragment} authority:${it.authority} port:${it.port} schemeSpecificPart:${it.schemeSpecificPart} toString:${it.toString()}")
+            if (it.host == "moment") {
+                val QPpostId = it.getQueryParameter("postId")
+                if (QPpostId != null) {
+                    postId.intValue = QPpostId.toInt()
+                }
+                val QPisReply = it.getQueryParameter("isReply")
+                if (QPisReply == "true") {
+                    isReply.value = true
+                }
+                navController.navigate("Dynamic")
+            }
+        }
     }
 
     Column {
-        val postId = remember { mutableIntStateOf(0) }
-        val isReply = remember { mutableStateOf(false) }
-        val postlist = remember { mutableStateListOf(emptyList<Post>()) }
-        postlist.clear()
         NavHost(navController = navController, startDestination = "loading", enterTransition = {
             slideInHorizontally(
                 initialOffsetX = { windowWidth },
@@ -1790,7 +1814,9 @@ fun Main(
                             Image(
                                 painter = painterResource(id = R.drawable.noti),
                                 contentDescription = null,
-                                modifier = Modifier.size(50.dp).padding(10.dp),
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .padding(10.dp),
                                 colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onBackground)
                             )
                         }

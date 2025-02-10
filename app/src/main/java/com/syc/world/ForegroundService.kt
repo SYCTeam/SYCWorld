@@ -395,8 +395,15 @@ class ForegroundService : Service() {
                             }
                             if (post.second?.commentNotifications?.size != 0) {
                                 post.second?.commentNotifications?.forEachIndexed { it, context ->
-                                    sendMomentsNotification(context.qq.toString(),
-                                        "${context.from} 评论了你的动态",context.content)
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        if (!isInForeground.value) {
+                                            createChatMessageNotification(
+                                                "https://q.qlogo.cn/headimg_dl?dst_uin=${context.qq}&spec=640&img_type=jpg",
+                                                applicationContext,
+                                                "${context.from} 评论了你的动态", context.content,link = "sycworld://moment?postId=${context.postId}&isReply=true"
+                                            )
+                                        }
+                                    }
                                     val existingData = readFromFileForForegroundService(applicationContext, "Moments/list.json")
                                     val messageList: MutableList<MomentsMessage> = if (existingData.isNotEmpty()) {
                                         Gson().fromJson(existingData, Array<MomentsMessage>::class.java).toMutableList()
