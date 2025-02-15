@@ -17,7 +17,6 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -41,13 +40,11 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
@@ -453,7 +450,7 @@ class MainActivity : ComponentActivity() {
                         Global.setIsDeleteChatMessageOpen(getDeleteMessageListSwitch().toBooleanStrictOrNull() == true) // 获取是否删除聊天记录
 
                         if (isDeleteChatMessageOpen.value) {
-                                deleteFile(
+                            deleteFile(
                                 context, "ChatMessage/Message/"
                             )
                             deleteFile(
@@ -823,7 +820,8 @@ suspend fun createChatMessageNotification(
     }
 
     // 后台逻辑：创建通知
-    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     // 创建通知渠道
     val channelId = "SYC_ChatMessage"
@@ -1600,7 +1598,10 @@ fun AllHome(
             }
         }
         intent?.data?.let {
-            Log.d("导航", "host:${it.host} path:${it.path} scheme:${it.scheme} query:${it.query} fragment:${it.fragment} authority:${it.authority} port:${it.port} schemeSpecificPart:${it.schemeSpecificPart} toString:${it.toString()}")
+            Log.d(
+                "导航",
+                "host:${it.host} path:${it.path} scheme:${it.scheme} query:${it.query} fragment:${it.fragment} authority:${it.authority} port:${it.port} schemeSpecificPart:${it.schemeSpecificPart} toString:${it.toString()}"
+            )
             if (it.host == "moment") {
                 val QPpostId = it.getQueryParameter("postId")
                 if (QPpostId != null) {
@@ -1611,6 +1612,51 @@ fun AllHome(
                     isReply.value = true
                 }
                 navController.navigate("Dynamic")
+            }
+            if (it.host == "chat") {
+                withContext(Dispatchers.IO) {
+                    while (true) {
+                        if (Global.username.trim().isNotEmpty() && Global.password.trim()
+                                .isNotEmpty()
+                        ) {
+                            Log.d("跳转问题", "成功接收到跳转请求")
+                            if (it.getQueryParameter("name") != null && it.getQueryParameter("qq") != null) {
+                                it.getQueryParameter("name")
+                                    ?.let { it1 -> Global.setPersonNameBeingChat(it1) }
+                                it.getQueryParameter("qq")
+                                    ?.let { it1 -> Global.setPersonQQBeingChat(it1) }
+                                val informationResult =
+                                    getUserInformation(it.getQueryParameter("name") ?: "")
+                                if (informationResult.isNotEmpty() && isJson(informationResult)) {
+                                    val userInfo = parseUserInfo(informationResult)
+                                    if (userInfo != null) {
+                                        if (userInfo.online.isNotEmpty()) {
+                                            Log.d("跳转问题", "online: ${userInfo.online}")
+                                            Global.setPersonIsOnlineBeingChat(userInfo.online == "在线")
+                                        }
+                                    }
+                                }
+                                val chatList = getChatList(Global.username, Global.password)
+
+                                if (chatList.first == "success") {
+                                    withContext(Dispatchers.Main) {
+                                        chatList.second.map { chatItem ->
+                                            if (chatItem.username == it.getQueryParameter("name") && chatItem.qq == it.getQueryParameter(
+                                                    "qq"
+                                                )
+                                            ) {
+                                                navController.navigate("ChatUi")
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Log.d("跳转问题", "聊天列表获取失败")
+                                }
+                            }
+                            break
+                        }
+                    }
+                }
             }
         }
     }
@@ -1664,8 +1710,25 @@ fun AllHome(
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
             composable("ChatUi") { ChatUi(navController) }
             composable("ChatSettings") { ChatSettings(navController) }
-            composable("Dynamic") { Dynamic(navController, postId.intValue, hazeState, hazeStyle,isReply) }
-            composable("Notification") { Notification(navController, hazeState, hazeStyle,postId,isReply,notidifference.value) }
+            composable("Dynamic") {
+                Dynamic(
+                    navController,
+                    postId.intValue,
+                    hazeState,
+                    hazeStyle,
+                    isReply
+                )
+            }
+            composable("Notification") {
+                Notification(
+                    navController,
+                    hazeState,
+                    hazeStyle,
+                    postId,
+                    isReply,
+                    notidifference.value
+                )
+            }
         }
     }
 }
@@ -1738,7 +1801,10 @@ fun Main(
     val items = listOf(
         NavigationItem("首页", ImageVector.vectorResource(id = R.drawable.home)),
         NavigationItem("消息", ImageVector.vectorResource(id = R.drawable.chat)),
-        if (pagerState.currentPage == 2) NavigationItem("刷新", ImageVector.vectorResource(id = R.drawable.refresh)) else NavigationItem("动态", ImageVector.vectorResource(id = R.drawable.zone)),
+        if (pagerState.currentPage == 2) NavigationItem(
+            "刷新",
+            ImageVector.vectorResource(id = R.drawable.refresh)
+        ) else NavigationItem("动态", ImageVector.vectorResource(id = R.drawable.zone)),
         NavigationItem("我的", ImageVector.vectorResource(id = R.drawable.my))
     )
     LaunchedEffect(pagerState) {
@@ -1759,7 +1825,10 @@ fun Main(
             val listSize = if (listFile.exists()) {
                 val listJson = listFile.readText()
                 if (listJson.isNotEmpty()) {
-                    gson.fromJson(listJson, Array<ForegroundService.MomentsMessage>::class.java).size
+                    gson.fromJson(
+                        listJson,
+                        Array<ForegroundService.MomentsMessage>::class.java
+                    ).size
                 } else {
                     0
                 }
@@ -1775,7 +1844,10 @@ fun Main(
                 "[]"
             }
             val quantity = if (quantityJson.isNotEmpty()) {
-                gson.fromJson(quantityJson, Array<ForegroundService.MomentsMessage>::class.java).size
+                gson.fromJson(
+                    quantityJson,
+                    Array<ForegroundService.MomentsMessage>::class.java
+                ).size
             } else {
                 0
             }
@@ -1836,7 +1908,10 @@ fun Main(
                     style = hazeStyle, block =
                     fun HazeEffectScope.() {
                         progressive =
-                            HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f)
+                            HazeProgressive.verticalGradient(
+                                startIntensity = 1f,
+                                endIntensity = 0f
+                            )
                     }
                 )
             } else Modifier) {
@@ -1854,7 +1929,10 @@ fun Main(
                             style = hazeStyle, block =
                             fun HazeEffectScope.() {
                                 progressive =
-                                    HazeProgressive.verticalGradient(startIntensity = 1f, endIntensity = 0f)
+                                    HazeProgressive.verticalGradient(
+                                        startIntensity = 1f,
+                                        endIntensity = 0f
+                                    )
                             }
                         )
                     } else Modifier,
@@ -1873,7 +1951,12 @@ fun Main(
                                     navController.navigate("Notification")
                                     val listFile = File(context.filesDir, "Moments/list.json")
                                     if (listFile.exists()) {
-                                        writeToFile(context, "Moments", "quantity.json", listFile.readText())
+                                        writeToFile(
+                                            context,
+                                            "Moments",
+                                            "quantity.json",
+                                            listFile.readText()
+                                        )
                                     }
                                 },
                                 modifier = Modifier,
@@ -1910,7 +1993,7 @@ fun Main(
                         tabs = tabTexts,
                         backgroundColor = Color.Transparent,
                         selectedTabIndex = selectedTab.intValue,
-                        selectedBackgroundColor = MiuixTheme. colorScheme. surface.copy(alpha = 0.8f),
+                        selectedBackgroundColor = MiuixTheme.colorScheme.surface.copy(alpha = 0.8f),
                         cornerRadius = 20.dp,
                         modifier = Modifier
                             .fillMaxWidth()

@@ -318,7 +318,12 @@ class ForegroundService : Service() {
         return "$timePeriod$hour:${minute.toString().padStart(2, '0')}"
     }
 
-    private fun sendChatMessageNotification(count: Int, senderName: String, senderQQ: String, senderContent: String) {
+    private fun sendChatMessageNotification(
+        count: Int,
+        senderName: String,
+        senderQQ: String,
+        senderContent: String
+    ) {
         CoroutineScope(Dispatchers.IO).launch {
             for (i in 1..count) {
                 if (!isInForeground.value) {
@@ -327,25 +332,42 @@ class ForegroundService : Service() {
                             "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
                             applicationContext,
                             "$senderName (${count}条)",
-                            senderContent
+                            senderContent,
+                            link = "sycworld://chat?name=$senderName&qq=$senderQQ"
                         )
                     } else {
                         createChatMessageNotification(
                             "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
                             applicationContext,
                             senderName,
-                            senderContent
+                            senderContent,
+                            link = "sycworld://chat?name=$senderName&qq=$senderQQ"
                         )
                     }
                 }
-                val existingData = readFromFileForForegroundService(applicationContext, "ChatMessage/NewMessage/$senderName.json")
+                val existingData = readFromFileForForegroundService(
+                    applicationContext,
+                    "ChatMessage/NewMessage/$senderName.json"
+                )
                 val messageList: MutableList<ChatNewMessage> = if (existingData.isNotEmpty()) {
                     Gson().fromJson(existingData, Array<ChatNewMessage>::class.java).toMutableList()
                 } else {
                     mutableListOf()
                 }
-                messageList.add(ChatNewMessage(count, senderName, senderContent, getCurrentTimeForChatList()))
-                writeToFile(applicationContext, "ChatMessage/NewMessage", "${senderName}.json", Gson().toJson(messageList))
+                messageList.add(
+                    ChatNewMessage(
+                        count,
+                        senderName,
+                        senderContent,
+                        getCurrentTimeForChatList()
+                    )
+                )
+                writeToFile(
+                    applicationContext,
+                    "ChatMessage/NewMessage",
+                    "${senderName}.json",
+                    Gson().toJson(messageList)
+                )
                 delay(2000)
             }
         }
@@ -371,34 +393,67 @@ class ForegroundService : Service() {
                                         if (s !in alllikelist) {
                                             alllikelist += s
                                         }
-                                        val existingData = readFromFileForForegroundService(applicationContext, "Moments/list.json")
-                                        val messageList: MutableList<MomentsMessage> = if (existingData.isNotEmpty()) {
-                                            Gson().fromJson(existingData, Array<MomentsMessage>::class.java).toMutableList()
-                                        } else {
-                                            mutableListOf()
-                                        }
-                                        messageList.add(MomentsMessage(s, post.second?.likeNotifications?.get(it)!!.qq.get(index).toLong(),
-                                            post.second?.likeNotifications?.get(it)!!.postContentPreview,
-                                            System.currentTimeMillis(), post.second?.likeNotifications?.get(it)!!.postId,"like"))
-                                        writeToFile(applicationContext, "Moments", "list.json", Gson().toJson(messageList))
+                                        val existingData = readFromFileForForegroundService(
+                                            applicationContext,
+                                            "Moments/list.json"
+                                        )
+                                        val messageList: MutableList<MomentsMessage> =
+                                            if (existingData.isNotEmpty()) {
+                                                Gson().fromJson(
+                                                    existingData,
+                                                    Array<MomentsMessage>::class.java
+                                                ).toMutableList()
+                                            } else {
+                                                mutableListOf()
+                                            }
+                                        messageList.add(
+                                            MomentsMessage(
+                                                s,
+                                                post.second?.likeNotifications?.get(it)!!.qq.get(
+                                                    index
+                                                ).toLong(),
+                                                post.second?.likeNotifications?.get(it)!!.postContentPreview,
+                                                System.currentTimeMillis(),
+                                                post.second?.likeNotifications?.get(it)!!.postId,
+                                                "like"
+                                            )
+                                        )
+                                        writeToFile(
+                                            applicationContext,
+                                            "Moments",
+                                            "list.json",
+                                            Gson().toJson(messageList)
+                                        )
                                     }
                                     likeposts += 1
                                 }
                                 if (alllikelist.size == 1) {
                                     if (likeposts == 1) {
-                                        sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
-                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 给你的帖子点赞啦","快去看看吧")
+                                        sendMomentsNotification(
+                                            post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 给你的帖子点赞啦",
+                                            "快去看看吧"
+                                        )
                                     } else {
-                                        sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
-                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 给你的${likeposts}个帖子点赞啦","快去看看吧")
+                                        sendMomentsNotification(
+                                            post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 给你的${likeposts}个帖子点赞啦",
+                                            "快去看看吧"
+                                        )
                                     }
                                 } else {
                                     if (likeposts == 1) {
-                                        sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
-                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 等${alllikelist.size}个人给你的帖子点赞啦","快去看看吧")
+                                        sendMomentsNotification(
+                                            post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 等${alllikelist.size}个人给你的帖子点赞啦",
+                                            "快去看看吧"
+                                        )
                                     } else {
-                                        sendMomentsNotification(post.second?.likeNotifications?.get(0)!!.qq.get(0),
-                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 等${alllikelist.size}个人给你的${likeposts}个帖子点赞啦","快去看看吧")
+                                        sendMomentsNotification(
+                                            post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 等${alllikelist.size}个人给你的${likeposts}个帖子点赞啦",
+                                            "快去看看吧"
+                                        )
                                     }
                                 }
                             }
@@ -408,19 +463,37 @@ class ForegroundService : Service() {
                                         createChatMessageNotification(
                                             "https://q.qlogo.cn/headimg_dl?dst_uin=${context.qq}&spec=640&img_type=jpg",
                                             applicationContext,
-                                            "${context.from} 评论了你的动态", context.content,link = "sycworld://moment?postId=${context.postId}&isReply=true"
+                                            "${context.from} 评论了你的动态",
+                                            context.content,
+                                            link = "sycworld://moment?postId=${context.postId}&isReply=true"
                                         )
                                     }
-                                    val existingData = readFromFileForForegroundService(applicationContext, "Moments/list.json")
-                                    val messageList: MutableList<MomentsMessage> = if (existingData.isNotEmpty()) {
-                                        Gson().fromJson(existingData, Array<MomentsMessage>::class.java).toMutableList()
-                                    } else {
-                                        mutableListOf()
-                                    }
-                                    messageList.add(MomentsMessage(context.from, context.qq,
-                                        context.content,
-                                        System.currentTimeMillis(), context.postId,"comment"))
-                                    writeToFile(applicationContext, "Moments", "list.json", Gson().toJson(messageList))
+                                    val existingData = readFromFileForForegroundService(
+                                        applicationContext,
+                                        "Moments/list.json"
+                                    )
+                                    val messageList: MutableList<MomentsMessage> =
+                                        if (existingData.isNotEmpty()) {
+                                            Gson().fromJson(
+                                                existingData,
+                                                Array<MomentsMessage>::class.java
+                                            ).toMutableList()
+                                        } else {
+                                            mutableListOf()
+                                        }
+                                    messageList.add(
+                                        MomentsMessage(
+                                            context.from, context.qq,
+                                            context.content,
+                                            System.currentTimeMillis(), context.postId, "comment"
+                                        )
+                                    )
+                                    writeToFile(
+                                        applicationContext,
+                                        "Moments",
+                                        "list.json",
+                                        Gson().toJson(messageList)
+                                    )
                                 }
                             }
                         }
@@ -431,7 +504,7 @@ class ForegroundService : Service() {
         }
     }
 
-    private fun sendMomentsNotification(senderQQ: String,title: String, content: String) {
+    private fun sendMomentsNotification(senderQQ: String, title: String, content: String) {
         CoroutineScope(Dispatchers.IO).launch {
             createChatMessageNotification(
                 "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
@@ -472,7 +545,8 @@ class ForegroundService : Service() {
                 Log.d("动态通知获取", responseBody)
                 try {
                     // 解析响应为 ChatInfo 对象
-                    val MomentResponse: MomentResponse = Gson().fromJson(responseBody, MomentResponse::class.java)
+                    val MomentResponse: MomentResponse =
+                        Gson().fromJson(responseBody, MomentResponse::class.java)
                     Pair(MomentResponse.message, MomentResponse) // 返回状态和解析后的 ChatInfo 对象
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -504,8 +578,16 @@ class ForegroundService : Service() {
                                 val message = hasNewMessage.second
                                 if (message?.hasNewMessages == true && !isRing) {
                                     Log.d("消息问题", "有新消息！")
-                                    val sendCount = (hasNewMessage.second!!.totalMessageCount - localMessageCount).coerceAtMost(3)
-                                    sendChatMessageNotification(sendCount, message.lastMessage.sender, message.lastMessage.senderQQ, message.lastMessage.content)
+                                    val sendCount =
+                                        (hasNewMessage.second!!.totalMessageCount - localMessageCount).coerceAtMost(
+                                            3
+                                        )
+                                    sendChatMessageNotification(
+                                        sendCount,
+                                        message.lastMessage.sender,
+                                        message.lastMessage.senderQQ,
+                                        message.lastMessage.content
+                                    )
                                     isRing = true
                                 } else if (message?.hasNewMessages == false) {
                                     isRing = false
@@ -520,7 +602,12 @@ class ForegroundService : Service() {
                                 }
                             }
                         } else {
-                            hasNewMessage.second?.let { Log.d("消息问题", it.hasNewMessages.toString()) }
+                            hasNewMessage.second?.let {
+                                Log.d(
+                                    "消息问题",
+                                    it.hasNewMessages.toString()
+                                )
+                            }
                         }
                     } else {
                         val notificationManager =
@@ -634,7 +721,11 @@ class ForegroundService : Service() {
                     )
                 }
 
-                if (readFromFileForForegroundService(applicationContext, "isInForeground") == "true") {
+                if (readFromFileForForegroundService(
+                        applicationContext,
+                        "isInForeground"
+                    ) == "true"
+                ) {
                     GlobalForForegroundService.setIsInForeground(
                         readFromFileForForegroundService(
                             applicationContext,
@@ -832,7 +923,8 @@ class ForegroundService : Service() {
     private fun buildForegroundNotification(): Notification {
         val channelId = "SYC"
         val channelName = "后台运行通知"
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // 创建时间格式化
         val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
