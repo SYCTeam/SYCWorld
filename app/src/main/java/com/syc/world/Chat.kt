@@ -1046,9 +1046,6 @@ fun ChatUi(navController: NavController) {
                                         timestamp
                                     )
 
-                                    if (chatMessage.size > messageIndex) {
-                                        chatMessage.removeAt(messageIndex)
-                                    }
                                     chatMessage.add(newMessage)
                                     existingMessages.add(message to timestamp)
                                 }
