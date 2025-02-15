@@ -190,94 +190,89 @@ fun Person(
 }
 
 @Composable
-fun Person(
-    topAppBarScrollBehavior: ScrollBehavior,
-    padding: PaddingValues,
-    colorMode: MutableState<Int>,
+fun ViewPersonPopup(
     navController: NavController
 ) {
-    Scaffold {
-        val context = LocalContext.current
-        val isShowEditSynopsis = Global.isShowEditSynopsis.collectAsState()
-        var isSynopsis by remember { mutableStateOf(false) }
-        val isShowEditPassword = Global.isShowEditPassword.collectAsState()
-        val isShowEditQQ = Global.isShowEditQQ.collectAsState()
-        val isShowAskExit = Global.isShowAskExit.collectAsState()
-        var textOld by remember { mutableStateOf("") }
-        var textNew by remember { mutableStateOf("") }
-        var passwordHidden by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val isShowEditSynopsis = Global.isShowEditSynopsis.collectAsState()
+    var isSynopsis by remember { mutableStateOf(false) }
+    val isShowEditPassword = Global.isShowEditPassword.collectAsState()
+    val isShowEditQQ = Global.isShowEditQQ.collectAsState()
+    val isShowAskExit = Global.isShowAskExit.collectAsState()
+    var textOld by remember { mutableStateOf("") }
+    var textNew by remember { mutableStateOf("") }
+    var passwordHidden by remember { mutableStateOf(false) }
 
-        var isModifyPassword by remember { mutableStateOf(false) }
-        var isModifyQQ by remember { mutableStateOf(false) }
+    var isModifyPassword by remember { mutableStateOf(false) }
+    var isModifyQQ by remember { mutableStateOf(false) }
 
 
-        LaunchedEffect(isModifyQQ) {
-            if (isModifyQQ) {
-                if (textNew.trim().isNotEmpty()) {
-                    withContext(Dispatchers.IO) {
-                        val modifyPasswordResult = modifyQQ(Global.username, textNew)
-                        if (modifyPasswordResult.first == "error") {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    "修改失败！原因：${modifyPasswordResult.second}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                            textOld = ""
-                            textNew = ""
-                            isModifyQQ = false
-                        } else if (modifyPasswordResult.first == "success"){
-                            Log.d("QQ问题", "QQ修改成功！")
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    modifyPasswordResult.second,
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                            textOld = ""
-                            textNew = ""
-                            isModifyQQ = false
+    LaunchedEffect(isModifyQQ) {
+        if (isModifyQQ) {
+            if (textNew.trim().isNotEmpty()) {
+                withContext(Dispatchers.IO) {
+                    val modifyPasswordResult = modifyQQ(Global.username, textNew)
+                    if (modifyPasswordResult.first == "error") {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "修改失败！原因：${modifyPasswordResult.second}",
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
+                        textOld = ""
+                        textNew = ""
+                        isModifyQQ = false
+                    } else if (modifyPasswordResult.first == "success"){
+                        Log.d("QQ问题", "QQ修改成功！")
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                modifyPasswordResult.second,
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        textOld = ""
+                        textNew = ""
+                        isModifyQQ = false
                     }
                 }
             }
         }
+    }
 
-        LaunchedEffect(isModifyPassword) {
-            if (isModifyPassword) {
-                if (textOld.trim().isNotEmpty() && textNew.trim().isNotEmpty()) {
-                    withContext(Dispatchers.IO) {
-                        val modifyPasswordResult = modifyPassword(Global.username, textOld, textNew)
-                        if (modifyPasswordResult.first == "error") {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    "修改失败！原因：${modifyPasswordResult.second}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                            textOld = ""
-                            textNew = ""
-                            isModifyPassword = false
-                        } else if (modifyPasswordResult.first == "success"){
-                            Log.d("密码问题", "密码修改成功！")
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    modifyPasswordResult.second,
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                            textOld = ""
-                            textNew = ""
-                            isModifyPassword = false
-                            withContext(Dispatchers.Main) {
-                                navController.navigate("Regin") {
-                                    popUpTo("loading") {
-                                        inclusive = true
-                                    }
+    LaunchedEffect(isModifyPassword) {
+        if (isModifyPassword) {
+            if (textOld.trim().isNotEmpty() && textNew.trim().isNotEmpty()) {
+                withContext(Dispatchers.IO) {
+                    val modifyPasswordResult = modifyPassword(Global.username, textOld, textNew)
+                    if (modifyPasswordResult.first == "error") {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "修改失败！原因：${modifyPasswordResult.second}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        textOld = ""
+                        textNew = ""
+                        isModifyPassword = false
+                    } else if (modifyPasswordResult.first == "success"){
+                        Log.d("密码问题", "密码修改成功！")
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                modifyPasswordResult.second,
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        textOld = ""
+                        textNew = ""
+                        isModifyPassword = false
+                        withContext(Dispatchers.Main) {
+                            navController.navigate("Regin") {
+                                popUpTo("loading") {
+                                    inclusive = true
                                 }
                             }
                         }
@@ -285,48 +280,37 @@ fun Person(
                 }
             }
         }
+    }
 
-        LaunchedEffect(isSynopsis) {
-            if (isSynopsis) {
-                withContext(Dispatchers.IO) {
-                    val synopsis = modifySynopsis(
-                        username = Global.username,
-                        password = Global.password,
-                        synopsis = textNew
-                    )
-                    if (isJson(synopsis)) {
-                        if ((parseSynopsisData(synopsis)?.status
-                                ?: "未知错误，请稍后再试") == "success"
-                        ) {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    "简介修改成功！",
-                                    Toast.LENGTH_LONG
-                                )
-                                    .show()
-                            }
-                            textOld = ""
-                            textNew = ""
-                            Global.setIsShowEditSynopsis(false)
-                        } else {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    parseSynopsisData(synopsis)?.message
-                                        ?: "未知错误，请稍后再试", Toast.LENGTH_LONG
-                                )
-                                    .show()
-                            }
-                            textOld = ""
-                            textNew = ""
-                            Global.setIsShowEditSynopsis(false)
+    LaunchedEffect(isSynopsis) {
+        if (isSynopsis) {
+            withContext(Dispatchers.IO) {
+                val synopsis = modifySynopsis(
+                    username = Global.username,
+                    password = Global.password,
+                    synopsis = textNew
+                )
+                if (isJson(synopsis)) {
+                    if ((parseSynopsisData(synopsis)?.status
+                            ?: "未知错误，请稍后再试") == "success"
+                    ) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "简介修改成功！",
+                                Toast.LENGTH_LONG
+                            )
+                                .show()
                         }
+                        textOld = ""
+                        textNew = ""
+                        Global.setIsShowEditSynopsis(false)
                     } else {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 context,
-                                "未知错误，请稍后再试", Toast.LENGTH_LONG
+                                parseSynopsisData(synopsis)?.message
+                                    ?: "未知错误，请稍后再试", Toast.LENGTH_LONG
                             )
                                 .show()
                         }
@@ -334,10 +318,540 @@ fun Person(
                         textNew = ""
                         Global.setIsShowEditSynopsis(false)
                     }
-                    isSynopsis = false
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            "未知错误，请稍后再试", Toast.LENGTH_LONG
+                        )
+                            .show()
+                    }
+                    textOld = ""
+                    textNew = ""
+                    Global.setIsShowEditSynopsis(false)
+                }
+                isSynopsis = false
+            }
+        }
+    }
+
+    AnimatedVisibility(
+        visible = isShowEditPassword.value || isShowEditQQ.value || isShowAskExit.value || isShowEditSynopsis.value,
+        enter = fadeIn(
+            animationSpec = tween(durationMillis = 300)
+        ),
+        exit = fadeOut(
+            animationSpec = tween(durationMillis = 300)
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    Global.setIsShowEditSynopsis(false)
+                    Global.setIsShowEditPassword(false)
+                    Global.setIsShowEditQQ(false)
+                    Global.setIsShowAskExit(false)
+                }
+                .fillMaxSize()
+                .alpha(0.5f),
+            color = Color.Black
+        ) {
+
+        }
+    }
+    AnimatedVisibility(
+        visible = isShowEditPassword.value,
+        enter = scaleIn(
+            initialScale = 0f,
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ) + slideInVertically(
+            initialOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ),
+        exit = scaleOut(
+            targetScale = 0f,
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ) + slideOutVertically(
+            targetOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            ElevatedCard(
+                modifier = Modifier
+                    .padding(10.dp)
+                    .fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.Top
+                ) {
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    HeadlineInLargePrint(headline = "修改登录密码")
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier,
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.Top
+                        ) {
+                            Text(
+                                text = "请输入旧密码: ",
+                                modifier = Modifier
+                                    .padding(10.dp),
+                                fontSize = 15.sp,
+                                style = TextStyle(fontWeight = FontWeight.Bold)
+                            )
+
+
+
+                            TextField(
+                                modifier = Modifier.padding(10.dp),
+                                value = textOld,
+                                onValueChange = {
+                                    textOld = it
+                                },
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = {
+                                            passwordHidden = !passwordHidden
+                                        }
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.visible),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                },
+                                label = {
+                                    Text("旧密码")
+                                },
+                                visualTransformation = if (passwordHidden) PasswordVisualTransformation() else VisualTransformation.None
+                            )
+
+                            Text(
+                                text = "请输入新密码: ",
+                                modifier = Modifier
+                                    .padding(10.dp),
+                                fontSize = 15.sp,
+                                style = TextStyle(fontWeight = FontWeight.Bold)
+                            )
+
+                            TextField(
+                                modifier = Modifier.padding(10.dp),
+                                value = textNew,
+                                onValueChange = {
+                                    textNew = it
+                                },
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = {
+                                            passwordHidden = !passwordHidden
+                                        }
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.visible),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                },
+                                label = {
+                                    Text("新密码")
+                                },
+                                visualTransformation = if (passwordHidden) PasswordVisualTransformation() else VisualTransformation.None
+                            )
+                        }
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Button(
+                            modifier = Modifier.padding(10.dp),
+                            onClick = {
+                                if (textOld.trim().isNotEmpty() && textNew.trim()
+                                        .isNotEmpty()
+                                ) {
+                                    isModifyPassword = true
+                                    Global.setIsShowEditPassword(false)
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "请确保每项不为空！",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }) {
+                            Icon(
+                                Icons.Filled.Done,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                            )
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("确认")
+                        }
+                    }
                 }
             }
         }
+    }
+
+    AnimatedVisibility(
+        visible = isShowEditQQ.value,
+        enter = scaleIn(
+            initialScale = 0f,
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ) + slideInVertically(
+            initialOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ),
+        exit = scaleOut(
+            targetScale = 0f,
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ) + slideOutVertically(
+            targetOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            ElevatedCard(
+                modifier = Modifier
+                    .padding(10.dp)
+                    .fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.Top
+                ) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    HeadlineInLargePrint(headline = "修改QQ号")
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier,
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.Top
+                        ) {
+                            Text(
+                                text = "请输入新QQ: ",
+                                modifier = Modifier
+                                    .padding(10.dp),
+                                fontSize = 15.sp,
+                                style = TextStyle(fontWeight = FontWeight.Bold)
+                            )
+
+                            TextField(
+                                modifier = Modifier.padding(10.dp),
+                                value = textNew,
+                                onValueChange = {
+                                    // 确保只更新数字
+                                    if (it.all { char -> char.isDigit() }) {
+                                        textNew = it
+                                    }
+                                },
+                                label = {
+                                    Text("QQ")
+                                },
+                                visualTransformation = VisualTransformation.None,
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    keyboardType = KeyboardType.Number
+                                ),
+                                keyboardActions = KeyboardActions.Default
+                            )
+
+                        }
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Button(
+                            modifier = Modifier.padding(10.dp),
+                            onClick = {
+                                if (textNew.trim().isNotEmpty()) {
+                                    isModifyQQ = true
+                                    Global.setIsShowEditQQ(false)
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "请确保QQ号不为空！",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }) {
+                            Icon(
+                                Icons.Filled.Done,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                            )
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("确认")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    AnimatedVisibility(
+        visible = isShowEditSynopsis.value,
+        enter = scaleIn(
+            initialScale = 0f,
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ) + slideInVertically(
+            initialOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ),
+        exit = scaleOut(
+            targetScale = 0f,
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ) + slideOutVertically(
+            targetOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            ElevatedCard(
+                modifier = Modifier
+                    .padding(10.dp)
+                    .fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.Top
+                ) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    HeadlineInLargePrint(headline = "修改简介")
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier,
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.Top
+                        ) {
+                            Text(
+                                text = "请输入新简介: ",
+                                modifier = Modifier
+                                    .padding(10.dp),
+                                fontSize = 15.sp,
+                                style = TextStyle(fontWeight = FontWeight.Bold)
+                            )
+
+                            TextField(
+                                modifier = Modifier.padding(10.dp),
+                                value = textNew,
+                                onValueChange = {
+                                    textNew = it
+                                },
+                                label = {
+                                    Text("简介")
+                                },
+                                visualTransformation = VisualTransformation.None,
+                                keyboardOptions = KeyboardOptions.Default,
+                                keyboardActions = KeyboardActions.Default
+                            )
+
+                        }
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Button(
+                            modifier = Modifier.padding(10.dp),
+                            onClick = {
+                                if (textNew.trim().isNotEmpty()) {
+                                    isSynopsis = true
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "请确保简介不为空！",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }) {
+                            Icon(
+                                Icons.Filled.Done,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                            )
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("确认")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    AnimatedVisibility(
+        visible = isShowAskExit.value,
+        enter = scaleIn(
+            initialScale = 0f,
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ) + slideInVertically(
+            initialOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ),
+        exit = scaleOut(
+            targetScale = 0f,
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        ) + slideOutVertically(
+            targetOffsetY = { fullHeight -> fullHeight },
+            animationSpec = tween(
+                durationMillis = 500
+            )
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            ElevatedCard(
+                modifier = Modifier
+                    .padding(10.dp)
+                    .fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.Top
+                ) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    HeadlineInLargePrint(headline = "退出登录")
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier,
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.Top
+                        ) {
+                            Text(
+                                text = "您确定要退出登录吗？",
+                                modifier = Modifier
+                                    .padding(10.dp),
+                                fontSize = 15.sp,
+                                style = TextStyle(fontWeight = FontWeight.Bold)
+                            )
+                        }
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                modifier = Modifier.padding(10.dp),
+                                onClick = {
+                                    Toast.makeText(context, "已退出登录！", Toast.LENGTH_LONG)
+                                        .show()
+                                    textOld = ""
+                                    textNew = ""
+                                    Global.setIsShowAskExit(false)
+                                    navController.navigate("Regin") {
+                                        popUpTo("loading") {
+                                            inclusive = true
+                                        }
+                                    }
+                                }) {
+                                Icon(
+                                    Icons.Filled.Done,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                                )
+                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                                Text("确认")
+                            }
+                            OutlinedButton(
+                                modifier = Modifier.padding(10.dp),
+                                onClick = {
+                                    Global.setIsShowAskExit(false)
+                                }) {
+                                Icon(
+                                    Icons.Filled.Close,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                                )
+                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                                Text("取消")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+}
+
+@Composable
+fun Person(
+    topAppBarScrollBehavior: ScrollBehavior,
+    padding: PaddingValues,
+    colorMode: MutableState<Int>,
+    navController: NavController
+) {
+    Scaffold {
 
         LazyColumn(
             contentPadding = PaddingValues(top = padding.calculateTopPadding()),
@@ -359,512 +873,7 @@ fun Person(
             }
         }
 
-        AnimatedVisibility(
-            visible = isShowEditPassword.value || isShowEditQQ.value || isShowAskExit.value || isShowEditSynopsis.value,
-            enter = fadeIn(
-                animationSpec = tween(durationMillis = 300)
-            ),
-            exit = fadeOut(
-                animationSpec = tween(durationMillis = 300)
-            )
-        ) {
-            Surface(
-                modifier = Modifier
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) {
-                        Global.setIsShowEditSynopsis(false)
-                        Global.setIsShowEditPassword(false)
-                        Global.setIsShowEditQQ(false)
-                        Global.setIsShowAskExit(false)
-                    }
-                    .fillMaxSize()
-                    .alpha(0.5f),
-                color = Color.Black
-            ) {
 
-            }
-        }
-        AnimatedVisibility(
-            visible = isShowEditPassword.value,
-            enter = scaleIn(
-                initialScale = 0f,
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ) + slideInVertically(
-                initialOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ),
-            exit = scaleOut(
-                targetScale = 0f,
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ) + slideOutVertically(
-                targetOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            )
-        ) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ElevatedCard(
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(10.dp),
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.Top
-                    ) {
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        HeadlineInLargePrint(headline = "修改登录密码")
-
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                modifier = Modifier,
-                                horizontalAlignment = Alignment.Start,
-                                verticalArrangement = Arrangement.Top
-                            ) {
-                                Text(
-                                    text = "请输入旧密码: ",
-                                    modifier = Modifier
-                                        .padding(10.dp),
-                                    fontSize = 15.sp,
-                                    style = TextStyle(fontWeight = FontWeight.Bold)
-                                )
-
-
-
-                                TextField(
-                                    modifier = Modifier.padding(10.dp),
-                                    value = textOld,
-                                    onValueChange = {
-                                        textOld = it
-                                    },
-                                    trailingIcon = {
-                                        IconButton(
-                                            onClick = {
-                                                passwordHidden = !passwordHidden
-                                            }
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.visible),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
-                                    },
-                                    label = {
-                                        Text("旧密码")
-                                    },
-                                    visualTransformation = if (passwordHidden) PasswordVisualTransformation() else VisualTransformation.None
-                                )
-
-                                Text(
-                                    text = "请输入新密码: ",
-                                    modifier = Modifier
-                                        .padding(10.dp),
-                                    fontSize = 15.sp,
-                                    style = TextStyle(fontWeight = FontWeight.Bold)
-                                )
-
-                                TextField(
-                                    modifier = Modifier.padding(10.dp),
-                                    value = textNew,
-                                    onValueChange = {
-                                        textNew = it
-                                    },
-                                    trailingIcon = {
-                                        IconButton(
-                                            onClick = {
-                                                passwordHidden = !passwordHidden
-                                            }
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.visible),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
-                                    },
-                                    label = {
-                                        Text("新密码")
-                                    },
-                                    visualTransformation = if (passwordHidden) PasswordVisualTransformation() else VisualTransformation.None
-                                )
-                            }
-                        }
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            Button(
-                                modifier = Modifier.padding(10.dp),
-                                onClick = {
-                                    if (textOld.trim().isNotEmpty() && textNew.trim()
-                                            .isNotEmpty()
-                                    ) {
-                                        isModifyPassword = true
-                                        Global.setIsShowEditPassword(false)
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "请确保每项不为空！",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }) {
-                                Icon(
-                                    Icons.Filled.Done,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(ButtonDefaults.IconSize)
-                                )
-                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                Text("确认")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        AnimatedVisibility(
-            visible = isShowEditQQ.value,
-            enter = scaleIn(
-                initialScale = 0f,
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ) + slideInVertically(
-                initialOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ),
-            exit = scaleOut(
-                targetScale = 0f,
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ) + slideOutVertically(
-                targetOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            )
-        ) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ElevatedCard(
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(10.dp),
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.Top
-                    ) {
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        HeadlineInLargePrint(headline = "修改QQ号")
-
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                modifier = Modifier,
-                                horizontalAlignment = Alignment.Start,
-                                verticalArrangement = Arrangement.Top
-                            ) {
-                                Text(
-                                    text = "请输入新QQ: ",
-                                    modifier = Modifier
-                                        .padding(10.dp),
-                                    fontSize = 15.sp,
-                                    style = TextStyle(fontWeight = FontWeight.Bold)
-                                )
-
-                                TextField(
-                                    modifier = Modifier.padding(10.dp),
-                                    value = textNew,
-                                    onValueChange = {
-                                        // 确保只更新数字
-                                        if (it.all { char -> char.isDigit() }) {
-                                            textNew = it
-                                        }
-                                    },
-                                    label = {
-                                        Text("QQ")
-                                    },
-                                    visualTransformation = VisualTransformation.None,
-                                    keyboardOptions = KeyboardOptions.Default.copy(
-                                        keyboardType = KeyboardType.Number
-                                    ),
-                                    keyboardActions = KeyboardActions.Default
-                                )
-
-                            }
-                        }
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            Button(
-                                modifier = Modifier.padding(10.dp),
-                                onClick = {
-                                    if (textNew.trim().isNotEmpty()) {
-                                        isModifyQQ = true
-                                        Global.setIsShowEditQQ(false)
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "请确保QQ号不为空！",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }) {
-                                Icon(
-                                    Icons.Filled.Done,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(ButtonDefaults.IconSize)
-                                )
-                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                Text("确认")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        AnimatedVisibility(
-            visible = isShowEditSynopsis.value,
-            enter = scaleIn(
-                initialScale = 0f,
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ) + slideInVertically(
-                initialOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ),
-            exit = scaleOut(
-                targetScale = 0f,
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ) + slideOutVertically(
-                targetOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            )
-        ) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ElevatedCard(
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(10.dp),
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.Top
-                    ) {
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        HeadlineInLargePrint(headline = "修改简介")
-
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                modifier = Modifier,
-                                horizontalAlignment = Alignment.Start,
-                                verticalArrangement = Arrangement.Top
-                            ) {
-                                Text(
-                                    text = "请输入新简介: ",
-                                    modifier = Modifier
-                                        .padding(10.dp),
-                                    fontSize = 15.sp,
-                                    style = TextStyle(fontWeight = FontWeight.Bold)
-                                )
-
-                                TextField(
-                                    modifier = Modifier.padding(10.dp),
-                                    value = textNew,
-                                    onValueChange = {
-                                        textNew = it
-                                    },
-                                    label = {
-                                        Text("简介")
-                                    },
-                                    visualTransformation = VisualTransformation.None,
-                                    keyboardOptions = KeyboardOptions.Default,
-                                    keyboardActions = KeyboardActions.Default
-                                )
-
-                            }
-                        }
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            Button(
-                                modifier = Modifier.padding(10.dp),
-                                onClick = {
-                                    if (textNew.trim().isNotEmpty()) {
-                                        isSynopsis = true
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "请确保简介不为空！",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }) {
-                                Icon(
-                                    Icons.Filled.Done,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(ButtonDefaults.IconSize)
-                                )
-                                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                Text("确认")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        AnimatedVisibility(
-            visible = isShowAskExit.value,
-            enter = scaleIn(
-                initialScale = 0f,
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ) + slideInVertically(
-                initialOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ),
-            exit = scaleOut(
-                targetScale = 0f,
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            ) + slideOutVertically(
-                targetOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(
-                    durationMillis = 500
-                )
-            )
-        ) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ElevatedCard(
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(10.dp),
-                        horizontalAlignment = Alignment.Start,
-                        verticalArrangement = Arrangement.Top
-                    ) {
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        HeadlineInLargePrint(headline = "退出登录")
-
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                modifier = Modifier,
-                                horizontalAlignment = Alignment.Start,
-                                verticalArrangement = Arrangement.Top
-                            ) {
-                                Text(
-                                    text = "您确定要退出登录吗？",
-                                    modifier = Modifier
-                                        .padding(10.dp),
-                                    fontSize = 15.sp,
-                                    style = TextStyle(fontWeight = FontWeight.Bold)
-                                )
-                            }
-                        }
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Button(
-                                    modifier = Modifier.padding(10.dp),
-                                    onClick = {
-                                        Toast.makeText(context, "已退出登录！", Toast.LENGTH_LONG)
-                                            .show()
-                                        textOld = ""
-                                        textNew = ""
-                                        Global.setIsShowAskExit(false)
-                                        navController.navigate("Regin") {
-                                            popUpTo("loading") {
-                                                inclusive = true
-                                            }
-                                        }
-                                    }) {
-                                    Icon(
-                                        Icons.Filled.Done,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(ButtonDefaults.IconSize)
-                                    )
-                                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                    Text("确认")
-                                }
-                                OutlinedButton(
-                                    modifier = Modifier.padding(10.dp),
-                                    onClick = {
-                                        Global.setIsShowAskExit(false)
-                                    }) {
-                                    Icon(
-                                        Icons.Filled.Close,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(ButtonDefaults.IconSize)
-                                    )
-                                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                    Text("取消")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

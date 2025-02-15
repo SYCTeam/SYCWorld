@@ -926,13 +926,25 @@ fun ChatUi(navController: NavController) {
         }
     }
     var isSendSuccessfully by remember { mutableStateOf(true) }
-    var isMessageAdded by remember { mutableStateOf(false) }
     LaunchedEffect(isSend) {
         val messageIndex = chatMessage.size
         withContext(Dispatchers.IO) {
             if (isSend && isSendSuccessfully && Global.userQQ.trim().isNotEmpty() && text.trim()
                     .isNotEmpty()
             ) {
+
+                myMessage = ChatMessage(
+                    true,
+                    isShowTime,
+                    personNameBeingChat.value,
+                    SenderType.Me,
+                    Global.userQQ,
+                    text,
+                    getCurrentTime()
+                )
+
+                chatMessage.add(myMessage)
+
 
                 val sendResult =
                     sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
@@ -960,25 +972,6 @@ fun ChatUi(navController: NavController) {
                         timeDifference > 10
                 }
 
-                myMessage = ChatMessage(
-                    true,
-                    isShowTime,
-                    personNameBeingChat.value,
-                    SenderType.Me,
-                    Global.userQQ,
-                    text,
-                    getCurrentTime()
-                )
-
-                chatMessage.removeAll {
-                    it.isFake
-                }
-
-                if (!isMessageAdded) {
-                    chatMessage.add(myMessage)
-                    isMessageAdded = true
-                }
-
                 if (sendResult.first == "error") {
                     withContext(Dispatchers.Main) {
                         Toast.makeText(
@@ -1002,6 +995,9 @@ fun ChatUi(navController: NavController) {
                                 ).show()
                             }
                         } else {
+                            chatMessage.removeAll {
+                                it.isFake
+                            }
                             val existingMessages = mutableListOf<Pair<String, String>>()
 
                             chatMessage.filter {
@@ -1030,9 +1026,6 @@ fun ChatUi(navController: NavController) {
                                     if (chatMessage.size > messageIndex) {
                                         chatMessage.removeAt(messageIndex)
                                     }
-                                    chatMessage.removeAll {
-                                        it.isFake
-                                    }
                                     chatMessage.add(newMessage)
                                     existingMessages.add(message to timestamp)
                                 }
@@ -1041,9 +1034,11 @@ fun ChatUi(navController: NavController) {
                     }
                 }
             }
+            chatMessage.removeAll {
+                it.isFake
+            }
             isSend = false
             isSendSuccessfully = true
-            isMessageAdded = false
         }
     }
 
@@ -1417,8 +1412,14 @@ fun ChatUi(navController: NavController) {
                             ),
                             keyboardActions = KeyboardActions(
                                 onSend = {
-                                    if (text.trim().isNotEmpty() && isSendSuccessfully) {
+                                    if (text.trim().length <= 1000 && text.trim().isNotEmpty() && isSendSuccessfully) {
                                         isSend = true
+                                    } else if (text.length > 1000) {
+                                        Toast.makeText(
+                                            context,
+                                            "字数达到上限，无法发送！",
+                                            Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                 }
                             ),
@@ -1492,8 +1493,14 @@ fun ChatUi(navController: NavController) {
                                 .height(34.dp)
                                 .width(buttonSize)
                                 .clickable {
-                                    if (text.trim().isNotEmpty() && isSendSuccessfully) {
+                                    if (text.trim().length <= 1000 && text.trim().isNotEmpty() && isSendSuccessfully) {
                                         isSend = true
+                                    } else if (text.length > 1000) {
+                                        Toast.makeText(
+                                            context,
+                                            "字数达到上限，无法发送！",
+                                            Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                 },
                             colors = CardDefaults.cardColors(
