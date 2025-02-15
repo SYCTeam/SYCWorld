@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -94,7 +95,7 @@ fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeStat
                 .hazeSource(state = hazeState),
         ) {
             item {
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxSize().imePadding()) {
                     val selectedTab = remember { mutableIntStateOf(0) }
                     TabRow(
                         tabs = listOf("编写","预览"),
