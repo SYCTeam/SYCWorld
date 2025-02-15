@@ -876,9 +876,9 @@ fun ChatUi(navController: NavController) {
                             personNameBeingChat.value,
                             chatMessage.toString()
                         )
-                        delay(300)
                     }
                 }
+                delay(300)
             }
         }
     }
