@@ -1,15 +1,24 @@
 package com.syc.world
 
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
+import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -22,8 +31,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat.startActivityForResult
 import androidx.navigation.NavController
 import com.mikepenz.markdown.coil3.Coil3ImageTransformerImpl
 import com.mikepenz.markdown.compose.Markdown
@@ -45,6 +57,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -56,8 +69,10 @@ import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.icons.ArrowBack
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import java.io.File
 import kotlin.system.exitProcess
 
+@SuppressLint("IntentReset")
 @Composable
 fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeState: HazeState) {
     val TopAppBarState = MiuixScrollBehavior(rememberTopAppBarState())
@@ -106,11 +121,37 @@ fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeStat
                     )
                     val element = remember { mutableStateOf("") }
                     AnimatedVisibility(selectedTab.intValue == 0) {
-                        TextField(
-                            modifier = Modifier.padding(horizontal = 6.dp).padding(top = 6.dp),
-                            value = element.value,
-                            onValueChange = { element.value = it }
-                        )
+                        Column {
+                            TextField(
+                                modifier = Modifier.padding(horizontal = 6.dp).padding(top = 6.dp),
+                                value = element.value,
+                                onValueChange = { element.value = it }
+                            )
+                            var imageUri by remember { mutableStateOf<Uri?>(null) }
+                            val launcher = rememberLauncherForActivityResult(
+                                contract = ActivityResultContracts.GetContent()
+                            ) { uri: Uri? ->
+                                uri?.let { imageUri = it }
+                            }
+                            Card(modifier = Modifier.fillMaxWidth().padding(top = 6.dp).padding(horizontal = 6.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    IconButton(
+                                        onClick = {
+                                            launcher.launch("image/*")
+                                        },
+                                        modifier = Modifier,
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.pic),
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(20.dp),
+                                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onBackground)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                     AnimatedVisibility(selectedTab.intValue == 1) {
                         Column(modifier = Modifier.padding(6.dp)) {
