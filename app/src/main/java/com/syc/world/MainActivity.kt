@@ -1940,6 +1940,8 @@ fun Main(
             )
         }
     }
+    ViewOthersPopup()
+    ViewPersonPopup(navController)
 }
 
 @Composable

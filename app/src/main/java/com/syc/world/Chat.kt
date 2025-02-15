@@ -251,7 +251,15 @@ fun getMessageFromFile(context: Context, senderName: String): List<ChatMessage> 
                 val sendTime = match.groupValues[7]
 
                 val chatMessage =
-                    ChatMessage(isFake, isShowTime, chatName, senderType, senderQQ, message, sendTime)
+                    ChatMessage(
+                        isFake,
+                        isShowTime,
+                        chatName,
+                        senderType,
+                        senderQQ,
+                        message,
+                        sendTime
+                    )
                 messageList.add(chatMessage)
             } catch (e: Exception) {
                 Log.e("getMessageFromFile", "Error parsing ChatMessage: ${match.value}", e)
@@ -274,10 +282,24 @@ fun Chat(
     var isLoading by remember { mutableStateOf(true) }
     var chatGroups by remember { mutableStateOf(listOf<ChatGroup>()) }
     val unreadCountInChat = Global.unreadCountInChat.collectAsState()
+    var userQQ = ""
 
     LaunchedEffect(Unit) {
         Global.setChatIsChatMessageAnimation(false)
         withContext(Dispatchers.IO) {
+            while (userQQ == "") {
+                val informationResult = getUserInformation(Global.username)
+                if (informationResult.isNotEmpty() && isJson(informationResult)) {
+                    val userInfo = parseUserInfo(informationResult)
+                    if (userInfo != null) {
+                        if (userInfo.qq.isNotEmpty()) {
+                            userQQ = userInfo.qq
+                            Global.userQQ = userInfo.qq
+                        }
+                    }
+                }
+                delay(2000)
+            }
             while (isLoading) {
                 val chatList = getChatList(Global.username, Global.password)
                 if (chatList.first == "error") {
@@ -290,10 +312,9 @@ fun Chat(
                     }
                 } else if (chatList.first == "success") {
 
-                    isLoading = false
-
                     chatGroups = chatList.second.map { chatItem ->
                         val newMessage = readChatMessagesFromFile(context, chatItem.username)
+                        val messageList = getMessageFromFile(context, chatItem.username)
 
                         val latestMessage = newMessage.lastOrNull()?.content ?: ""
 
@@ -302,55 +323,56 @@ fun Chat(
 
                         val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
 
-                        if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
-                            Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
-                            // 创建 ChatGroup 对象
-                            ChatGroup(
-                                chatItem.qq,
-                                "联系人",
-                                chatItem.username,
-                                latestMessage,
-                                latestMessageTime,
-                                chatItem.isPinned,
-                                chatItem.online,
-                                newMessageCount
-                            )
+                        val isMe =
+                            messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
+
+                        if (isMe != null) {
+                            if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
+                                Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
+                                // 创建 ChatGroup 对象
+                                ChatGroup(
+                                    chatItem.qq,
+                                    "联系人",
+                                    chatItem.username,
+                                    latestMessage,
+                                    latestMessageTime,
+                                    chatItem.isPinned,
+                                    chatItem.online,
+                                    newMessageCount
+                                )
+                            } else {
+                                Log.d("列表问题", messageList.lastOrNull()?.message ?: "6666")
+                                // 创建 ChatGroup 对象
+                                ChatGroup(
+                                    chatItem.qq,
+                                    "联系人",
+                                    chatItem.username,
+                                    messageList.lastOrNull()?.message ?: "",
+                                    formatTime(
+                                        messageList.lastOrNull()?.sendTime
+                                            ?: getCurrentTimeForChatList()
+                                    ),
+                                    chatItem.isPinned,
+                                    chatItem.online,
+                                    newMessageCount
+                                )
+                            }
                         } else {
-                            val messageList = getMessageFromFile(context, chatItem.username)
-                            Log.d("列表问题", messageList.lastOrNull()?.message ?: "6666")
-                            // 创建 ChatGroup 对象
                             ChatGroup(
                                 chatItem.qq,
                                 "联系人",
                                 chatItem.username,
-                                messageList.lastOrNull()?.message ?: "",
-                                formatTime(
-                                    messageList.lastOrNull()?.sendTime
-                                        ?: getCurrentTimeForChatList()
-                                ),
+                                "",
+                                "",
                                 chatItem.isPinned,
                                 chatItem.online,
-                                newMessageCount
+                                0
                             )
                         }
                     }
+                    isLoading = false
                 }
                 delay(3000)
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            while (Global.userQQ == "") {
-                val informationResult = getUserInformation(Global.username)
-                if (informationResult.isNotEmpty() && isJson(informationResult)) {
-                    val userInfo = parseUserInfo(informationResult)
-                    if (userInfo != null && userInfo.qq.isNotEmpty()) {
-                        Global.userQQ = userInfo.qq
-                    }
-                }
-                delay(2000)
             }
         }
     }
@@ -814,15 +836,7 @@ fun ChatUi(navController: NavController) {
 
     var isShowTime by remember { mutableStateOf(true) }
 
-    var myMessage = ChatMessage(
-        true,
-        isShowTime,
-        personNameBeingChat.value,
-        SenderType.Me,
-        Global.userQQ,
-        text,
-        getCurrentTime()
-    )
+    var myMessage: ChatMessage
 
 
     LaunchedEffect(chatMessage.size, isLoading, text) {
@@ -855,7 +869,8 @@ fun ChatUi(navController: NavController) {
 
     LaunchedEffect(Unit) {
         val messageList = getMessageFromFile(context, personNameBeingChat.value)
-        if (messageList.isNotEmpty()) {
+        val isMe = messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
+        if (messageList.isNotEmpty() && isMe != null) {
             chatMessage.addAll(messageList)
         }
 
@@ -926,7 +941,6 @@ fun ChatUi(navController: NavController) {
         }
     }
     var isSendSuccessfully by remember { mutableStateOf(true) }
-    var isMessageAdded by remember { mutableStateOf(false) }
     LaunchedEffect(isSend) {
         val messageIndex = chatMessage.size
         withContext(Dispatchers.IO) {
@@ -934,12 +948,18 @@ fun ChatUi(navController: NavController) {
                     .isNotEmpty()
             ) {
 
-                val sendResult =
-                    sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
+                myMessage = ChatMessage(
+                    true,
+                    isShowTime,
+                    personNameBeingChat.value,
+                    SenderType.Me,
+                    Global.userQQ,
+                    text,
+                    getCurrentTime()
+                )
 
-                text = ""
+                chatMessage.add(myMessage)
 
-                isSendSuccessfully = false
 
                 if (chatMessage.isNotEmpty()) {
                     // 计算时间差，确保时间格式化无误
@@ -960,24 +980,12 @@ fun ChatUi(navController: NavController) {
                         timeDifference > 10
                 }
 
-                myMessage = ChatMessage(
-                    true,
-                    isShowTime,
-                    personNameBeingChat.value,
-                    SenderType.Me,
-                    Global.userQQ,
-                    text,
-                    getCurrentTime()
-                )
+                val sendResult =
+                    sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
 
-                chatMessage.removeAll {
-                    it.isFake
-                }
+                text = ""
 
-                if (!isMessageAdded) {
-                    chatMessage.add(myMessage)
-                    isMessageAdded = true
-                }
+                isSendSuccessfully = false
 
                 if (sendResult.first == "error") {
                     withContext(Dispatchers.Main) {
@@ -1002,6 +1010,9 @@ fun ChatUi(navController: NavController) {
                                 ).show()
                             }
                         } else {
+                            chatMessage.removeAll {
+                                it.isFake
+                            }
                             val existingMessages = mutableListOf<Pair<String, String>>()
 
                             chatMessage.filter {
@@ -1030,9 +1041,6 @@ fun ChatUi(navController: NavController) {
                                     if (chatMessage.size > messageIndex) {
                                         chatMessage.removeAt(messageIndex)
                                     }
-                                    chatMessage.removeAll {
-                                        it.isFake
-                                    }
                                     chatMessage.add(newMessage)
                                     existingMessages.add(message to timestamp)
                                 }
@@ -1041,9 +1049,11 @@ fun ChatUi(navController: NavController) {
                     }
                 }
             }
+            chatMessage.removeAll {
+                it.isFake
+            }
             isSend = false
             isSendSuccessfully = true
-            isMessageAdded = false
         }
     }
 
@@ -1098,6 +1108,14 @@ fun ChatUi(navController: NavController) {
         }
     }
 
+    var isBack by remember { mutableStateOf(true) }
+
+    LaunchedEffect(isBack) {
+        if (!isBack) {
+            navController.popBackStack()
+        }
+    }
+
     Scaffold {
         Column(
             modifier = Modifier
@@ -1126,7 +1144,9 @@ fun ChatUi(navController: NavController) {
                                 indication = null,
                                 interactionSource = MutableInteractionSource()
                             ) {
-                                navController.popBackStack()
+                                if (isBack) {
+                                    isBack = false
+                                }
                             },
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -1309,8 +1329,8 @@ fun ChatUi(navController: NavController) {
             ) {
                 itemsIndexed(chatMessage) { _, message ->
                     if (message.message.trim().isNotEmpty()) {
-                    ChatMessage(message = message)
-                        }
+                        ChatMessage(message = message)
+                    }
                 }
             }
         }
@@ -1417,8 +1437,16 @@ fun ChatUi(navController: NavController) {
                             ),
                             keyboardActions = KeyboardActions(
                                 onSend = {
-                                    if (text.trim().isNotEmpty() && isSendSuccessfully) {
+                                    if (text.trim().length <= 1000 && text.trim()
+                                            .isNotEmpty() && isSendSuccessfully
+                                    ) {
                                         isSend = true
+                                    } else if (text.length > 1000) {
+                                        Toast.makeText(
+                                            context,
+                                            "字数达到上限，无法发送！",
+                                            Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                 }
                             ),
@@ -1492,8 +1520,16 @@ fun ChatUi(navController: NavController) {
                                 .height(34.dp)
                                 .width(buttonSize)
                                 .clickable {
-                                    if (text.trim().isNotEmpty() && isSendSuccessfully) {
+                                    if (text.trim().length <= 1000 && text.trim()
+                                            .isNotEmpty() && isSendSuccessfully
+                                    ) {
                                         isSend = true
+                                    } else if (text.length > 1000) {
+                                        Toast.makeText(
+                                            context,
+                                            "字数达到上限，无法发送！",
+                                            Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                 },
                             colors = CardDefaults.cardColors(
@@ -1610,6 +1646,14 @@ fun ChatSettings(navController: NavController) {
         }
     }
 
+    var isBack by remember { mutableStateOf(true) }
+
+    LaunchedEffect(isBack) {
+        if (!isBack) {
+            navController.popBackStack()
+        }
+    }
+
     Scaffold {
         Column(
             modifier = Modifier
@@ -1639,7 +1683,9 @@ fun ChatSettings(navController: NavController) {
                                 indication = null,
                                 interactionSource = MutableInteractionSource()
                             ) {
-                                navController.popBackStack()
+                                if (isBack) {
+                                    isBack = false
+                                }
                             },
                         contentAlignment = Alignment.CenterStart
                     ) {
