@@ -950,8 +950,8 @@ fun ChatUi(navController: NavController) {
     }
     var isSendSuccessfully by remember { mutableStateOf(true) }
     LaunchedEffect(isSend) {
-        val messageIndex = chatMessage.size
         withContext(Dispatchers.IO) {
+            val messageIndex = chatMessage.size
             if (isSend && isSendSuccessfully && Global.userQQ.trim().isNotEmpty() && text.trim()
                     .isNotEmpty()
             ) {
@@ -996,6 +996,9 @@ fun ChatUi(navController: NavController) {
                 isSendSuccessfully = false
 
                 if (sendResult.first == "error") {
+                    chatMessage.removeAll {
+                        it.isFake
+                    }
                     withContext(Dispatchers.Main) {
                         Toast.makeText(
                             context,
@@ -1018,9 +1021,6 @@ fun ChatUi(navController: NavController) {
                                 ).show()
                             }
                         } else {
-                            chatMessage.removeAll {
-                                it.isFake
-                            }
                             val existingMessages = mutableListOf<Pair<String, String>>()
 
                             chatMessage.filter {
@@ -1054,6 +1054,9 @@ fun ChatUi(navController: NavController) {
                                 }
                             }
                         }
+                    }
+                    chatMessage.removeAll {
+                        it.isFake
                     }
                 }
             }
