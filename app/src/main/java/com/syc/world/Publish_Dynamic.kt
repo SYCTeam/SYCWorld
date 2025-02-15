@@ -134,6 +134,7 @@ fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeStat
                                             "您的动态已发出！",
                                             Toast.LENGTH_LONG
                                         ).show()
+                                        navController.popBackStack()
                                     }
                                 } else {
                                     Log.d("发动态问题", post.second)
