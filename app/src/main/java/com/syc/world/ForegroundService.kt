@@ -74,7 +74,7 @@ class ForegroundService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val wakeLockRunnable = object : Runnable {
         override fun run() {
-            Log.d("进程问题", "前台服务正在运行")
+            //Log.d("进程问题", "前台服务正在运行")
             if (!isProcessRunning(applicationContext, "com.syc.world.MainProcess")) {
                 Log.d("进程问题", "主进程已掉线")
             }
@@ -396,13 +396,11 @@ class ForegroundService : Service() {
                             if (post.second?.commentNotifications?.size != 0) {
                                 post.second?.commentNotifications?.forEachIndexed { it, context ->
                                     CoroutineScope(Dispatchers.IO).launch {
-                                        if (!isInForeground.value) {
-                                            createChatMessageNotification(
-                                                "https://q.qlogo.cn/headimg_dl?dst_uin=${context.qq}&spec=640&img_type=jpg",
-                                                applicationContext,
-                                                "${context.from} 评论了你的动态", context.content,link = "sycworld://moment?postId=${context.postId}&isReply=true"
-                                            )
-                                        }
+                                        createChatMessageNotification(
+                                            "https://q.qlogo.cn/headimg_dl?dst_uin=${context.qq}&spec=640&img_type=jpg",
+                                            applicationContext,
+                                            "${context.from} 评论了你的动态", context.content,link = "sycworld://moment?postId=${context.postId}&isReply=true"
+                                        )
                                     }
                                     val existingData = readFromFileForForegroundService(applicationContext, "Moments/list.json")
                                     val messageList: MutableList<MomentsMessage> = if (existingData.isNotEmpty()) {
@@ -426,13 +424,11 @@ class ForegroundService : Service() {
 
     private fun sendMomentsNotification(senderQQ: String,title: String, content: String) {
         CoroutineScope(Dispatchers.IO).launch {
-            if (!isInForeground.value) {
-                createChatMessageNotification(
-                    "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
-                    applicationContext,
-                    title, content
-                )
-            }
+            createChatMessageNotification(
+                "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
+                applicationContext,
+                title, content
+            )
         }
     }
 
@@ -873,7 +869,7 @@ class RescueProcessService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val startRun = object : Runnable {
         override fun run() {
-            Log.d("进程问题", "守护进程正在运行")
+            //Log.d("进程问题", "守护进程正在运行")
             if (!isProcessRunning(applicationContext, "com.syc.world.ForegroundService")) {
                 Log.d("进程问题", "前台服务已掉线")
                 restartForegroundServiceProcess()

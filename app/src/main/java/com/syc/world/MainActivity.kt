@@ -16,6 +16,8 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -34,20 +36,24 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -77,6 +83,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -96,6 +103,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.bumptech.glide.Glide
+import com.google.gson.Gson
+import com.syc.world.ForegroundService.GlobalForForegroundService.isInForeground
 import com.syc.world.ui.theme.AppTheme
 import dev.chrisbanes.haze.HazeEffectScope
 import dev.chrisbanes.haze.HazeProgressive
@@ -152,6 +161,7 @@ import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.system.exitProcess
+
 
 object Global {
 
@@ -803,16 +813,24 @@ suspend fun createChatMessageNotification(
     title: String,
     content: String,
     timestamp: Long = System.currentTimeMillis(),
-    link: String? = null // 传入链接，默认为 null
+    link: String? = null
 ) {
-    val notificationManager =
-        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    // 如果在前台，播放声音并退出
+    if (isInForeground.value) {
+        //playSound(context)
+        Log.d("通知问题", "在前台，只播放铃声")
+        return
+    }
 
+    // 后台逻辑：创建通知
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    // 创建通知渠道
     val channelId = "SYC_ChatMessage"
     val channelName = "酸夜沉空间消息通知服务"
     val importance = NotificationManager.IMPORTANCE_HIGH
 
-    val channel = NotificationChannel(channelId, channelName, importance).apply {
+    NotificationChannel(channelId, channelName, importance).apply {
         val soundUri = Uri.parse("android.resource://${context.packageName}/raw/ring")
         setSound(
             soundUri,
@@ -825,14 +843,13 @@ suspend fun createChatMessageNotification(
         vibrationPattern = longArrayOf(0, 500, 1000)
         setShowBadge(false)
         lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-    }
-    notificationManager.createNotificationChannel(channel)
+    }.also { notificationManager.createNotificationChannel(it) }
 
-    // 如果链接不为空，使用传入的链接；否则，使用默认的 MainActivity
+    // 创建PendingIntent
     val intent = if (!link.isNullOrEmpty()) {
-        Intent(Intent.ACTION_VIEW, Uri.parse(link))  // 打开传入的链接
+        Intent(Intent.ACTION_VIEW, Uri.parse(link))
     } else {
-        Intent(context, MainActivity::class.java).apply {  // 否则，跳转到 MainActivity
+        Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
     }
@@ -842,6 +859,7 @@ suspend fun createChatMessageNotification(
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
+    // 加载头像
     val avatarBitmap = withContext(Dispatchers.IO) {
         Glide.with(context)
             .asBitmap()
@@ -851,23 +869,21 @@ suspend fun createChatMessageNotification(
             .get()
     }
 
+    // 构建通知（移除冗余声音和震动设置）
     val notificationBuilder = NotificationCompat.Builder(context, channelId)
         .setSmallIcon(R.drawable.new_message)
         .setLargeIcon(avatarBitmap)
         .setContentTitle(title)
         .setContentText(content)
         .setContentIntent(pendingIntent)
-        .setOngoing(false)
         .setAutoCancel(true)
         .setPriority(NotificationCompat.PRIORITY_HIGH)
-        .setVibrate(longArrayOf(0, 500, 1000))
-        .setSound(Uri.parse("android.resource://${context.packageName}/raw/ring"))
         .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
-        .setWhen(timestamp) // 设置消息时间
-        .setAutoCancel(false)
-        .setShowWhen(true) // 确保时间显示
+        .setWhen(timestamp)
+        .setShowWhen(true)
 
-    notificationManager.notify(10002, notificationBuilder.build())
+    // 发送通知
+    notificationManager.notify(10004, notificationBuilder.build())
 }
 
 @SuppressLint("ServiceCast")
@@ -1598,6 +1614,7 @@ fun AllHome(
             }
         }
     }
+    val notidifference = remember { mutableStateOf(0) }
 
     Column {
         NavHost(navController = navController, startDestination = "loading", enterTransition = {
@@ -1638,7 +1655,8 @@ fun AllHome(
                     hazeStyle,
                     postId = postId,
                     isReply = isReply,
-                    postList = postlist
+                    postList = postlist,
+                    notidifference
                 )
             }
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
@@ -1647,7 +1665,7 @@ fun AllHome(
             composable("ChatUi") { ChatUi(navController) }
             composable("ChatSettings") { ChatSettings(navController) }
             composable("Dynamic") { Dynamic(navController, postId.intValue, hazeState, hazeStyle,isReply) }
-            composable("Notification") { Notification(navController, hazeState, hazeStyle,postId,isReply) }
+            composable("Notification") { Notification(navController, hazeState, hazeStyle,postId,isReply,notidifference.value) }
         }
     }
 }
@@ -1690,7 +1708,8 @@ fun Main(
     hazeStyle: HazeStyle,
     postId: MutableState<Int>,
     isReply: MutableState<Boolean>,
-    postList: SnapshotStateList<List<Post>>
+    postList: SnapshotStateList<List<Post>>,
+    notidifference: MutableState<Int>
 ) {
     val topAppBarScrollBehavior0 =
         MiuixScrollBehavior(rememberTopAppBarState())
@@ -1730,6 +1749,46 @@ fun Main(
     val tabTexts = listOf("默认", "最新", "热度")
     val selectedTab = rememberSaveable { mutableIntStateOf(0) }
     val isTab = remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val mediaPlayer = remember { MediaPlayer.create(context, R.raw.ring) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val gson = Gson()
+            val listFile = File(context.filesDir, "Moments/list.json")
+            val listSize = if (listFile.exists()) {
+                val listJson = listFile.readText()
+                if (listJson.isNotEmpty()) {
+                    gson.fromJson(listJson, Array<ForegroundService.MomentsMessage>::class.java).size
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+
+            // 读取 quantity.json 文件
+            val quantityFile = File(context.filesDir, "Moments/quantity.json")
+            val quantityJson = if (quantityFile.exists()) {
+                quantityFile.readText()
+            } else {
+                "[]"
+            }
+            val quantity = if (quantityJson.isNotEmpty()) {
+                gson.fromJson(quantityJson, Array<ForegroundService.MomentsMessage>::class.java).size
+            } else {
+                0
+            }
+            if (notidifference.value != listSize - quantity) {
+                if (listSize - quantity != 0) {
+                    mediaPlayer.start()
+                }
+                //mediaPlayer.release()
+                notidifference.value = listSize - quantity
+            }
+            delay(3000)
+        }
+    }
     Scaffold(modifier = modifier.fillMaxSize(),
         floatingActionButton = {
             if (pagerState.currentPage == 2) {
@@ -1806,20 +1865,44 @@ fun Main(
                             modifier = Modifier.size(50.dp)
                         )
                     }, actions = {
-                        IconButton(
-                            onClick = {
-                                navController.navigate("Notification")
-                            },
-                            modifier = Modifier,
+                        Box(
+                            modifier = Modifier.padding(10.dp)
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.noti),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .padding(10.dp),
-                                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onBackground)
-                            )
+                            IconButton(
+                                onClick = {
+                                    navController.navigate("Notification")
+                                    val listFile = File(context.filesDir, "Moments/list.json")
+                                    if (listFile.exists()) {
+                                        writeToFile(context, "Moments", "quantity.json", listFile.readText())
+                                    }
+                                },
+                                modifier = Modifier,
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.noti),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(30.dp),
+                                    colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onBackground)
+                                )
+                            }
+                            if (notidifference.value != 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd) // 将数字放在右上角
+                                        .background(
+                                            color = Color.Red, // 设置角标背景色
+                                            shape = CircleShape
+                                        )
+                                ) {
+                                    Text(
+                                        text = notidifference.value.toString(),
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(2.dp)
+                                    )
+                                }
+                            }
                         }
                     })
                 AnimatedVisibility(pagerState.currentPage == 2) {

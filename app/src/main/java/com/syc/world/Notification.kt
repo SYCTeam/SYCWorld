@@ -46,6 +46,7 @@ import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -58,7 +59,8 @@ import kotlin.system.exitProcess
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Notification(navController: NavController,hazeState: HazeState,hazeStyle: HazeStyle,postId: MutableState<Int>,isReply: MutableState<Boolean>) {
+fun Notification(navController: NavController,hazeState: HazeState,hazeStyle: HazeStyle,postId: MutableState<Int>,isReply: MutableState<Boolean>,
+                 newmessage: Int) {
     val TopAppBarState = MiuixScrollBehavior(rememberTopAppBarState())
     val context = LocalContext.current
     val notList = remember { mutableStateListOf<MomentsMessage>() }
@@ -111,7 +113,7 @@ fun Notification(navController: NavController,hazeState: HazeState,hazeStyle: Ha
                     .fillMaxSize()
                     .hazeSource(state = hazeState),
             ) {
-                itemsIndexed(notList) { _, content ->
+                itemsIndexed(notList) { index, content ->
                     notList(
                         qq = content.qq,
                         content = content.content.replace(Regex("!\\[Image]\\(([^)]+)"),"[图片]"),
@@ -121,7 +123,8 @@ fun Notification(navController: NavController,hazeState: HazeState,hazeStyle: Ha
                         navController = navController,
                         postId = postId,
                         listPostId = content.postId,
-                        isReply = isReply
+                        isReply = isReply,
+                        isnew = index < newmessage
                     )
                 }
             }
@@ -130,7 +133,9 @@ fun Notification(navController: NavController,hazeState: HazeState,hazeStyle: Ha
 }
 
 @Composable
-fun notList(qq: Long, content: String, timestamp: Long, name: String, type: String, navController: NavController, postId: MutableState<Int>, listPostId: Int,isReply: MutableState<Boolean>) {
+fun notList(qq: Long, content: String, timestamp: Long, name: String, type: String,
+            navController: NavController, postId: MutableState<Int>, listPostId: Int,isReply: MutableState<Boolean>,
+            isnew: Boolean) {
     if (type == "like") {
         Column(modifier = Modifier.background(CardDefaults.DefaultColor())
             .clickable {
@@ -154,7 +159,7 @@ fun notList(qq: Long, content: String, timestamp: Long, name: String, type: Stri
                         Text(calculateTimeAgo(timestamp),fontSize = 12.sp, color = Color.Gray)
                     }
                     Spacer(modifier = Modifier.size(4.dp))
-                    Text("点赞了你的动态："+content,fontSize = 14.sp,maxLines = 1)
+                    Text("点赞了你的动态："+content,fontSize = 14.sp,maxLines = 1, color = if (isnew) MiuixTheme.colorScheme.primaryVariant else MiuixTheme.colorScheme.onBackground)
                 }
             }
         }
@@ -181,7 +186,7 @@ fun notList(qq: Long, content: String, timestamp: Long, name: String, type: Stri
                         Text(calculateTimeAgo(timestamp),fontSize = 12.sp, color = Color.Gray)
                     }
                     Spacer(modifier = Modifier.size(4.dp))
-                    Text("回复了你的动态："+content,fontSize = 14.sp,maxLines = 1)
+                    Text("回复了你的动态："+content,fontSize = 14.sp,maxLines = 1, color = if (isnew) MiuixTheme.colorScheme.primaryVariant else MiuixTheme.colorScheme.onBackground)
                 }
             }
         }
