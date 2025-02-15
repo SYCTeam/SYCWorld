@@ -87,8 +87,10 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.google.gson.Gson
 import com.syc.world.ForegroundService.ChatNewMessage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -854,13 +856,12 @@ fun ChatUi(navController: NavController) {
         }
     }
 
-    LaunchedEffect(Unit) {
-        if (readFromFile(
-                context,
-                "isInForeground"
-            ) == "true"
-        ) {
-            while (true) {
+    LaunchedEffect(chatMessage.size, isLoading, isSend) {
+            if (readFromFile(
+                    context,
+                    "isInForeground"
+                ) == "true"
+            ) {
                 if (chatMessage.size > 0) {
                     withContext(Dispatchers.IO) {
                         writeToFile(
@@ -878,8 +879,6 @@ fun ChatUi(navController: NavController) {
                         )
                     }
                 }
-                delay(300)
-            }
         }
     }
 
