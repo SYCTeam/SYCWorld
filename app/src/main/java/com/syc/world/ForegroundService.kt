@@ -322,12 +322,21 @@ class ForegroundService : Service() {
         CoroutineScope(Dispatchers.IO).launch {
             for (i in 1..count) {
                 if (!isInForeground.value) {
-                    createChatMessageNotification(
-                        "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
-                        applicationContext,
-                        "$senderName (${count})",
-                        senderContent
-                    )
+                    if (count > 1) {
+                        createChatMessageNotification(
+                            "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
+                            applicationContext,
+                            "$senderName (${count}条)",
+                            senderContent
+                        )
+                    } else {
+                        createChatMessageNotification(
+                            "https://q.qlogo.cn/headimg_dl?dst_uin=${senderQQ}&spec=640&img_type=jpg",
+                            applicationContext,
+                            senderName,
+                            senderContent
+                        )
+                    }
                 }
                 val existingData = readFromFileForForegroundService(applicationContext, "ChatMessage/NewMessage/$senderName.json")
                 val messageList: MutableList<ChatNewMessage> = if (existingData.isNotEmpty()) {

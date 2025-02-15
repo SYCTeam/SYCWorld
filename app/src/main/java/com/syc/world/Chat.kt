@@ -836,7 +836,15 @@ fun ChatUi(navController: NavController) {
 
     var isShowTime by remember { mutableStateOf(true) }
 
-    var myMessage: ChatMessage
+    var myMessage = ChatMessage(
+        true,
+        isShowTime,
+        personNameBeingChat.value,
+        SenderType.Me,
+        Global.userQQ,
+        text,
+        getCurrentTime()
+    )
 
 
     LaunchedEffect(chatMessage.size, isLoading, text) {
@@ -948,19 +956,6 @@ fun ChatUi(navController: NavController) {
                     .isNotEmpty()
             ) {
 
-                myMessage = ChatMessage(
-                    true,
-                    isShowTime,
-                    personNameBeingChat.value,
-                    SenderType.Me,
-                    Global.userQQ,
-                    text,
-                    getCurrentTime()
-                )
-
-                chatMessage.add(myMessage)
-
-
                 if (chatMessage.isNotEmpty()) {
                     // 计算时间差，确保时间格式化无误
                     val lastMessageTime = LocalDateTime.parse(
@@ -979,6 +974,19 @@ fun ChatUi(navController: NavController) {
                     isShowTime =
                         timeDifference > 10
                 }
+
+                myMessage = ChatMessage(
+                    true,
+                    isShowTime,
+                    personNameBeingChat.value,
+                    SenderType.Me,
+                    Global.userQQ,
+                    text,
+                    getCurrentTime()
+                )
+
+                chatMessage.add(myMessage)
+
 
                 val sendResult =
                     sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
