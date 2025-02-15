@@ -102,6 +102,7 @@ import androidx.navigation.compose.rememberNavController
 import com.bumptech.glide.Glide
 import com.google.gson.Gson
 import com.syc.world.ForegroundService.GlobalForForegroundService.isInForeground
+import com.syc.world.Global.unreadCountInChat
 import com.syc.world.ui.theme.AppTheme
 import dev.chrisbanes.haze.HazeEffectScope
 import dev.chrisbanes.haze.HazeProgressive
@@ -1645,6 +1646,23 @@ fun AllHome(
                                                     "qq"
                                                 )
                                             ) {
+                                                val newMessage = readChatMessagesFromFile(
+                                                    context,
+                                                    chatItem.username
+                                                )
+
+                                                val newMessageCount =
+                                                    newMessage.lastOrNull()?.messageCount ?: 0
+
+                                                if (newMessage.isNotEmpty()) {
+                                                    if (unreadCountInChat.value.toIntOrNull() != null) {
+                                                        Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
+                                                    }
+                                                }
+                                                deleteFile(
+                                                    context,
+                                                    "ChatMessage/NewMessage/${chatItem.username}.json"
+                                                )
                                                 navController.navigate("ChatUi")
                                             }
                                         }
