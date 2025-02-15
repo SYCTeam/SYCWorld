@@ -169,6 +169,7 @@ object Global {
     var password = ""
     var userQQ = ""
     var monitorJob: Job? = null
+    var chatJob: Job? = null
 
     var isGiveBodySensorsPermissions = false
     var isGiveActivityRecognitionPermissions = false

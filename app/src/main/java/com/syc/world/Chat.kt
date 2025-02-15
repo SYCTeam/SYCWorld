@@ -87,8 +87,10 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.google.gson.Gson
 import com.syc.world.ForegroundService.ChatNewMessage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -855,22 +857,26 @@ fun ChatUi(navController: NavController) {
     }
 
     LaunchedEffect(chatMessage.size, isLoading, isSend) {
-        if (chatMessage.size > 0) {
-            withContext(Dispatchers.IO) {
-                writeToFile(
-                    context,
-                    "/ChatMessage/Count",
-                    personNameBeingChat.value,
-                    chatMessage.size.toString()
-                )
-                Log.d("写入问题", "已经写入count: ${chatMessage.size}")
-                writeToFile(
-                    context,
-                    "/ChatMessage/Message",
-                    personNameBeingChat.value,
-                    chatMessage.toString()
-                )
-                delay(500)
+        Global.chatJob = CoroutineScope(Dispatchers.Default).launch {
+            if (Global.chatJob?.isActive != true) {
+                if (chatMessage.size > 0) {
+                    withContext(Dispatchers.IO) {
+                        writeToFile(
+                            context,
+                            "/ChatMessage/Count",
+                            personNameBeingChat.value,
+                            chatMessage.size.toString()
+                        )
+                        Log.d("写入问题", "已经写入count: ${chatMessage.size}")
+                        writeToFile(
+                            context,
+                            "/ChatMessage/Message",
+                            personNameBeingChat.value,
+                            chatMessage.toString()
+                        )
+                        delay(500)
+                    }
+                }
             }
         }
     }
