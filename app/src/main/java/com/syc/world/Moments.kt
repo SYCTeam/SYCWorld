@@ -418,11 +418,11 @@ fun MomentsItem(
                 },
                 fontSize = 16.sp,
             )*/
-            val pattern = Regex("!\\[Image]\\(([^)]+)\\)")
+            val pattern = Regex("!\\[(.*?)]\\((.*?)(?:\\s+[\"'](.*?)[\"'])?\\)")
             Markdown(elements.replace(pattern, "").take(90)+if (elements.replace(pattern, "").length > 90) "..." else "")
             Spacer(modifier = Modifier.height(10.dp))
             val pic = pattern.findAll(elements)
-                .mapNotNull { it.groups[1]?.value }
+                .mapNotNull { it.groups[2]?.value }
                 .toList()
             if (pic.size != 0) {
                 if (pic.size == 1) {
