@@ -842,7 +842,8 @@ fun isUrl(text: String): Boolean {
 }
 
 fun openUrl(context: Context, url: String) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    val validUrl = if (isUrl(url)) url else "http://$url" // 如果不是 URL，加上 http://
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(validUrl))
     context.startActivity(intent)
 }
 
