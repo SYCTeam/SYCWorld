@@ -1058,28 +1058,31 @@ fun ChatUi(navController: NavController) {
         }
     }
 
-    LaunchedEffect(chatMessage.size, isLoading, isSend) {
+    LaunchedEffect(Unit) {
         if (readFromFile(
                 context,
                 "isInForeground"
             ) == "true"
         ) {
-            if (chatMessage.size > 0) {
-                withContext(Dispatchers.IO) {
-                    writeToFile(
-                        context,
-                        "/ChatMessage/Count",
-                        personNameBeingChat.value,
-                        chatMessage.size.toString()
-                    )
-                    Log.d("写入问题", "已经写入count: ${chatMessage.size}")
-                    writeToFile(
-                        context,
-                        "/ChatMessage/Message",
-                        personNameBeingChat.value,
-                        chatMessage.toString()
-                    )
+            while (true) {
+                if (chatMessage.isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        writeToFile(
+                            context,
+                            "/ChatMessage/Count",
+                            personNameBeingChat.value,
+                            chatMessage.size.toString()
+                        )
+                        Log.d("写入问题", "已经写入count: ${chatMessage.size}")
+                        writeToFile(
+                            context,
+                            "/ChatMessage/Message",
+                            personNameBeingChat.value,
+                            chatMessage.toString()
+                        )
+                    }
                 }
+                delay(300)
             }
         }
     }
