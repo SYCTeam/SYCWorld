@@ -513,6 +513,70 @@ fun Chat(
                     "chatList",
                     chatList.toString()
                 )
+                chatGroups = chatList.second.map { chatItem ->
+                    val newMessage =
+                        readChatMessagesFromFile(context, chatItem.username)
+                    val messageList = getMessageFromFile(context, chatItem.username)
+
+                    val latestMessage = newMessage.lastOrNull()?.content ?: ""
+
+                    val latestMessageTime =
+                        newMessage.lastOrNull()?.time ?: getCurrentTimeForChatList()
+
+                    val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
+
+                    val isMe =
+                        messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
+
+                    if (isMe != null) {
+                        if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
+                            Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
+                            // 创建 ChatGroup 对象
+                            ChatGroup(
+                                chatItem.qq,
+                                "联系人",
+                                chatItem.username,
+                                latestMessage,
+                                latestMessageTime,
+                                chatItem.isPinned,
+                                chatItem.online,
+                                newMessageCount
+                            )
+                        } else {
+                            Log.d(
+                                "列表问题",
+                                messageList.lastOrNull()?.message ?: "6666"
+                            )
+                            // 创建 ChatGroup 对象
+                            ChatGroup(
+                                chatItem.qq,
+                                "联系人",
+                                chatItem.username,
+                                messageList.lastOrNull()?.message ?: "",
+                                formatTime(
+                                    messageList.lastOrNull()?.sendTime
+                                        ?: getCurrentTimeForChatList()
+                                ),
+                                chatItem.isPinned,
+                                chatItem.online,
+                                newMessageCount
+                            )
+                        }
+                    } else {
+                        ChatGroup(
+                            chatItem.qq,
+                            "联系人",
+                            chatItem.username,
+                            "",
+                            "",
+                            chatItem.isPinned,
+                            chatItem.online,
+                            0
+                        )
+                    }
+                }
+                Global.setIsUpdateChatList(false)
+                isLoading = false
             }
         }
     }
