@@ -696,19 +696,18 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                         interactionSource = MutableInteractionSource()
                     ) {
                         if (!isNavigate) {
-                            if (group.isUnread > 0) {
                                 val newMessage = readChatMessagesFromFile(context, group.chatName)
 
                                 val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
 
                                 if (newMessage.isNotEmpty()) {
                                     if (unreadCountInChat.value.toIntOrNull() != null) {
-                                        Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
+                                        if (unreadCountInChat.value.toInt() - newMessageCount >= 0) {
+                                            Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
+                                        }
                                     }
                                 }
-
                                 deleteFile(context, "ChatMessage/NewMessage/${group.chatName}.json")
-                            }
                             Global.setPersonNameBeingChat(group.chatName)
                             Global.setPersonQQBeingChat(group.groupQQ)
                             Global.setPersonIsOnlineBeingChat(group.isOnline)
