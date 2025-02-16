@@ -369,6 +369,14 @@ object Global {
     fun setIsDeleteChatMessageOpen(value: Boolean) {
         _isDeleteChatMessageOpen.value = value
     }
+
+    private val _isUpdateChatList = MutableStateFlow(true)
+    val isUpdateChatList: StateFlow<Boolean>
+        get() = _isUpdateChatList
+
+    fun setIsUpdateChatList(value: Boolean) {
+        _isUpdateChatList.value = value
+    }
 }
 
 class AppLifecycleObserver : LifecycleObserver {
@@ -1664,6 +1672,7 @@ fun AllHome(
                                                     context,
                                                     "ChatMessage/NewMessage/${chatItem.username}.json"
                                                 )
+                                                Global.setIsUpdateChatList(true)
                                                 navController.navigate("ChatUi")
                                             }
                                         }

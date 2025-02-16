@@ -87,10 +87,8 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.google.gson.Gson
 import com.syc.world.ForegroundService.ChatNewMessage
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -274,6 +272,48 @@ fun getMessageFromFile(context: Context, senderName: String): List<ChatMessage> 
     }
 }
 
+fun getChatListFromFile(context: Context): Pair<String, List<User>> {
+    val fileName = "/ChatList/chatList"  // 你保存数据的文件路径
+    val existingData = readFromFile(context, fileName)
+
+    if (existingData.isNotEmpty()) {
+        try {
+            val regex = """\((\w+), \[(.*)]\)""".toRegex()
+            val matchResult = regex.find(existingData)
+
+            if (matchResult != null) {
+                val status = matchResult.groupValues[1] // "success"
+                val usersData = matchResult.groupValues[2] // 用户数据部分
+
+                val userRegex =
+                    """User\(index=(\d+), username=([\w\u4e00-\u9fa5]+), qq=(\d+), online=(true|false), isPinned=(true|false)\)""".toRegex()
+                val usersList = mutableListOf<User>()
+
+                val userMatches = userRegex.findAll(usersData)
+
+                userMatches.forEach { userMatch ->
+                    val index = userMatch.groupValues[1].toInt()
+                    val username = userMatch.groupValues[2]
+                    val qq = userMatch.groupValues[3]
+                    val online = userMatch.groupValues[4].toBoolean()
+                    val isPinned = userMatch.groupValues[5].toBoolean()
+
+                    val user = User(index, username, qq, online, isPinned)
+                    usersList.add(user)
+                }
+
+                return Pair(status, usersList)
+            } else {
+                return Pair("error", emptyList()) // 错误时返回 Pair(error, 空列表)
+            }
+        } catch (e: Exception) {
+            return Pair("error", emptyList()) // 错误时返回 Pair(error, 空列表)
+        }
+    } else {
+        return Pair("error", emptyList()) // 没有数据时返回 Pair(error, 空列表)
+    }
+}
+
 @Composable
 fun Chat(
     topAppBarScrollBehavior: ScrollBehavior,
@@ -282,12 +322,92 @@ fun Chat(
 ) {
     val context = LocalContext.current
     var isLoading by remember { mutableStateOf(true) }
+    val isUpdateChatList = Global.isUpdateChatList.collectAsState()
     var chatGroups by remember { mutableStateOf(listOf<ChatGroup>()) }
     val unreadCountInChat = Global.unreadCountInChat.collectAsState()
     var userQQ = ""
+    var chatList: Pair<String, List<User>> = getChatListFromFile(context)
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (chatList.first == "success" && userQQ != "") {
+                chatGroups = chatList.second.map { chatItem ->
+                    val newMessage =
+                        readChatMessagesFromFile(context, chatItem.username)
+                    val messageList = getMessageFromFile(context, chatItem.username)
+
+                    val latestMessage = newMessage.lastOrNull()?.content ?: ""
+
+                    val latestMessageTime =
+                        newMessage.lastOrNull()?.time ?: getCurrentTimeForChatList()
+
+                    val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
+
+                    val isMe =
+                        messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
+
+                    if (isMe != null) {
+                        if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
+                            Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
+                            // 创建 ChatGroup 对象
+                            ChatGroup(
+                                chatItem.qq,
+                                "联系人",
+                                chatItem.username,
+                                latestMessage,
+                                latestMessageTime,
+                                chatItem.isPinned,
+                                chatItem.online,
+                                newMessageCount
+                            )
+                        } else {
+                            Log.d(
+                                "列表问题",
+                                messageList.lastOrNull()?.message ?: "6666"
+                            )
+                            // 创建 ChatGroup 对象
+                            ChatGroup(
+                                chatItem.qq,
+                                "联系人",
+                                chatItem.username,
+                                messageList.lastOrNull()?.message ?: "",
+                                formatTime(
+                                    messageList.lastOrNull()?.sendTime
+                                        ?: getCurrentTimeForChatList()
+                                ),
+                                chatItem.isPinned,
+                                chatItem.online,
+                                newMessageCount
+                            )
+                        }
+                    } else {
+                        ChatGroup(
+                            chatItem.qq,
+                            "联系人",
+                            chatItem.username,
+                            "",
+                            "",
+                            chatItem.isPinned,
+                            chatItem.online,
+                            0
+                        )
+                    }
+                }
+                Global.setIsUpdateChatList(false)
+                isLoading = false
+            }
+            delay(500)
+        }
+    }
 
     LaunchedEffect(Unit) {
         Global.setChatIsChatMessageAnimation(false)
+        withContext(Dispatchers.IO) {
+            val readResult = getChatListFromFile(context)
+            if (readResult.first == "success") {
+                chatList = readResult
+            }
+        }
         withContext(Dispatchers.IO) {
             while (userQQ == "") {
                 val informationResult = getUserInformation(Global.username)
@@ -302,85 +422,175 @@ fun Chat(
                 }
                 delay(2000)
             }
-            while (isLoading) {
-                val chatList = getChatList(Global.username, Global.password)
-                if (chatList.first == "error") {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            context,
-                            "聊天列表加载失败！原因：${chatList.second}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                } else if (chatList.first == "success") {
+        }
+        withContext(Dispatchers.IO) {
+            while (true) {
+                if (isUpdateChatList.value || isLoading) {
+                    if (userQQ != "") {
+                        if (chatList.first == "error") {
+                            chatList =
+                                getChatList(Global.username, Global.password)
+                        } else if (chatList.first == "success") {
+                            chatGroups = chatList.second.map { chatItem ->
+                                val newMessage =
+                                    readChatMessagesFromFile(context, chatItem.username)
+                                val messageList = getMessageFromFile(context, chatItem.username)
 
-                    chatGroups = chatList.second.map { chatItem ->
-                        val newMessage = readChatMessagesFromFile(context, chatItem.username)
-                        val messageList = getMessageFromFile(context, chatItem.username)
+                                val latestMessage = newMessage.lastOrNull()?.content ?: ""
 
-                        val latestMessage = newMessage.lastOrNull()?.content ?: ""
+                                val latestMessageTime =
+                                    newMessage.lastOrNull()?.time ?: getCurrentTimeForChatList()
 
-                        val latestMessageTime =
-                            newMessage.lastOrNull()?.time ?: getCurrentTimeForChatList()
+                                val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
 
-                        val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
+                                val isMe =
+                                    messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
 
-                        val isMe =
-                            messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
-
-                        if (isMe != null) {
-                            if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
-                                Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
-                                // 创建 ChatGroup 对象
-                                ChatGroup(
-                                    chatItem.qq,
-                                    "联系人",
-                                    chatItem.username,
-                                    latestMessage,
-                                    latestMessageTime,
-                                    chatItem.isPinned,
-                                    chatItem.online,
-                                    newMessageCount
-                                )
-                            } else {
-                                Log.d("列表问题", messageList.lastOrNull()?.message ?: "6666")
-                                // 创建 ChatGroup 对象
-                                ChatGroup(
-                                    chatItem.qq,
-                                    "联系人",
-                                    chatItem.username,
-                                    messageList.lastOrNull()?.message ?: "",
-                                    formatTime(
-                                        messageList.lastOrNull()?.sendTime
-                                            ?: getCurrentTimeForChatList()
-                                    ),
-                                    chatItem.isPinned,
-                                    chatItem.online,
-                                    newMessageCount
-                                )
+                                if (isMe != null) {
+                                    if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
+                                        Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
+                                        // 创建 ChatGroup 对象
+                                        ChatGroup(
+                                            chatItem.qq,
+                                            "联系人",
+                                            chatItem.username,
+                                            latestMessage,
+                                            latestMessageTime,
+                                            chatItem.isPinned,
+                                            chatItem.online,
+                                            newMessageCount
+                                        )
+                                    } else {
+                                        Log.d(
+                                            "列表问题",
+                                            messageList.lastOrNull()?.message ?: "6666"
+                                        )
+                                        // 创建 ChatGroup 对象
+                                        ChatGroup(
+                                            chatItem.qq,
+                                            "联系人",
+                                            chatItem.username,
+                                            messageList.lastOrNull()?.message ?: "",
+                                            formatTime(
+                                                messageList.lastOrNull()?.sendTime
+                                                    ?: getCurrentTimeForChatList()
+                                            ),
+                                            chatItem.isPinned,
+                                            chatItem.online,
+                                            newMessageCount
+                                        )
+                                    }
+                                } else {
+                                    ChatGroup(
+                                        chatItem.qq,
+                                        "联系人",
+                                        chatItem.username,
+                                        "",
+                                        "",
+                                        chatItem.isPinned,
+                                        chatItem.online,
+                                        0
+                                    )
+                                }
                             }
-                        } else {
+                            Global.setIsUpdateChatList(false)
+                            isLoading = false
+                        }
+                    }
+                }
+                delay(2000)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            chatList = getChatList(Global.username, Global.password)
+            if (chatList.first == "success") {
+                writeToFile(
+                    context,
+                    "/ChatList",
+                    "chatList",
+                    chatList.toString()
+                )
+                chatGroups = chatList.second.map { chatItem ->
+                    val newMessage =
+                        readChatMessagesFromFile(context, chatItem.username)
+                    val messageList = getMessageFromFile(context, chatItem.username)
+
+                    val latestMessage = newMessage.lastOrNull()?.content ?: ""
+
+                    val latestMessageTime =
+                        newMessage.lastOrNull()?.time ?: getCurrentTimeForChatList()
+
+                    val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
+
+                    val isMe =
+                        messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
+
+                    if (isMe != null) {
+                        if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
+                            Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
+                            // 创建 ChatGroup 对象
                             ChatGroup(
                                 chatItem.qq,
                                 "联系人",
                                 chatItem.username,
-                                "",
-                                "",
+                                latestMessage,
+                                latestMessageTime,
                                 chatItem.isPinned,
                                 chatItem.online,
-                                0
+                                newMessageCount
+                            )
+                        } else {
+                            Log.d(
+                                "列表问题",
+                                messageList.lastOrNull()?.message ?: "6666"
+                            )
+                            // 创建 ChatGroup 对象
+                            ChatGroup(
+                                chatItem.qq,
+                                "联系人",
+                                chatItem.username,
+                                messageList.lastOrNull()?.message ?: "",
+                                formatTime(
+                                    messageList.lastOrNull()?.sendTime
+                                        ?: getCurrentTimeForChatList()
+                                ),
+                                chatItem.isPinned,
+                                chatItem.online,
+                                newMessageCount
                             )
                         }
+                    } else {
+                        ChatGroup(
+                            chatItem.qq,
+                            "联系人",
+                            chatItem.username,
+                            "",
+                            "",
+                            chatItem.isPinned,
+                            chatItem.online,
+                            0
+                        )
                     }
-                    isLoading = false
                 }
-                delay(3000)
+                Global.setIsUpdateChatList(false)
+                isLoading = false
             }
         }
     }
 
     Scaffold {
-        if (!isLoading) {
+        if (isUpdateChatList.value || isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
             LazyColumn(
                 contentPadding = PaddingValues(top = padding.calculateTopPadding()),
                 topAppBarScrollBehavior = topAppBarScrollBehavior, modifier = Modifier.fillMaxSize()
@@ -398,14 +608,6 @@ fun Chat(
                     ChatGroupItem(navController, group)
                 }
 
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
             }
         }
     }
@@ -494,19 +696,18 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                         interactionSource = MutableInteractionSource()
                     ) {
                         if (!isNavigate) {
-                            if (group.isUnread > 0) {
                                 val newMessage = readChatMessagesFromFile(context, group.chatName)
 
                                 val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
 
                                 if (newMessage.isNotEmpty()) {
                                     if (unreadCountInChat.value.toIntOrNull() != null) {
-                                        Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
+                                        if (unreadCountInChat.value.toInt() - newMessageCount >= 0) {
+                                            Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
+                                        }
                                     }
                                 }
-
                                 deleteFile(context, "ChatMessage/NewMessage/${group.chatName}.json")
-                            }
                             Global.setPersonNameBeingChat(group.chatName)
                             Global.setPersonQQBeingChat(group.groupQQ)
                             Global.setPersonIsOnlineBeingChat(group.isOnline)
@@ -856,10 +1057,14 @@ fun ChatUi(navController: NavController) {
         }
     }
 
-    LaunchedEffect(chatMessage.size, isLoading, isSend) {
-        Global.chatJob = CoroutineScope(Dispatchers.Default).launch {
-            if (Global.chatJob?.isActive != true) {
-                if (chatMessage.size > 0) {
+    LaunchedEffect(Unit) {
+        if (readFromFile(
+                context,
+                "isInForeground"
+            ) == "true"
+        ) {
+            while (true) {
+                if (chatMessage.isNotEmpty()) {
                     withContext(Dispatchers.IO) {
                         writeToFile(
                             context,
@@ -874,9 +1079,9 @@ fun ChatUi(navController: NavController) {
                             personNameBeingChat.value,
                             chatMessage.toString()
                         )
-                        delay(500)
                     }
                 }
+                delay(300)
             }
         }
     }
