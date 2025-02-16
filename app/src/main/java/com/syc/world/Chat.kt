@@ -696,18 +696,18 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                         interactionSource = MutableInteractionSource()
                     ) {
                         if (!isNavigate) {
-                                val newMessage = readChatMessagesFromFile(context, group.chatName)
+                            val newMessage = readChatMessagesFromFile(context, group.chatName)
 
-                                val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
+                            val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
 
-                                if (newMessage.isNotEmpty()) {
-                                    if (unreadCountInChat.value.toIntOrNull() != null) {
-                                        if (unreadCountInChat.value.toInt() - newMessageCount >= 0) {
-                                            Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
-                                        }
+                            if (newMessage.isNotEmpty()) {
+                                if (unreadCountInChat.value.toIntOrNull() != null) {
+                                    if (unreadCountInChat.value.toInt() - newMessageCount >= 0) {
+                                        Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
                                     }
                                 }
-                                deleteFile(context, "ChatMessage/NewMessage/${group.chatName}.json")
+                            }
+                            deleteFile(context, "ChatMessage/NewMessage/${group.chatName}.json")
                             Global.setPersonNameBeingChat(group.chatName)
                             Global.setPersonQQBeingChat(group.groupQQ)
                             Global.setPersonIsOnlineBeingChat(group.isOnline)
@@ -1063,25 +1063,22 @@ fun ChatUi(navController: NavController) {
                 "isInForeground"
             ) == "true"
         ) {
-            while (true) {
-                if (chatMessage.isNotEmpty()) {
-                    withContext(Dispatchers.IO) {
-                        writeToFile(
-                            context,
-                            "/ChatMessage/Count",
-                            personNameBeingChat.value,
-                            chatMessage.size.toString()
-                        )
-                        Log.d("写入问题", "已经写入count: ${chatMessage.size}")
-                        writeToFile(
-                            context,
-                            "/ChatMessage/Message",
-                            personNameBeingChat.value,
-                            chatMessage.toString()
-                        )
-                    }
+            if (chatMessage.isNotEmpty()) {
+                withContext(Dispatchers.IO) {
+                    writeToFile(
+                        context,
+                        "/ChatMessage/Count",
+                        personNameBeingChat.value,
+                        chatMessage.size.toString()
+                    )
+                    Log.d("写入问题", "已经写入count: ${chatMessage.size}")
+                    writeToFile(
+                        context,
+                        "/ChatMessage/Message",
+                        personNameBeingChat.value,
+                        chatMessage.toString()
+                    )
                 }
-                delay(300)
             }
         }
     }
@@ -1146,6 +1143,22 @@ fun ChatUi(navController: NavController) {
                                 withContext(Dispatchers.Main) {
                                     // 添加新消息到 chatMessage
                                     chatMessage.add(newMessage)
+                                    if (chatMessage.isNotEmpty()) {
+                                        withContext(Dispatchers.IO) {
+                                            writeToFile(
+                                                context,
+                                                "/ChatMessage/Count",
+                                                personNameBeingChat.value,
+                                                chatMessage.size.toString()
+                                            )
+                                            writeToFile(
+                                                context,
+                                                "/ChatMessage/Message",
+                                                personNameBeingChat.value,
+                                                chatMessage.toString()
+                                            )
+                                        }
+                                    }
                                     existingMessages.add(message to timestamp)
                                     lastMessageTimestamp = timestamp // 更新上一条消息的时间戳
                                     isLoading = false
