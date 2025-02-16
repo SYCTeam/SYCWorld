@@ -1660,18 +1660,16 @@ fun AllHome(
                                                     chatItem.username
                                                 )
 
-                                                val newMessageCount =
-                                                    newMessage.lastOrNull()?.messageCount ?: 0
+                                                val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
 
                                                 if (newMessage.isNotEmpty()) {
                                                     if (unreadCountInChat.value.toIntOrNull() != null) {
-                                                        Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
+                                                        if (unreadCountInChat.value.toInt() - newMessageCount >= 0) {
+                                                            Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
+                                                        }
                                                     }
                                                 }
-                                                deleteFile(
-                                                    context,
-                                                    "ChatMessage/NewMessage/${chatItem.username}.json"
-                                                )
+                                                deleteFile(context, "ChatMessage/NewMessage/${chatItem.username}.json")
                                                 Global.setIsUpdateChatList(true)
                                                 navController.navigate("ChatUi")
                                             }

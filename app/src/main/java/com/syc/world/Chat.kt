@@ -2,7 +2,9 @@ package com.syc.world
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -76,10 +78,14 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -831,6 +837,15 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
 
 }
 
+fun isUrl(text: String): Boolean {
+    return android.util.Patterns.WEB_URL.matcher(text).matches()
+}
+
+fun openUrl(context: Context, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    context.startActivity(intent)
+}
+
 // 单条消息样式
 @Composable
 fun ChatMessage(message: ChatMessage) {
@@ -916,20 +931,70 @@ fun ChatMessage(message: ChatMessage) {
                                         .fillMaxHeight(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = message.message,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        textAlign = TextAlign.Start,
-                                        modifier = Modifier
-                                            .padding(10.dp)
-                                            .fillMaxHeight()
-                                            .animateContentSize(
-                                                animationSpec = tween(
-                                                    durationMillis = 300,
-                                                    easing = FastOutSlowInEasing
+                                    if (isUrl(message.message)) {
+
+                                        val annotatedMessage = buildAnnotatedString {
+                                            var currentIndex = 0
+
+                                            // 使用正则表达式查找所有 URL
+                                            val urlRegex = """https?://\S+""".toRegex()
+
+                                            // 在消息中查找所有 URL
+                                            urlRegex.findAll(message.message).forEach { matchResult ->
+                                                // 将 URL 之前的文本添加为普通文本
+                                                append(message.message.substring(currentIndex, matchResult.range.first))
+
+                                                // 给 URL 添加注解和样式
+                                                pushStringAnnotation(tag = "URL", annotation = matchResult.value)
+                                                withStyle(style = SpanStyle(color = Color.Blue, textDecoration = TextDecoration.Underline)) {
+                                                    append(matchResult.value)
+                                                }
+                                                pop()
+
+                                                // 更新当前索引为 URL 后的位置
+                                                currentIndex = matchResult.range.last + 1
+                                            }
+
+                                            // 添加 URL 后的剩余文本
+                                            append(message.message.substring(currentIndex))
+                                        }
+
+                                        Text(
+                                            text = annotatedMessage,
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                color = Color.Blue,
+                                                textDecoration = TextDecoration.Underline
+                                            ),
+                                            textAlign = TextAlign.Start,
+                                            modifier = Modifier
+                                                .padding(10.dp)
+                                                .fillMaxHeight()
+                                                .animateContentSize(
+                                                    animationSpec = tween(
+                                                        durationMillis = 300,
+                                                        easing = FastOutSlowInEasing
+                                                    )
                                                 )
-                                            )
-                                    )
+                                                .clickable {
+                                                    openUrl(context, message.message)
+                                                }
+                                        )
+                                    } else {
+                                        Text(
+                                            text = message.message,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            textAlign = TextAlign.Start,
+                                            modifier = Modifier
+                                                .padding(10.dp)
+                                                .fillMaxHeight()
+                                                .animateContentSize(
+                                                    animationSpec = tween(
+                                                        durationMillis = 300,
+                                                        easing = FastOutSlowInEasing
+                                                    )
+                                                )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -968,20 +1033,69 @@ fun ChatMessage(message: ChatMessage) {
                                         .fillMaxHeight(),
                                     contentAlignment = Alignment.Center // 文本对齐保持从左开始
                                 ) {
-                                    Text(
-                                        text = message.message,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        textAlign = TextAlign.Start,
-                                        modifier = Modifier
-                                            .padding(10.dp)
-                                            .fillMaxHeight()
-                                            .animateContentSize(
-                                                animationSpec = tween(
-                                                    durationMillis = 300,
-                                                    easing = FastOutSlowInEasing
+                                    if (isUrl(message.message)) {
+                                        val annotatedMessage = buildAnnotatedString {
+                                            var currentIndex = 0
+
+                                            // 使用正则表达式查找所有 URL
+                                            val urlRegex = """https?://\S+""".toRegex()
+
+                                            // 在消息中查找所有 URL
+                                            urlRegex.findAll(message.message).forEach { matchResult ->
+                                                // 将 URL 之前的文本添加为普通文本
+                                                append(message.message.substring(currentIndex, matchResult.range.first))
+
+                                                // 给 URL 添加注解和样式
+                                                pushStringAnnotation(tag = "URL", annotation = matchResult.value)
+                                                withStyle(style = SpanStyle(color = Color.Blue, textDecoration = TextDecoration.Underline)) {
+                                                    append(matchResult.value)
+                                                }
+                                                pop()
+
+                                                // 更新当前索引为 URL 后的位置
+                                                currentIndex = matchResult.range.last + 1
+                                            }
+
+                                            // 添加 URL 后的剩余文本
+                                            append(message.message.substring(currentIndex))
+                                        }
+
+                                        Text(
+                                            text = annotatedMessage,
+                                            style = MaterialTheme.typography.bodyLarge.copy(
+                                                color = Color.Blue,
+                                                textDecoration = TextDecoration.Underline
+                                            ),
+                                            textAlign = TextAlign.Start,
+                                            modifier = Modifier
+                                                .padding(10.dp)
+                                                .fillMaxHeight()
+                                                .animateContentSize(
+                                                    animationSpec = tween(
+                                                        durationMillis = 300,
+                                                        easing = FastOutSlowInEasing
+                                                    )
                                                 )
-                                            )
-                                    )
+                                                .clickable {
+                                                    openUrl(context, message.message)
+                                                }
+                                        )
+                                    } else {
+                                        Text(
+                                            text = message.message,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            textAlign = TextAlign.Start,
+                                            modifier = Modifier
+                                                .padding(10.dp)
+                                                .fillMaxHeight()
+                                                .animateContentSize(
+                                                    animationSpec = tween(
+                                                        durationMillis = 300,
+                                                        easing = FastOutSlowInEasing
+                                                    )
+                                                )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1057,7 +1171,7 @@ fun ChatUi(navController: NavController) {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(chatMessage.size, isLoading, isSend) {
         if (readFromFile(
                 context,
                 "isInForeground"
