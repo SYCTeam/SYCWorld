@@ -1,9 +1,7 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.net.Uri
-import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,24 +17,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat.startActivityForResult
 import androidx.navigation.NavController
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
+import coil3.size.Size
 import com.mikepenz.markdown.coil3.Coil3ImageTransformerImpl
 import com.mikepenz.markdown.compose.Markdown
 import com.mikepenz.markdown.compose.components.markdownComponents
@@ -55,7 +57,6 @@ import dev.snipme.highlights.Highlights
 import dev.snipme.highlights.model.SyntaxThemes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
@@ -69,13 +70,12 @@ import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.icons.ArrowBack
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import java.io.File
-import kotlin.system.exitProcess
 
 @SuppressLint("IntentReset")
 @Composable
 fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeState: HazeState) {
     val TopAppBarState = MiuixScrollBehavior(rememberTopAppBarState())
+    val context = LocalContext.current
 
     Scaffold(topBar = {
         TopAppBar(
@@ -132,6 +132,23 @@ fun Publist_Dynamic(navController: NavController, hazeStyle: HazeStyle, hazeStat
                                 contract = ActivityResultContracts.GetContent()
                             ) { uri: Uri? ->
                                 uri?.let { imageUri = it }
+                            }
+                            imageUri?.let { uri ->
+                                val painter = rememberAsyncImagePainter(
+                                    model = ImageRequest.Builder(context)
+                                        .data(uri)
+                                        .size(Size.ORIGINAL) // 保持原始尺寸
+                                        .build()
+                                )
+
+                                Image(
+                                    painter = painter,
+                                    contentDescription = "Preview",
+                                    modifier = Modifier
+                                        .size(200.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
                             }
                             Card(modifier = Modifier.fillMaxWidth().padding(top = 6.dp).padding(horizontal = 6.dp)) {
                                 Row(modifier = Modifier.fillMaxWidth()) {
