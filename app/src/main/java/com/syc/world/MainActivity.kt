@@ -11,10 +11,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
@@ -114,7 +110,6 @@ import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -122,7 +117,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -168,8 +162,6 @@ object Global {
     var username = ""
     var password = ""
     var userQQ = ""
-    var monitorJob: Job? = null
-    var chatJob: Job? = null
 
     var isGiveBodySensorsPermissions = false
     var isGiveActivityRecognitionPermissions = false
@@ -1159,91 +1151,6 @@ fun RequestAllFilesAccessPermission(
                 dismissOnClickOutside = false
             )
         )
-    }
-}
-
-fun monitorStepCount(context: Context) {
-    // 如果已有任务在运行，则不启动新的任务
-    if (Global.monitorJob?.isActive == true) {
-        Log.d("步数问题", "步数监控正在尝试重复启动")
-        return
-    }
-
-    val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    val stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
-        ?: sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
-
-    if (stepDetectorSensor == null) {
-        return
-    }
-
-    // 用于 TYPE_STEP_COUNTER 的初始读数和上一次读数，均为 -1 表示未初始化
-    var initialStepCount = -1
-    var lastStepCount = -1
-
-    val sensorEventListener = object : SensorEventListener {
-        override fun onSensorChanged(event: SensorEvent?) {
-            if (event == null) return
-
-            when (event.sensor.type) {
-                Sensor.TYPE_STEP_DETECTOR -> {
-                    // 对于步态检测器，每次事件默认增量为 1
-                    if (ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.ACTIVITY_RECOGNITION
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        return
-                    }
-                    ForegroundService.GlobalForForegroundService.stepCount++
-                    Log.d("步数问题", "步数增加了一步")
-                }
-
-                Sensor.TYPE_STEP_COUNTER -> {
-                    val currentStepCount = event.values[0].toInt()
-                    if (initialStepCount == -1) {
-                        // 第一次接收到数据，初始化初始值和上一次读数
-                        initialStepCount = currentStepCount
-                        lastStepCount = currentStepCount
-                    } else {
-                        // 计算与上一次读数的差值
-                        val delta = currentStepCount - lastStepCount
-                        lastStepCount = currentStepCount
-                        // 仅当差值大于 0 时累加（防止偶尔传回相同或减少的值）
-                        if (delta > 0) {
-                            ForegroundService.GlobalForForegroundService.stepCount += delta
-                        }
-                    }
-                }
-            }
-        }
-
-        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-    }
-
-    sensorManager.registerListener(
-        sensorEventListener,
-        stepDetectorSensor,
-        SensorManager.SENSOR_DELAY_NORMAL
-    )
-
-    // 用协程启动监控任务，并保存 Job
-    Global.monitorJob = CoroutineScope(Dispatchers.Default).launch {
-        try {
-            while (isActive) {
-                withContext(Dispatchers.Main) {
-                    writeToFile(
-                        context,
-                        "",
-                        "stepCount",
-                        ForegroundService.GlobalForForegroundService.stepCount.toString()
-                    )
-                }
-                delay(500)
-            }
-        } finally {
-            sensorManager.unregisterListener(sensorEventListener)
-        }
     }
 }
 

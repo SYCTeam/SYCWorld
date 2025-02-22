@@ -1,5 +1,6 @@
 package com.syc.world
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.Notification
@@ -9,7 +10,12 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -17,15 +23,18 @@ import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.syc.world.ForegroundService.GlobalForForegroundService.isInForeground
 import com.syc.world.ForegroundService.GlobalForForegroundService.isLogin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -34,8 +43,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.util.Date
@@ -51,6 +62,7 @@ class ForegroundService : Service() {
         var username = ""
         var password = ""
         var stepCount = 0
+        var monitorJob: Job? = null
 
         private val _isLogin = MutableStateFlow(false)
         val isLogin: StateFlow<Boolean>
@@ -83,6 +95,22 @@ class ForegroundService : Service() {
                 restartRescueProcess()
             }
             handler.postDelayed(this, 1000) // 每 1 秒检查一次
+        }
+    }
+
+    private fun writeToFileForegroundService(context: Context, child: String, filename: String, content: String) {
+        val dir = File(context.filesDir, child)
+
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+
+        val file = File(dir, filename)
+
+        FileOutputStream(file).use { fos ->
+            OutputStreamWriter(fos).use { writer ->
+                writer.write(content)
+            }
         }
     }
 
@@ -362,7 +390,7 @@ class ForegroundService : Service() {
                         getCurrentTimeForChatList()
                     )
                 )
-                writeToFile(
+                writeToFileForegroundService(
                     applicationContext,
                     "ChatMessage/NewMessage",
                     "${senderName}.json",
@@ -409,16 +437,14 @@ class ForegroundService : Service() {
                                         messageList.add(
                                             MomentsMessage(
                                                 s,
-                                                post.second?.likeNotifications?.get(it)!!.qq.get(
-                                                    index
-                                                ).toLong(),
+                                                post.second?.likeNotifications?.get(it)!!.qq[index].toLong(),
                                                 post.second?.likeNotifications?.get(it)!!.postContentPreview,
                                                 System.currentTimeMillis(),
                                                 post.second?.likeNotifications?.get(it)!!.postId,
                                                 "like"
                                             )
                                         )
-                                        writeToFile(
+                                        writeToFileForegroundService(
                                             applicationContext,
                                             "Moments",
                                             "list.json",
@@ -430,13 +456,13 @@ class ForegroundService : Service() {
                                 if (alllikelist.size == 1) {
                                     if (likeposts == 1) {
                                         sendMomentsNotification(
-                                            post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            post.second?.likeNotifications?.get(0)!!.qq[0],
                                             "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 给你的帖子点赞啦",
                                             "快去看看吧"
                                         )
                                     } else {
                                         sendMomentsNotification(
-                                            post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            post.second?.likeNotifications?.get(0)!!.qq[0],
                                             "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 给你的${likeposts}个帖子点赞啦",
                                             "快去看看吧"
                                         )
@@ -444,13 +470,13 @@ class ForegroundService : Service() {
                                 } else {
                                     if (likeposts == 1) {
                                         sendMomentsNotification(
-                                            post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            post.second?.likeNotifications?.get(0)!!.qq[0],
                                             "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 等${alllikelist.size}个人给你的帖子点赞啦",
                                             "快去看看吧"
                                         )
                                     } else {
                                         sendMomentsNotification(
-                                            post.second?.likeNotifications?.get(0)!!.qq.get(0),
+                                            post.second?.likeNotifications?.get(0)!!.qq[0],
                                             "${post.second?.likeNotifications?.get(0)?.users?.get(0)} 等${alllikelist.size}个人给你的${likeposts}个帖子点赞啦",
                                             "快去看看吧"
                                         )
@@ -488,7 +514,7 @@ class ForegroundService : Service() {
                                             System.currentTimeMillis(), context.postId, "comment"
                                         )
                                     )
-                                    writeToFile(
+                                    writeToFileForegroundService(
                                         applicationContext,
                                         "Moments",
                                         "list.json",
@@ -762,12 +788,14 @@ class ForegroundService : Service() {
         CoroutineScope(Dispatchers.IO).launch {
             stepCount = readFromFileForForegroundService(applicationContext, "stepCount")
             Log.d("步数问题", stepCount)
-            if (stepCount.trim().isNotEmpty() && stepCount.toIntOrNull() != null) {
-                GlobalForForegroundService.stepCount = stepCount.toInt()
-                Log.d(
-                    "步数问题",
-                    "已经将文件中的步数更新，GlobalForForegroundService.stepCount: ${GlobalForForegroundService.stepCount}"
-                )
+            if (stepCount.toIntOrNull() != null) {
+                if (stepCount.trim().isNotEmpty()) {
+                    GlobalForForegroundService.stepCount = stepCount.toInt()
+                    Log.d(
+                        "步数问题",
+                        "已经将文件中的步数更新，GlobalForForegroundService.stepCount: ${GlobalForForegroundService.stepCount}"
+                    )
+                }
             }
             monitorStepCount(applicationContext)
             Log.d("步数问题", "已启用步数监控")
@@ -917,6 +945,93 @@ class ForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
+    }
+
+    private fun monitorStepCount(context: Context) {
+        // 如果已有任务在运行，则不启动新的任务
+        if (GlobalForForegroundService.monitorJob?.isActive == true) {
+            Log.d("步数问题", "步数监控正在尝试重复启动")
+            return
+        }
+
+        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+            ?: sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+
+        if (stepDetectorSensor == null) {
+            return
+        }
+
+        // 用于 TYPE_STEP_COUNTER 的初始读数和上一次读数，均为 -1 表示未初始化
+        var initialStepCount = -1
+        var lastStepCount = -1
+
+        val sensorEventListener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent?) {
+                if (event == null) return
+
+                when (event.sensor.type) {
+                    Sensor.TYPE_STEP_DETECTOR -> {
+                        // 对于步态检测器，每次事件默认增量为 1
+                        if (ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.ACTIVITY_RECOGNITION
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            return
+                        }
+                        GlobalForForegroundService.stepCount++
+                        Log.d("步数问题", "步数增加了一步")
+                    }
+
+                    Sensor.TYPE_STEP_COUNTER -> {
+                        val currentStepCount = event.values[0].toInt()
+                        if (initialStepCount == -1) {
+                            // 第一次接收到数据，初始化初始值和上一次读数
+                            initialStepCount = currentStepCount
+                            lastStepCount = currentStepCount
+                        } else {
+                            // 计算与上一次读数的差值
+                            val delta = currentStepCount - lastStepCount
+                            lastStepCount = currentStepCount
+                            // 仅当差值大于 0 时累加（防止偶尔传回相同或减少的值）
+                            if (delta > 0) {
+                                GlobalForForegroundService.stepCount += delta
+                            }
+                        }
+                    }
+                }
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+
+        sensorManager.registerListener(
+            sensorEventListener,
+            stepDetectorSensor,
+            SensorManager.SENSOR_DELAY_NORMAL
+        )
+
+        // 用协程启动监控任务，并保存 Job
+        GlobalForForegroundService.monitorJob = CoroutineScope(Dispatchers.Default).launch {
+            try {
+                while (isActive) {
+                    withContext(Dispatchers.Main) {
+                        if (GlobalForForegroundService.stepCount > 0) {
+                            writeToFileForegroundService(
+                                context,
+                                "",
+                                "stepCount",
+                                GlobalForForegroundService.stepCount.toString()
+                            )
+                        }
+                    }
+                    delay(500)
+                }
+            } finally {
+                sensorManager.unregisterListener(sensorEventListener)
+            }
+        }
     }
 
     @SuppressLint("SdCardPath")
