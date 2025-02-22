@@ -1,19 +1,25 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -46,6 +52,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -91,6 +98,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import com.google.gson.Gson
 import com.syc.world.ForegroundService.ChatNewMessage
 import kotlinx.coroutines.Dispatchers
@@ -408,6 +416,7 @@ fun Chat(
 
     LaunchedEffect(Unit) {
         Global.setChatIsChatMessageAnimation(false)
+        Global.setIsSelectImageSuccessfully(false)
         withContext(Dispatchers.IO) {
             val readResult = getChatListFromFile(context)
             if (readResult.first == "success") {
@@ -549,10 +558,6 @@ fun Chat(
                                 newMessageCount
                             )
                         } else {
-                            Log.d(
-                                "列表问题",
-                                messageList.lastOrNull()?.message ?: "6666"
-                            )
                             // 创建 ChatGroup 对象
                             ChatGroup(
                                 chatItem.qq,
@@ -617,6 +622,114 @@ fun Chat(
             }
         }
     }
+}
+
+@Composable
+fun ImageUploadScreen() {
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var uploadStatus by remember { mutableStateOf("未上传图片") }
+    var uploadedImageUrl by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val isDarkMode =
+        context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    val isOpenMoreFunction = Global.isOpenMoreFunction.collectAsState()
+    var isRun by remember { mutableStateOf(false) }
+    var isRunSelectImage by remember { mutableStateOf(false) }
+
+    LocalContext.current
+    val activityResultLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri == null) {
+            Global.setIsOpenMoreFunction(false)
+            Global.setIsSelectImageSuccessfully(false)
+        } else {
+            selectedImageUri = uri
+        }
+    }
+
+    BackHandler {
+        Global.setIsOpenMoreFunction(false)
+        Global.setIsSelectImageSuccessfully(false)
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth(),
+        color =
+        if (isDarkMode) Color(0xFF252525) else Color(0xFFe6e6e6)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 16.dp)
+        ) {
+            if (selectedImageUri != null) {
+                if (!isRun) {
+                    isRun = true
+                    Global.setIsSelectImageSuccessfully(true)
+                }
+                val image: Painter = rememberAsyncImagePainter(selectedImageUri)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            painter = image,
+                            contentDescription = "您已选择图片。",
+                            modifier = Modifier
+                                .size(300.dp)
+                                .fillMaxWidth(),
+                            contentScale = ContentScale.Fit
+                        )
+                        Button(onClick = {
+                            selectedImageUri?.let { uri ->
+                                uploadImage(context, uri, { status, imageUrl ->
+                                    uploadStatus = status
+                                    uploadedImageUrl = imageUrl
+                                }, Global.username, Global.password)
+                            }
+                        }) {
+                            Text("上传图片")
+                        }
+                    }
+
+                }
+            }
+
+            LaunchedEffect(isOpenMoreFunction.value) {
+                if (isOpenMoreFunction.value) {
+                    delay(300)
+                    activityResultLauncher.launch("image/*")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (uploadStatus == "success" && !isRunSelectImage) {
+                isRunSelectImage = true
+                Global.setIsOpenMoreFunction(false)
+                Global.setIsSelectImageSuccessfully(false)
+                copyToClipboard(context, uploadedImageUrl)
+            }
+        }
+    }
+}
+
+@SuppressLint("ServiceCast")
+fun copyToClipboard(context: Context, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clip = android.content.ClipData.newPlainText("Copied Text", text)
+    clipboard.setPrimaryClip(clip)
+
+    Toast.makeText(context, "复制成功", Toast.LENGTH_SHORT).show()
 }
 
 // 群组数据类
@@ -941,20 +1054,34 @@ fun ChatMessage(message: ChatMessage) {
                                             val urlRegex = """https?://\S+""".toRegex()
 
                                             // 在消息中查找所有 URL
-                                            urlRegex.findAll(message.message).forEach { matchResult ->
-                                                // 将 URL 之前的文本添加为普通文本
-                                                append(message.message.substring(currentIndex, matchResult.range.first))
+                                            urlRegex.findAll(message.message)
+                                                .forEach { matchResult ->
+                                                    // 将 URL 之前的文本添加为普通文本
+                                                    append(
+                                                        message.message.substring(
+                                                            currentIndex,
+                                                            matchResult.range.first
+                                                        )
+                                                    )
 
-                                                // 给 URL 添加注解和样式
-                                                pushStringAnnotation(tag = "URL", annotation = matchResult.value)
-                                                withStyle(style = SpanStyle(color = Color.Blue, textDecoration = TextDecoration.Underline)) {
-                                                    append(matchResult.value)
+                                                    // 给 URL 添加注解和样式
+                                                    pushStringAnnotation(
+                                                        tag = "URL",
+                                                        annotation = matchResult.value
+                                                    )
+                                                    withStyle(
+                                                        style = SpanStyle(
+                                                            color = Color.Blue,
+                                                            textDecoration = TextDecoration.Underline
+                                                        )
+                                                    ) {
+                                                        append(matchResult.value)
+                                                    }
+                                                    pop()
+
+                                                    // 更新当前索引为 URL 后的位置
+                                                    currentIndex = matchResult.range.last + 1
                                                 }
-                                                pop()
-
-                                                // 更新当前索引为 URL 后的位置
-                                                currentIndex = matchResult.range.last + 1
-                                            }
 
                                             // 添加 URL 后的剩余文本
                                             append(message.message.substring(currentIndex))
@@ -1042,20 +1169,34 @@ fun ChatMessage(message: ChatMessage) {
                                             val urlRegex = """https?://\S+""".toRegex()
 
                                             // 在消息中查找所有 URL
-                                            urlRegex.findAll(message.message).forEach { matchResult ->
-                                                // 将 URL 之前的文本添加为普通文本
-                                                append(message.message.substring(currentIndex, matchResult.range.first))
+                                            urlRegex.findAll(message.message)
+                                                .forEach { matchResult ->
+                                                    // 将 URL 之前的文本添加为普通文本
+                                                    append(
+                                                        message.message.substring(
+                                                            currentIndex,
+                                                            matchResult.range.first
+                                                        )
+                                                    )
 
-                                                // 给 URL 添加注解和样式
-                                                pushStringAnnotation(tag = "URL", annotation = matchResult.value)
-                                                withStyle(style = SpanStyle(color = Color.Blue, textDecoration = TextDecoration.Underline)) {
-                                                    append(matchResult.value)
+                                                    // 给 URL 添加注解和样式
+                                                    pushStringAnnotation(
+                                                        tag = "URL",
+                                                        annotation = matchResult.value
+                                                    )
+                                                    withStyle(
+                                                        style = SpanStyle(
+                                                            color = Color.Blue,
+                                                            textDecoration = TextDecoration.Underline
+                                                        )
+                                                    ) {
+                                                        append(matchResult.value)
+                                                    }
+                                                    pop()
+
+                                                    // 更新当前索引为 URL 后的位置
+                                                    currentIndex = matchResult.range.last + 1
                                                 }
-                                                pop()
-
-                                                // 更新当前索引为 URL 后的位置
-                                                currentIndex = matchResult.range.last + 1
-                                            }
 
                                             // 添加 URL 后的剩余文本
                                             append(message.message.substring(currentIndex))
@@ -1148,6 +1289,10 @@ fun ChatUi(navController: NavController) {
     var isSend by remember { mutableStateOf(false) }
     var isFocusTextField by remember { mutableStateOf(false) }
 
+    val isOpenMoreFunction = Global.isOpenMoreFunction.collectAsState()
+    val isSelectImageSuccessfully = Global.isSelectImageSuccessfully.collectAsState()
+    var isShowMoreFunctionAnimation by remember { mutableStateOf(false) }
+
     val chatMessage = remember { mutableStateListOf<ChatMessage>() }
 
     val listState = rememberLazyListState()
@@ -1164,6 +1309,15 @@ fun ChatUi(navController: NavController) {
         getCurrentTime()
     )
 
+    LaunchedEffect(isOpenMoreFunction.value) {
+        if (isOpenMoreFunction.value) {
+            delay(100)
+            isShowMoreFunctionAnimation = true
+        } else {
+            delay(100)
+            isShowMoreFunctionAnimation = false
+        }
+    }
 
     LaunchedEffect(chatMessage.size, isLoading, text) {
         if (chatMessage.isNotEmpty() && !isLoading || (chatMessage.isNotEmpty() && isFocusTextField)
@@ -1199,6 +1353,7 @@ fun ChatUi(navController: NavController) {
     }
 
     LaunchedEffect(Unit) {
+        Global.setIsOpenMoreFunction(false)
         val messageList = getMessageFromFile(context, personNameBeingChat.value)
         val isMe = messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
         if (messageList.isNotEmpty() && isMe != null) {
@@ -1439,8 +1594,9 @@ fun ChatUi(navController: NavController) {
         textFieldChange = true
     }
 
-    LaunchedEffect(text) {
-        if (text.trim().isNotEmpty()) {
+    LaunchedEffect(text, isSelectImageSuccessfully.value) {
+        listState.scrollToItem(chatMessage.size - 1, Int.MAX_VALUE)
+        if (text.trim().isNotEmpty() || isSelectImageSuccessfully.value) {
             driveText = true
             delay(200)
             buttonChange = true
@@ -1667,16 +1823,32 @@ fun ChatUi(navController: NavController) {
                 }
             }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 90.dp)
-                    .imePadding(),
-                state = listState
-            ) {
-                itemsIndexed(chatMessage) { _, message ->
-                    if (message.message.trim().isNotEmpty()) {
-                        ChatMessage(message = message)
+            if (isSelectImageSuccessfully.value) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 490.dp)
+                        .imePadding(),
+                    state = listState
+                ) {
+                    itemsIndexed(chatMessage) { _, message ->
+                        if (message.message.trim().isNotEmpty()) {
+                            ChatMessage(message = message)
+                        }
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 90.dp)
+                        .imePadding(),
+                    state = listState
+                ) {
+                    itemsIndexed(chatMessage) { _, message ->
+                        if (message.message.trim().isNotEmpty()) {
+                            ChatMessage(message = message)
+                        }
                     }
                 }
             }
@@ -1712,6 +1884,7 @@ fun ChatUi(navController: NavController) {
             easing = FastOutSlowInEasing
         )
     )
+
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -1719,195 +1892,229 @@ fun ChatUi(navController: NavController) {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.Bottom
     ) {
-        Surface(
+        Column(
             modifier = Modifier
-                .height(textFieldHeight + 30.dp)
                 .fillMaxWidth(),
-            color = if (isDarkMode) Color(0xFF252525) else Color(0xFFeeeeee)
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            BoxWithConstraints(
+            Surface(
                 modifier = Modifier
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.CenterStart
+                    .height(textFieldHeight + 40.dp)
+                    .fillMaxWidth(),
+                color = if (isDarkMode) Color(0xFF252525) else Color(0xFFeeeeee)
             ) {
 
-                val maxWidth =
-                    if (text.trim().isNotEmpty()) maxWidth * 0.5f else maxWidth * 0.75f
-
-                val textFieldWidth by animateDpAsState(
-                    targetValue = if (textFieldChange) maxWidth else 0.dp,
-                    animationSpec = tween(
-                        durationMillis = 1000,
-                        easing = FastOutSlowInEasing
-                    )
-                )
-                Row(
+                BoxWithConstraints(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 10.dp, end = 10.dp),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.text_input),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(30.dp)
-                            .weight(0.1f),
-                        tint = if (isDarkMode) Color.White else Color.Black
+
+                    val maxWidth =
+                        if (text.trim().isNotEmpty() || isSelectImageSuccessfully.value) maxWidth * 0.5f else maxWidth * 0.75f
+
+                    val textFieldWidth by animateDpAsState(
+                        targetValue = if (textFieldChange) maxWidth else 0.dp,
+                        animationSpec = tween(
+                            durationMillis = 1000,
+                            easing = FastOutSlowInEasing
+                        )
                     )
-
-                    if (chatSelection1.value) {
-                        TextField(
-                            modifier = Modifier
-                                .width(textFieldWidth)
-                                .height(textFieldHeight)
-                                .padding(start = 10.dp, end = 10.dp)
-                                .onFocusChanged { focusState: FocusState ->
-                                    isFocusTextField = focusState.isFocused
-                                },
-                            value = text,
-                            onValueChange = { newText -> text = newText },
-                            textStyle = TextStyle(
-                                fontSize = 15.sp,
-                                lineHeight = 22.sp,
-                                color = if (isDarkMode) Color.White else Color.Black
-                            ),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
-                                unfocusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
-                                cursorColor = Color(0xFF95EC69),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color(0xFF95EC69),
-                                unfocusedIndicatorColor = Color.White
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onSend = {
-                                    if (text.trim().length <= 1000 && text.trim()
-                                            .isNotEmpty() && isSendSuccessfully
-                                    ) {
-                                        isSend = true
-                                    } else if (text.length > 1000) {
-                                        Toast.makeText(
-                                            context,
-                                            "字数达到上限，无法发送！",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }
-                            ),
-                            keyboardOptions = KeyboardOptions.Default.copy(
-                                imeAction = ImeAction.Send
-                            )
-                        )
-                    } else {
-                        TextField(
-                            modifier = Modifier
-                                .width(textFieldWidth)
-                                .height(textFieldHeight)
-                                .padding(start = 10.dp, end = 10.dp)
-                                .onFocusChanged { focusState: FocusState ->
-                                    isFocusTextField = focusState.isFocused
-                                },
-                            value = text,
-                            onValueChange = { newText ->
-                                text = newText
-                            },
-                            textStyle = TextStyle(
-                                fontSize = 15.sp,
-                                lineHeight = 22.sp,
-                                color = if (isDarkMode) Color.White else Color.Black
-                            ),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
-                                unfocusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
-                                cursorColor = Color(0xFF95EC69),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedIndicatorColor = Color(0xFF95EC69),
-                                unfocusedIndicatorColor = Color.White
-                            )
-                        )
-                    }
-
-
-                    Surface(
+                    Row(
                         modifier = Modifier
-                            .weight(0.1f)
-                            .clip(CircleShape),
-                        color = Color.Transparent
+                            .fillMaxSize()
+                            .padding(start = 10.dp, end = 10.dp),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.emotion),
+                            painter = painterResource(R.drawable.text_input),
                             contentDescription = null,
                             modifier = Modifier
                                 .size(30.dp)
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = MutableInteractionSource()
-                                ) {
-
-                                },
+                                .weight(0.1f),
                             tint = if (isDarkMode) Color.White else Color.Black
                         )
-                    }
-                    if (driveText) {
 
-                        val buttonSize by animateDpAsState(
-                            targetValue = if (buttonChange) 58.dp else 0.dp,
-                            animationSpec = tween(
-                                durationMillis = 300,
-                            )
-                        )
-
-                        Card(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .height(34.dp)
-                                .width(buttonSize)
-                                .clickable {
-                                    if (text.trim().length <= 1000 && text.trim()
-                                            .isNotEmpty() && isSendSuccessfully
-                                    ) {
-                                        isSend = true
-                                    } else if (text.length > 1000) {
-                                        Toast.makeText(
-                                            context,
-                                            "字数达到上限，无法发送！",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                },
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF07C160),
-                                contentColor = Color.White
-                            ),
-                            shape = RectangleShape
-                        ) {
-                            AnimatedVisibility(
-                                visible = isSendButtonVisible,
-                                enter = fadeIn(
-                                    animationSpec = tween(durationMillis = 300)
+                        if (chatSelection1.value) {
+                            TextField(
+                                modifier = Modifier
+                                    .width(textFieldWidth)
+                                    .height(textFieldHeight)
+                                    .padding(start = 10.dp, end = 10.dp)
+                                    .onFocusChanged { focusState: FocusState ->
+                                        isFocusTextField = focusState.isFocused
+                                    },
+                                value = text,
+                                onValueChange = { newText -> text = newText },
+                                textStyle = TextStyle(
+                                    fontSize = 15.sp,
+                                    lineHeight = 22.sp,
+                                    color = if (isDarkMode) Color.White else Color.Black
                                 ),
-                                exit = fadeOut(
-                                    animationSpec = tween(durationMillis = 300)
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
+                                    unfocusedContainerColor = if (isDarkMode) Color(0xFF2d2d2d) else Color.White,
+                                    cursorColor = Color(0xFF95EC69),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color(0xFF95EC69),
+                                    unfocusedIndicatorColor = Color.White
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onSend = {
+                                        if (text.trim().length <= 1000 && text.trim()
+                                                .isNotEmpty() && isSendSuccessfully
+                                        ) {
+                                            isSend = true
+                                        } else if (text.length > 1000) {
+                                            Toast.makeText(
+                                                context,
+                                                "字数达到上限，无法发送！",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                ),
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    imeAction = ImeAction.Send
                                 )
+                            )
+                        } else {
+                            TextField(
+                                modifier = Modifier
+                                    .width(textFieldWidth)
+                                    .height(textFieldHeight)
+                                    .padding(start = 10.dp, end = 10.dp)
+                                    .onFocusChanged { focusState: FocusState ->
+                                        isFocusTextField = focusState.isFocused
+                                    },
+                                value = text,
+                                onValueChange = { newText ->
+                                    text = newText
+                                },
+                                textStyle = TextStyle(
+                                    fontSize = 15.sp,
+                                    lineHeight = 22.sp,
+                                    color = if (isDarkMode) Color.White else Color.Black
+                                ),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
+                                    unfocusedContainerColor = if (isDarkMode) Color((0xFF2d2d2d)) else Color.White,
+                                    cursorColor = Color(0xFF95EC69),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedIndicatorColor = Color(0xFF95EC69),
+                                    unfocusedIndicatorColor = Color.White
+                                )
+                            )
+                        }
+
+
+                        Surface(
+                            modifier = Modifier
+                                .weight(0.1f)
+                                .clip(CircleShape),
+                            color = Color.Transparent
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.emotion),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = MutableInteractionSource()
+                                    ) {
+                                        Global.setIsOpenMoreFunction(!isOpenMoreFunction.value)
+                                        Global.setIsSelectImageSuccessfully(false)
+                                    },
+                                tint = if (isDarkMode) Color.White else Color.Black
+                            )
+                        }
+                        if (driveText) {
+
+                            val buttonSize by animateDpAsState(
+                                targetValue = if (buttonChange) 58.dp else 0.dp,
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                )
+                            )
+
+                            Card(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .height(34.dp)
+                                    .width(buttonSize)
+                                    .clickable {
+                                        if (text.trim().length <= 1000 && text.trim()
+                                                .isNotEmpty() && isSendSuccessfully
+                                        ) {
+                                            isSend = true
+                                        } else if (text.length > 1000) {
+                                            Toast.makeText(
+                                                context,
+                                                "字数达到上限，无法发送！",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFF07C160),
+                                    contentColor = Color.White
+                                ),
+                                shape = RectangleShape
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "发送",
-                                        modifier = Modifier,
-                                        fontSize = 15.sp,
+                                AnimatedVisibility(
+                                    visible = isSendButtonVisible,
+                                    enter = fadeIn(
+                                        animationSpec = tween(durationMillis = 300)
+                                    ),
+                                    exit = fadeOut(
+                                        animationSpec = tween(durationMillis = 300)
                                     )
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "发送",
+                                            modifier = Modifier,
+                                            fontSize = 15.sp,
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+                }
+
+            }
+            AnimatedVisibility(
+                visible = isShowMoreFunctionAnimation,
+                enter = expandVertically(
+                    // 从上往下展开
+                    expandFrom = Alignment.Top,
+                    animationSpec = tween(durationMillis = 300)
+                ),
+                exit = fadeOut(
+                    animationSpec = tween(durationMillis = 300)
+                ) + shrinkVertically(
+                    // 控件消失时向上收缩
+                    shrinkTowards = Alignment.Top,
+                    animationSpec = tween(durationMillis = 300)
+                )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .height(400.dp)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    ImageUploadScreen()
                 }
             }
         }

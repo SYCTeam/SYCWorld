@@ -79,8 +79,8 @@ android {
 }
 
 dependencies {
-    implementation("com.github.bumptech.glide:glide:4.13.2")
-    implementation("com.jvziyaoyao.scale:image-viewer:1.1.0-alpha.5")
+    implementation(libs.glide)
+    implementation(libs.image.viewer)
     implementation("com.jvziyaoyao.scale:sampling-decoder:1.1.0-alpha.5")
     implementation(libs.multiplatform.markdown.renderer.code)
     implementation(libs.multiplatform.markdown.renderer.coil3)

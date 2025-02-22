@@ -1,11 +1,11 @@
 package com.syc.world
 
 import android.annotation.SuppressLint
+import android.content.ContentResolver
 import android.content.Context
+import android.net.Uri
 import android.util.Log
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import android.webkit.MimeTypeMap
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
@@ -13,13 +13,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.Response
+import okio.BufferedSink
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 import kotlin.coroutines.cancellation.CancellationException
@@ -344,36 +353,6 @@ fun login(username: String, password: String): String {
     }
 }
 
-
-fun checkUserOnline(username: String): String {
-    val url = "${Global.url}/syc/keepAlive.php"
-
-    val client = OkHttpClient()
-
-    val formBody = FormBody.Builder()
-        .add("username", username)
-        .build()
-
-    val request = Request.Builder()
-        .url(url)
-        .post(formBody)
-        .build()
-
-    return try {
-        val response = client.newCall(request).execute()
-        if (response.isSuccessful) {
-            val responseBody = response.body?.string() ?: ""
-            Log.d("在线状态", responseBody)
-            responseBody
-        } else {
-            "Error"
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        "Error"
-    }
-}
-
 fun getUserInformation(username: String): String {
 
     val url = "${Global.url}/syc/check.php".toHttpUrlOrNull()?.newBuilder()
@@ -408,7 +387,7 @@ fun getUserInformation(username: String): String {
 
 fun getAddressFromIp(ip: String): String {
 
-    val url = "https://zj.v.api.aa1.cn/api/ip-taobao/?ip=$ip"
+    val url = "http://zj.v.api.aa1.cn/api/ip-taobao/?ip=$ip"
 
 
     val client = OkHttpClient()
@@ -1205,4 +1184,90 @@ suspend fun getDeleteMessageListSwitch(): String {
             "false"
         }
     }
+}
+
+// 获取文件扩展名
+fun getFileExtension(fileUri: Uri, contentResolver: ContentResolver): String? {
+    val mimeType = contentResolver.getType(fileUri) ?: return null
+    val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+    return extension
+}
+
+// 图片上传函数
+fun uploadImage(
+    context: Context,
+    fileUri: Uri,
+    onResponse: (status: String, imageUrl: String) -> Unit,
+    username: String,
+    password: String
+) {
+    // 获取文件路径的 ContentResolver
+    val contentResolver = context.contentResolver
+
+    // 获取文件的 InputStream
+    val inputStream: InputStream? = contentResolver.openInputStream(fileUri)
+    if (inputStream == null) {
+        onResponse("error", "无法读取文件")
+        return
+    }
+
+    // 获取文件的 MIME 类型
+    val fileType = contentResolver.getType(fileUri) ?: "image/*"
+
+    // 获取文件后缀（扩展名）
+    val fileExtension = getFileExtension(fileUri, contentResolver) ?: "jpg"
+
+    // 获取文件名（如果 Uri 不能提供，可以设置一个默认名称）
+    val fileName = "${System.currentTimeMillis()}.$fileExtension"  // 使用时间戳避免重名
+
+    // 将 InputStream 转换为 RequestBody
+    val requestBody = object : RequestBody() {
+        override fun contentType(): MediaType? {
+            return fileType.toMediaTypeOrNull()  // 返回文件的 MIME 类型
+        }
+
+        override fun writeTo(sink: BufferedSink) {
+            inputStream.copyTo(sink.outputStream())  // 将文件内容写入请求体
+        }
+    }
+
+    // 构建 multipart 请求体
+    val body = MultipartBody.Builder()
+        .setType(MultipartBody.FORM)
+        .addFormDataPart("image", fileName, requestBody)  // 上传文件
+        .addFormDataPart("username", username)  // 添加用户名
+        .addFormDataPart("password", password)  // 添加密码
+        .build()
+
+    // 创建 OkHttpClient 实例
+    val client = OkHttpClient()
+
+    // 构建 POST 请求
+    val request = Request.Builder()
+        .url("${Global.url}/syc/uploadImage.php")  // 修改为您上传接口的 URL
+        .post(body)
+        .build()
+
+    // 发送请求
+    client.newCall(request).enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            onResponse("error", "上传失败：${e.message}")
+            Log.d("上传问题", e.message.toString())
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string()
+                val jsonResponse = responseBody?.let { JSONObject(it) }
+
+                // 获取响应中的 status 和 imageUrl
+                val status = jsonResponse?.getString("status") ?: "error"
+                val imageUrl = jsonResponse?.getString("message") ?: ""
+                Log.d("上传问题", imageUrl)
+                onResponse(status, imageUrl)
+            } else {
+                onResponse("error", "上传失败")
+            }
+        }
+    })
 }

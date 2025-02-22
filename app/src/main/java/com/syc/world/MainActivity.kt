@@ -377,6 +377,23 @@ object Global {
     fun setIsUpdateChatList(value: Boolean) {
         _isUpdateChatList.value = value
     }
+
+    private val _isOpenMoreFunction = MutableStateFlow(false)
+    val isOpenMoreFunction: StateFlow<Boolean>
+        get() = _isOpenMoreFunction
+
+    fun setIsOpenMoreFunction(value: Boolean) {
+        _isOpenMoreFunction.value = value
+    }
+
+    private val _isSelectImageSuccessfully = MutableStateFlow(false)
+    val isSelectImageSuccessfully: StateFlow<Boolean>
+        get() = _isSelectImageSuccessfully
+
+    fun setIsSelectImageSuccessfully(value: Boolean) {
+        _isSelectImageSuccessfully.value = value
+    }
+
 }
 
 class AppLifecycleObserver : LifecycleObserver {
