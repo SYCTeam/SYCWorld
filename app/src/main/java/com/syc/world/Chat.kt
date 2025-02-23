@@ -1550,7 +1550,9 @@ fun ChatUi(navController: NavController) {
                             }
                         } else {
                             val existingMessages = mutableListOf<Pair<String, String>>()
-
+                            chatMessage.removeAll {
+                                it.isFake
+                            }
                             chatMessage.filter {
                                 !it.isFake
                             }.forEach { existingMessages.add(it.message to it.sendTime) }
