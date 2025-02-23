@@ -1613,7 +1613,9 @@ fun ChatUi(navController: NavController) {
     }
 
     LaunchedEffect(text, isSelectImageSuccessfully.value) {
-        listState.scrollToItem(chatMessage.size - 1, Int.MAX_VALUE)
+        if (chatMessage.isNotEmpty()) {
+            listState.scrollToItem(chatMessage.size - 1, Int.MAX_VALUE)
+        }
         if (text.trim().isNotEmpty() || isSelectImageSuccessfully.value) {
             driveText = true
             delay(200)
