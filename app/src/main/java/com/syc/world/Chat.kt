@@ -1343,7 +1343,7 @@ fun ChatUi(navController: NavController) {
         }
     }
 
-    LaunchedEffect(chatMessage.size, isLoading, isSend) {
+    LaunchedEffect(Unit, chatMessage.size, isLoading, isSend) {
         if (readFromFile(
                 context,
                 "isInForeground"
@@ -1367,6 +1367,22 @@ fun ChatUi(navController: NavController) {
                 }
             }
         }
+        val newMessage = readChatMessagesFromFile(
+            context,
+            personNameBeingChat.value
+        )
+
+        val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
+
+        if (newMessage.isNotEmpty()) {
+            if (Global.unreadCountInChat.value.toIntOrNull() != null) {
+                if (Global.unreadCountInChat.value.toInt() - newMessageCount >= 0) {
+                    Global.setUnreadCountInChat({ Global.unreadCountInChat.value.toInt() - newMessageCount }.toString())
+                }
+            }
+        }
+        deleteFile(context, "ChatMessage/NewMessage/${personNameBeingChat.value}.json")
+        Global.setIsUpdateChatList(true)
     }
 
     LaunchedEffect(Unit) {
