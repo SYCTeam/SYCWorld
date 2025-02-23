@@ -1447,7 +1447,7 @@ fun ChatUi(navController: NavController) {
                                         }
                                     }
                                     existingMessages.add(message to timestamp)
-                                    lastMessageTimestamp = timestamp // 更新上一条消息的时间戳
+                                    lastMessageTimestamp = timestamp
                                     isLoading = false
                                 }
                             }
@@ -1456,10 +1456,11 @@ fun ChatUi(navController: NavController) {
                 }
             }
             delay(3000)
-
         }
     }
     var isSendSuccessfully by remember { mutableStateOf(true) }
+
+// 发送协程
     LaunchedEffect(isSend) {
         withContext(Dispatchers.IO) {
             val messageIndex = chatMessage.size
@@ -1567,12 +1568,12 @@ fun ChatUi(navController: NavController) {
                         it.isFake
                     }
                 }
+                chatMessage.removeAll {
+                    it.isFake
+                }
+                isSend = false
+                isSendSuccessfully = true
             }
-            chatMessage.removeAll {
-                it.isFake
-            }
-            isSend = false
-            isSendSuccessfully = true
         }
     }
 
@@ -1929,7 +1930,9 @@ fun ChatUi(navController: NavController) {
                 ) {
 
                     val maxWidth =
-                        if (text.trim().isNotEmpty() || isSelectImageSuccessfully.value) maxWidth * 0.5f else maxWidth * 0.75f
+                        if (text.trim()
+                                .isNotEmpty() || isSelectImageSuccessfully.value
+                        ) maxWidth * 0.5f else maxWidth * 0.75f
 
                     val textFieldWidth by animateDpAsState(
                         targetValue = if (textFieldChange) maxWidth else 0.dp,
