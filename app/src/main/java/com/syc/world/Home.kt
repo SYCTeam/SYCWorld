@@ -1098,13 +1098,13 @@ fun StepRank() {
                                 val userInfo1 = parseUserInfo(userInfoFirst)
                                 if (userInfo1 != null
                                 ) {
-                                    if (userInfo1.registerIp.isNotEmpty() &&
-                                        userInfo1.synopsis.isNotEmpty() &&
-                                        userInfo1.loginCount.isNotEmpty() &&
-                                        userInfo1.online.isNotEmpty() &&
-                                        userInfo1.qq.isNotEmpty() &&
-                                        userInfo1.stepCount.isNotEmpty() &&
-                                        userInfo1.username.isNotEmpty()
+                                    if (userInfo1.registerIp != "" &&
+                                        userInfo1.synopsis != "" &&
+                                        userInfo1.loginCount != "" &&
+                                        userInfo1.online != "" &&
+                                        userInfo1.qq != "" &&
+                                        userInfo1.stepCount != "" &&
+                                        userInfo1.username != ""
                                     ) {
 
                                         Log.d("rank1Data", "开始写入变量")
@@ -1167,13 +1167,13 @@ fun StepRank() {
                                 val userInfo2 = parseUserInfo(userInfoFirst)
                                 if (userInfo2 != null
                                 ) {
-                                    if (userInfo2.registerIp.isNotEmpty() &&
-                                        userInfo2.synopsis.isNotEmpty() &&
-                                        userInfo2.loginCount.isNotEmpty() &&
-                                        userInfo2.online.isNotEmpty() &&
-                                        userInfo2.qq.isNotEmpty() &&
-                                        userInfo2.stepCount.isNotEmpty() &&
-                                        userInfo2.username.isNotEmpty()
+                                    if (userInfo2.registerIp != "" &&
+                                        userInfo2.synopsis != "" &&
+                                        userInfo2.loginCount != "" &&
+                                        userInfo2.online != "" &&
+                                        userInfo2.qq != "" &&
+                                        userInfo2.stepCount != "" &&
+                                        userInfo2.username != ""
                                     ) {
 
                                         Log.d("rank2Data", "开始写入变量")
@@ -1236,13 +1236,13 @@ fun StepRank() {
                                 val userInfo3 = parseUserInfo(userInfoFirst)
                                 if (userInfo3 != null
                                 ) {
-                                    if (userInfo3.registerIp.isNotEmpty() &&
-                                        userInfo3.synopsis.isNotEmpty() &&
-                                        userInfo3.loginCount.isNotEmpty() &&
-                                        userInfo3.online.isNotEmpty() &&
-                                        userInfo3.qq.isNotEmpty() &&
-                                        userInfo3.stepCount.isNotEmpty() &&
-                                        userInfo3.username.isNotEmpty()
+                                    if (userInfo3.registerIp != "" &&
+                                        userInfo3.synopsis != "" &&
+                                        userInfo3.loginCount != "" &&
+                                        userInfo3.online != "" &&
+                                        userInfo3.qq != "" &&
+                                        userInfo3.stepCount != "" &&
+                                        userInfo3.username != ""
                                     ) {
 
                                         Log.d("rank3Data", "开始写入变量")
@@ -1268,7 +1268,6 @@ fun StepRank() {
                                             } else {
                                                 0 // 或者设置一个默认值
                                             }
-
                                         // 这里确保所有的字段都已正确赋值
                                         if (rank3Name.trim().isNotEmpty() &&
                                             rank3QQ.trim().isNotEmpty() &&
