@@ -24,7 +24,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.Response
+import okio.Buffer
 import okio.BufferedSink
+import okio.Source
+import okio.source
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -1198,45 +1201,57 @@ fun uploadImage(
     context: Context,
     fileUri: Uri,
     onResponse: (status: String, imageUrl: String) -> Unit,
+    onProgress: (progress: Int) -> Unit,  // 新增进度回调
     username: String,
     password: String
 ) {
-    // 获取文件路径的 ContentResolver
     val contentResolver = context.contentResolver
-
-    // 获取文件的 InputStream
     val inputStream: InputStream? = contentResolver.openInputStream(fileUri)
+
     if (inputStream == null) {
         onResponse("error", "无法读取文件")
         return
     }
 
-    // 获取文件的 MIME 类型
     val fileType = contentResolver.getType(fileUri) ?: "image/*"
-
-    // 获取文件后缀（扩展名）
     val fileExtension = getFileExtension(fileUri, contentResolver) ?: "jpg"
+    val fileName = "${System.currentTimeMillis()}.$fileExtension"
 
-    // 获取文件名（如果 Uri 不能提供，可以设置一个默认名称）
-    val fileName = "${System.currentTimeMillis()}.$fileExtension"  // 使用时间戳避免重名
+    // 获取文件大小
+    val fileSize = inputStream.available().toLong()
 
-    // 将 InputStream 转换为 RequestBody
+    // 自定义 RequestBody，用于拦截并报告进度
     val requestBody = object : RequestBody() {
         override fun contentType(): MediaType? {
-            return fileType.toMediaTypeOrNull()  // 返回文件的 MIME 类型
+            return fileType.toMediaTypeOrNull()
         }
 
         override fun writeTo(sink: BufferedSink) {
-            inputStream.copyTo(sink.outputStream())  // 将文件内容写入请求体
+            val bufferedSink = sink.buffer
+            val source: Source = inputStream.source()
+            val buffer = Buffer()
+            var totalBytesRead: Long = 0
+            var bytesRead: Long
+
+            // 循环读取文件内容并写入请求体，同时计算已读取的字节数
+            while (source.read(buffer, 8192).also { bytesRead = it } != -1L) {
+                totalBytesRead += bytesRead
+                bufferedSink.write(buffer, bytesRead)
+
+                // 计算上传进度并触发回调
+                val progress = ((totalBytesRead * 100) / fileSize).toInt()
+                onProgress(progress)  // 实时更新进度
+            }
+            source.close()
         }
     }
 
     // 构建 multipart 请求体
     val body = MultipartBody.Builder()
         .setType(MultipartBody.FORM)
-        .addFormDataPart("image", fileName, requestBody)  // 上传文件
-        .addFormDataPart("username", username)  // 添加用户名
-        .addFormDataPart("password", password)  // 添加密码
+        .addFormDataPart("image", fileName, requestBody)
+        .addFormDataPart("username", username)
+        .addFormDataPart("password", password)
         .build()
 
     // 创建 OkHttpClient 实例
@@ -1244,7 +1259,7 @@ fun uploadImage(
 
     // 构建 POST 请求
     val request = Request.Builder()
-        .url("${Global.url}/syc/uploadImage.php")  // 修改为您上传接口的 URL
+        .url("${Global.url}/syc/uploadImage.php")
         .post(body)
         .build()
 

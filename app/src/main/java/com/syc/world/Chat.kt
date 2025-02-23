@@ -691,11 +691,28 @@ fun ImageUploadScreen() {
                         )
                         Button(onClick = {
                             selectedImageUri?.let { uri ->
-                                uploadImage(context, uri, { status, imageUrl ->
-                                    uploadStatus = status
-                                    uploadedImageUrl = imageUrl
-                                }, Global.username, Global.password)
+                                uploadImage(
+                                    context = context,
+                                    fileUri = uri,
+                                    onResponse = { status, imageUrl ->
+                                        uploadStatus = status
+                                        uploadedImageUrl = imageUrl
+                                        if (status == "success") {
+                                            Log.d("上传问题", "图片 URL: $imageUrl")
+                                        } else {
+                                            Log.d("上传问题", "原因: $imageUrl")
+                                        }
+                                    },
+                                    onProgress = { progress ->
+                                        Log.d("上传问题", "当前进度: $progress%")
+                                    },
+                                    username = Global.username,
+                                    password = Global.password
+                                )
+                            } ?: run {
+                                Log.d("上传问题", "选中的图片为空")
                             }
+
                         }) {
                             Text("上传图片")
                         }
