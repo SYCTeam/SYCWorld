@@ -1593,7 +1593,7 @@ fun AllHome(
                                                         }
                                                     }
                                                 }
-                                                deleteFile(context, "ChatMessage/NewMessage/${chatItem.username}.json")
+                                                deleteFile(context, "ChatMessage/NewM   isJsonessage/${chatItem.username}.json")
                                                 Global.setIsUpdateChatList(true)
                                                 navController.navigate("ChatUi")
                                             }

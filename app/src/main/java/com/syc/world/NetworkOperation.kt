@@ -9,6 +9,7 @@ import android.webkit.MimeTypeMap
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
+import com.syc.world.ForegroundService.GlobalForForegroundService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
@@ -245,7 +246,10 @@ data class ChatMessageResponse(
     val status: String,
 
     @SerializedName("chatRecords")
-    val chatRecords: List<ChatRecord>
+    val chatRecords: List<ChatRecord>? = null, // 可能为空
+
+    @SerializedName("message")
+    val message: String? = null // 可能为空
 )
 
 data class ChatInfo(
@@ -1058,22 +1062,20 @@ fun sendMessage(
 
 fun getMessage(
     username: String,
-    password: String,
-    receiver: String
-): Pair<String, List<ChatRecord>> {
-    val url = "${Global.url}/syc/getChatMessage.php".toHttpUrlOrNull()
-        ?: return Pair("error", listOf())
+    password: String
+): Pair<String, Any> {
+    val url = "${GlobalForForegroundService.url}/syc/getChatMessage.php".toHttpUrlOrNull()
+        ?: return Pair("error", "Invalid URL")
 
     val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // 创建请求体，包含用户名、密码和接收者
+    // 创建请求体，包含用户名、密码
     val formBody = FormBody.Builder()
         .add("username", username)
         .add("password", password)
-        .add("receiver", receiver)
         .build()
 
     Log.d("聊天信息获取", "请求 URL: $url")
@@ -1090,28 +1092,30 @@ fun getMessage(
         if (response.isSuccessful) {
             val responseBody = response.body?.string() ?: ""
             Log.d("聊天信息获取", "响应: $responseBody")
-            try {
+
+            return try {
                 val chatMessageInfo: ChatMessageResponse =
                     Gson().fromJson(responseBody, ChatMessageResponse::class.java)
 
-                if (chatMessageInfo.status == "success") {
+                if (chatMessageInfo.status == "success" && !chatMessageInfo.chatRecords.isNullOrEmpty()) {
                     Pair(chatMessageInfo.status, chatMessageInfo.chatRecords)
                 } else {
-                    Pair("error", listOf())
+                    Pair("error", chatMessageInfo.message ?: "未知错误")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 Log.e("聊天信息解析", "解析错误: ${e.message}")
-                Pair("error", listOf())
+                Pair("error", "JSON解析错误")
             }
+
         } else {
             Log.e("网络请求失败", "响应失败: ${response.message}")
-            Pair("error", listOf())
+            Pair("error", response.message)
         }
     } catch (e: IOException) {
         e.printStackTrace()
         Log.e("网络请求失败", "IO异常: ${e.message}")
-        Pair("error", listOf())
+        Pair("error", "网络连接失败")
     }
 }
 

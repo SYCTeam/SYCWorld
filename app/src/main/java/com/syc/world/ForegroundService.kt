@@ -49,8 +49,10 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
+import java.util.Collections
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -98,7 +100,12 @@ class ForegroundService : Service() {
         }
     }
 
-    private fun writeToFileForegroundService(context: Context, child: String, filename: String, content: String) {
+    private fun writeToFileForegroundService(
+        context: Context,
+        child: String,
+        filename: String,
+        content: String
+    ) {
         val dir = File(context.filesDir, child)
 
         if (!dir.exists()) {
@@ -225,25 +232,25 @@ class ForegroundService : Service() {
         }
     }
 
-    private fun checkChatMessage(
+    private fun getMessageForegroundService(
         username: String,
-        password: String,
-        localMessageCount: Int,
-    ): Pair<String, ChatInfo?> {
-        val url = "${GlobalForForegroundService.url}/syc/receiveChatMessage.php".toHttpUrlOrNull()
-            ?: return Pair("Error", null) // 如果URL无效，返回错误和null
+        password: String
+    ): Pair<String, Any> {
+        val url = "${GlobalForForegroundService.url}/syc/getChatMessage.php".toHttpUrlOrNull()
+            ?: return Pair("error", "Invalid URL")
 
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
 
-        // 创建请求体，包含用户名和密码
-        val formBodyBuilder = FormBody.Builder()
+        // 创建请求体，包含用户名、密码
+        val formBody = FormBody.Builder()
             .add("username", username)
             .add("password", password)
-            .add("localMessageCount", localMessageCount.toString())
+            .build()
 
-        val formBody = formBodyBuilder.build()
-
-        Log.d("聊天信息获取", url.toString())
+        Log.d("聊天信息获取", "请求 URL: $url")
 
         // 构建请求
         val request = Request.Builder()
@@ -253,23 +260,34 @@ class ForegroundService : Service() {
 
         return try {
             val response = client.newCall(request).execute()
+
             if (response.isSuccessful) {
                 val responseBody = response.body?.string() ?: ""
-                Log.d("聊天信息获取", responseBody)
-                try {
-                    // 解析响应为 ChatInfo 对象
-                    val chatInfo: ChatInfo = Gson().fromJson(responseBody, ChatInfo::class.java)
-                    Pair(chatInfo.status, chatInfo) // 返回状态和解析后的 ChatInfo 对象
+                Log.d("聊天信息获取", "响应: $responseBody")
+
+                return try {
+                    val chatMessageInfo: ChatMessageResponse =
+                        Gson().fromJson(responseBody, ChatMessageResponse::class.java)
+
+                    if (chatMessageInfo.status == "success" && !chatMessageInfo.chatRecords.isNullOrEmpty()) {
+                        Pair(chatMessageInfo.status, chatMessageInfo.chatRecords)
+                    } else {
+                        Pair("error", chatMessageInfo.message ?: "未知错误")
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    Pair("error", null) // 解析错误时返回错误和 null
+                    Log.e("聊天信息解析", "解析错误: ${e.message}")
+                    Pair("error", "JSON解析错误")
                 }
+
             } else {
-                Pair("error", null) // 请求失败时返回错误和 null
+                Log.e("网络请求失败", "响应失败: ${response.message}")
+                Pair("error", response.message)
             }
         } catch (e: IOException) {
             e.printStackTrace()
-            Pair("error", null) // 请求异常时返回错误和 null
+            Log.e("网络请求失败", "IO异常: ${e.message}")
+            Pair("error", "网络连接失败")
         }
     }
 
@@ -372,6 +390,11 @@ class ForegroundService : Service() {
                             link = "sycworld://chat?name=$senderName&qq=$senderQQ"
                         )
                     }
+                } else {
+                    val notificationManager =
+                        getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    val notificationId = 10004
+                    notificationManager.cancel(notificationId)
                 }
                 val existingData = readFromFileForForegroundService(
                     applicationContext,
@@ -587,67 +610,104 @@ class ForegroundService : Service() {
         }
     }
 
-    private fun chatMessageNotification() {
+    private fun chatMessageNotification(context: Context) {
+        val chatMessage = Collections.synchronizedList(mutableListOf<ChatMessage>())
+
         CoroutineScope(Dispatchers.IO).launch {
-            var isRing = false
             while (true) {
                 if (isLogin.value) {
-                    val localMessageCount: Int = readAndSumFileContents(applicationContext)
-                    if (localMessageCount != 0) {
-                        val hasNewMessage = checkChatMessage(
-                            GlobalForForegroundService.username,
-                            GlobalForForegroundService.password,
-                            localMessageCount
-                        )
-                        if (hasNewMessage.first == "success") {
-                            if (hasNewMessage.second != null) {
-                                val message = hasNewMessage.second
-                                if (message?.hasNewMessages == true && !isRing) {
+                    val result = getMessageForegroundService(
+                        GlobalForForegroundService.username,
+                        GlobalForForegroundService.password
+                    )
+                    if (result.first == "success" && result.second is List<*>) {
+                        val chatRecords = (result.second as? List<*>)?.filterIsInstance<ChatRecord>()
+
+                        if (!chatRecords.isNullOrEmpty()) {
+                            // 获取所有不同的发送者名字
+                            val senderUsernames = chatRecords.map { it.senderUsername }.distinct()
+
+                            // 遍历每个发送者名字
+                            senderUsernames.forEach { senderUsername ->
+                                // 读取本地消息，解析为 ChatMessage 对象列表
+                                val localChatMessages = getMessageFromFile(context, senderUsername)
+
+                                // 过滤掉已经存在的消息
+                                val newMessages = chatRecords.filterNot { record ->
+                                    localChatMessages.any { it.message == record.message && it.sendTime == record.timestamp }
+                                }
+
+                                if (newMessages.isNotEmpty()) {
                                     Log.d("消息问题", "有新消息！")
-                                    val sendCount =
-                                        (hasNewMessage.second!!.totalMessageCount - localMessageCount).coerceAtMost(
-                                            3
-                                        )
+                                    val sendCount = newMessages.size
+
+                                    val lastMessage = newMessages.last() // 获取最后一条新消息
                                     sendChatMessageNotification(
                                         sendCount,
-                                        message.lastMessage.sender,
-                                        message.lastMessage.senderQQ,
-                                        message.lastMessage.content
+                                        lastMessage.senderUsername,
+                                        lastMessage.senderQQ,
+                                        lastMessage.message
                                     )
-                                    isRing = true
-                                } else if (message?.hasNewMessages == false) {
-                                    isRing = false
 
-                                    val notificationManager =
-                                        getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                    // 🔹 **添加新消息到 chatMessage 列表并写入文件**
+                                    synchronized(chatMessage) {
+                                        // 如果本地消息为空，直接覆盖写入
+                                        val updatedChatMessages = if (localChatMessages.isEmpty()) {
+                                            // 如果本地没有消息，直接将新消息转换为 ChatMessage 对象
+                                            newMessages.map { message ->
+                                                ChatMessage(
+                                                    isFake = false,
+                                                    isShowTime = true,
+                                                    chatName = message.senderUsername,
+                                                    sender = SenderType.Others,
+                                                    senderQQ = message.senderQQ,
+                                                    message = message.message,
+                                                    sendTime = message.timestamp
+                                                )
+                                            }
+                                        } else {
+                                            // 否则，将新消息添加到现有消息列表中
+                                            val updatedMessages = localChatMessages.toMutableList()
+                                            updatedMessages.addAll(newMessages.map { message ->
+                                                ChatMessage(
+                                                    isFake = false,
+                                                    isShowTime = true,
+                                                    chatName = message.senderUsername,
+                                                    sender = SenderType.Others,
+                                                    senderQQ = message.senderQQ,
+                                                    message = message.message,
+                                                    sendTime = message.timestamp
+                                                )
+                                            })
+                                            updatedMessages
+                                        }
 
-                                    val notificationId = 10002
-                                    notificationManager.cancel(notificationId)
-
-                                    Log.d("消息问题", "没有新消息。")
+                                        // 确保只有有新内容时才写入文件
+                                        if (updatedChatMessages.isNotEmpty()) {
+                                            writeToFile(
+                                                context,
+                                                "/ChatMessage/Message",
+                                                senderUsername, // 使用 senderUsername 作为文件名
+                                                Gson().toJson(updatedChatMessages)
+                                            )
+                                            // 更新 chatMessage 列表
+                                            chatMessage.clear()
+                                            chatMessage.addAll(updatedChatMessages)
+                                        }
+                                    }
                                 }
                             }
                         } else {
-                            hasNewMessage.second?.let {
-                                Log.d(
-                                    "消息问题",
-                                    it.hasNewMessages.toString()
-                                )
-                            }
+                            Log.d("消息问题", "消息格式错误，无法转换为 ChatRecord 列表或列表为空")
                         }
-                    } else {
-                        val notificationManager =
-                            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-                        val notificationId = 10002
-                        notificationManager.cancel(notificationId)
+                    } else if (result.first == "error" && result.second is String && result.second == "没有未读消息") {
+                        Log.d("消息问题", "没有新消息")
                     }
                 }
-                delay(3000)
+                delay(3000) // 等待3秒再进行下一次请求
             }
         }
     }
-
 
     private fun createNotificationChannel() {
         val channelId = "SYC"
@@ -722,7 +782,7 @@ class ForegroundService : Service() {
         var lastExecutionTime: Long = 0
         var nextExecutionTime = 5 * 60 * 1000
 
-        chatMessageNotification()
+        chatMessageNotification(applicationContext)
         Moments()
 
         CoroutineScope(Dispatchers.IO).launch {

@@ -100,6 +100,7 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.syc.world.ForegroundService.ChatNewMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -114,6 +115,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
+import java.util.Date
 import java.util.Locale
 
 data class SelectionGlobal(
@@ -240,49 +242,16 @@ fun getMessageFromFile(context: Context, senderName: String): List<ChatMessage> 
     val fileName = "ChatMessage/Message/$senderName"
     val existingData = readFromFile(context, fileName)
 
-    if (existingData.isNotEmpty()) {
-        val messageList = mutableListOf<ChatMessage>()
-
-        // Improved regex to match ChatMessage strings more accurately
-        val regex =
-            """ChatMessage\(isFake=(\w+), isShowTime=(\w+), chatName=([\w\u4e00-\u9fa5]+), sender=(\w+), senderQQ=(\w+), message=([^)]+), sendTime=([\d\-:\s]+)\)""".toRegex()
-
-        val matches = regex.findAll(existingData)
-
-        matches.forEach { match ->
-            try {
-                val isFake = match.groupValues[1].toBoolean()
-                val isShowTime = match.groupValues[2].toBoolean()
-                val chatName = match.groupValues[3]
-                val senderType = try {
-                    SenderType.valueOf(match.groupValues[4])
-                } catch (e: IllegalArgumentException) {
-                    Log.e("getMessageFromFile", "Invalid SenderType: ${match.groupValues[4]}")
-                    SenderType.Others
-                }
-                val senderQQ = match.groupValues[5]
-                val message = match.groupValues[6]
-                val sendTime = match.groupValues[7]
-
-                val chatMessage =
-                    ChatMessage(
-                        isFake,
-                        isShowTime,
-                        chatName,
-                        senderType,
-                        senderQQ,
-                        message,
-                        sendTime
-                    )
-                messageList.add(chatMessage)
-            } catch (e: Exception) {
-                Log.e("getMessageFromFile", "Error parsing ChatMessage: ${match.value}", e)
-            }
+    return if (existingData.isNotEmpty()) {
+        try {
+            val type = object : TypeToken<List<ChatMessage>>() {}.type
+            Gson().fromJson(existingData, type) ?: emptyList()
+        } catch (e: Exception) {
+            Log.e("getMessageFromFile", "JSON 解析失败", e)
+            emptyList()
         }
-
-        return messageList
     } else {
-        return emptyList()
+        emptyList()
     }
 }
 
@@ -328,6 +297,15 @@ fun getChatListFromFile(context: Context): Pair<String, List<User>> {
     }
 }
 
+
+// 判断消息是否为新消息，比较时间
+fun isNewMessage(messageTime: String): Boolean {
+    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    val messageDate: Date = sdf.parse(messageTime) ?: return false
+    val currentTime = Date()  // 获取当前时间
+    return messageDate.after(currentTime)  // 如果消息时间在当前时间之后，则为新消息
+}
+
 @Composable
 fun Chat(
     topAppBarScrollBehavior: ScrollBehavior,
@@ -346,52 +324,49 @@ fun Chat(
         while (true) {
             if (chatList.first == "success" && userQQ != "") {
                 chatGroups = chatList.second.map { chatItem ->
-                    val newMessage =
-                        readChatMessagesFromFile(context, chatItem.username)
-                    val messageList = getMessageFromFile(context, chatItem.username)
+                    // 读取本地消息列表
+                    val messageList = getMessageFromFile(context, chatItem.username)  // 获取本地存储的消息
 
-                    val latestMessage = newMessage.lastOrNull()?.content ?: ""
-
+                    // 获取最新的消息内容、时间和新消息数量
+                    val latestMessage = messageList.lastOrNull()?.message ?: ""
                     val latestMessageTime =
-                        newMessage.lastOrNull()?.time ?: getCurrentTimeForChatList()
+                        messageList.lastOrNull()?.sendTime ?: getCurrentTimeForChatList()
 
-                    val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
 
+                    // 计算新消息数量
+                    val newMessageCount =
+                        messageList.count { it.senderQQ != Global.userQQ && isNewMessage(it.sendTime) }
+
+                    // 判断是否存在来自“我”的消息
                     val isMe =
                         messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
 
-                    if (isMe != null) {
-                        if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
+                    // 处理新的消息
+                    if (isMe == null) {
+                        // 如果有新的消息且不为空，则更新未读消息数
+                        if (latestMessage.trim().isNotEmpty()) {
                             Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
-                            // 创建 ChatGroup 对象
+                            // 创建新的 ChatGroup 对象
                             ChatGroup(
                                 chatItem.qq,
                                 "联系人",
                                 chatItem.username,
                                 latestMessage,
-                                latestMessageTime,
+                                formatTime(latestMessageTime),
                                 chatItem.isPinned,
                                 chatItem.online,
                                 newMessageCount
                             )
                         } else {
-                            Log.d(
-                                "列表问题",
-                                messageList.lastOrNull()?.message ?: "6666"
-                            )
-                            // 创建 ChatGroup 对象
                             ChatGroup(
                                 chatItem.qq,
                                 "联系人",
                                 chatItem.username,
-                                messageList.lastOrNull()?.message ?: "",
-                                formatTime(
-                                    messageList.lastOrNull()?.sendTime
-                                        ?: getCurrentTimeForChatList()
-                                ),
+                                "",
+                                "",
                                 chatItem.isPinned,
                                 chatItem.online,
-                                newMessageCount
+                                0
                             )
                         }
                     } else {
@@ -399,20 +374,22 @@ fun Chat(
                             chatItem.qq,
                             "联系人",
                             chatItem.username,
-                            "",
-                            "",
+                            messageList.lastOrNull()?.message ?: "",
+                            formatTime(latestMessageTime),
                             chatItem.isPinned,
                             chatItem.online,
-                            0
+                            newMessageCount
                         )
                     }
                 }
+                // 设置是否更新聊天列表的状态
                 Global.setIsUpdateChatList(false)
                 isLoading = false
             }
-            delay(500)
+            delay(500) // 延迟500毫秒
         }
     }
+
 
     LaunchedEffect(Unit) {
         Global.setChatIsChatMessageAnimation(false)
@@ -443,56 +420,49 @@ fun Chat(
                 if (isUpdateChatList.value || isLoading) {
                     if (userQQ != "") {
                         if (chatList.first == "error") {
-                            chatList =
-                                getChatList(Global.username, Global.password)
+                            // 获取聊天列表，如果出现错误，则重新获取
+                            chatList = getChatList(Global.username, Global.password)
                         } else if (chatList.first == "success") {
-                            chatGroups = chatList.second.map { chatItem ->
-                                val newMessage =
-                                    readChatMessagesFromFile(context, chatItem.username)
-                                val messageList = getMessageFromFile(context, chatItem.username)
-
-                                val latestMessage = newMessage.lastOrNull()?.content ?: ""
-
-                                val latestMessageTime =
-                                    newMessage.lastOrNull()?.time ?: getCurrentTimeForChatList()
-
-                                val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
+                            // 遍历每个聊天项
+                            val updatedChatGroups = chatList.second.map { chatItem ->
+                                // 读取当前聊天用户的消息
+                                val messageList =
+                                    getMessageFromFile(context, chatItem.username)  // 获取本地消息列表
+                                val latestMessage = messageList.lastOrNull()?.message ?: ""
+                                val latestMessageTime = messageList.lastOrNull()?.sendTime
+                                    ?: getCurrentTimeForChatList()
+                                val newMessageCount =
+                                    messageList.count { it.senderQQ != Global.userQQ && it.sendTime > getCurrentTimeForChatList() }
 
                                 val isMe =
                                     messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
 
-                                if (isMe != null) {
-                                    if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
+                                // 处理新的消息
+                                if (isMe == null) {
+                                    // 如果有新的消息且不为空，则更新未读消息数
+                                    if (latestMessage.trim().isNotEmpty()) {
                                         Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
-                                        // 创建 ChatGroup 对象
+                                        // 创建新的 ChatGroup 对象
                                         ChatGroup(
                                             chatItem.qq,
                                             "联系人",
                                             chatItem.username,
                                             latestMessage,
-                                            latestMessageTime,
+                                            formatTime(latestMessageTime),
                                             chatItem.isPinned,
                                             chatItem.online,
                                             newMessageCount
                                         )
                                     } else {
-                                        Log.d(
-                                            "列表问题",
-                                            messageList.lastOrNull()?.message ?: "6666"
-                                        )
-                                        // 创建 ChatGroup 对象
                                         ChatGroup(
                                             chatItem.qq,
                                             "联系人",
                                             chatItem.username,
-                                            messageList.lastOrNull()?.message ?: "",
-                                            formatTime(
-                                                messageList.lastOrNull()?.sendTime
-                                                    ?: getCurrentTimeForChatList()
-                                            ),
+                                            "",
+                                            "",
                                             chatItem.isPinned,
                                             chatItem.online,
-                                            newMessageCount
+                                            0
                                         )
                                     }
                                 } else {
@@ -500,77 +470,84 @@ fun Chat(
                                         chatItem.qq,
                                         "联系人",
                                         chatItem.username,
-                                        "",
-                                        "",
+                                        messageList.lastOrNull()?.message ?: "",
+                                        formatTime(latestMessageTime),
                                         chatItem.isPinned,
                                         chatItem.online,
-                                        0
+                                        newMessageCount
                                     )
                                 }
                             }
+
+                            // 更新状态并传递更新后的聊天组数据
+                            chatGroups = updatedChatGroups
                             Global.setIsUpdateChatList(false)
                             isLoading = false
                         }
                     }
                 }
-                delay(2000)
+                delay(2000) // 等待2秒钟
             }
         }
+
     }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
+            // 获取聊天列表
             chatList = getChatList(Global.username, Global.password)
+
             if (chatList.first == "success") {
+                // 将聊天列表保存到文件
                 writeToFile(
                     context,
                     "/ChatList",
                     "chatList",
-                    chatList.toString()
+                    Gson().toJson(chatList.second)  // 将聊天列表转为 JSON 字符串
                 )
+
+                // 根据每个聊天项创建 ChatGroup
                 chatGroups = chatList.second.map { chatItem ->
-                    val newMessage =
-                        readChatMessagesFromFile(context, chatItem.username)
-                    val messageList = getMessageFromFile(context, chatItem.username)
+                    // 读取该聊天用户的消息
+                    val messageList = getMessageFromFile(context, chatItem.username)  // 获取本地消息列表
 
-                    val latestMessage = newMessage.lastOrNull()?.content ?: ""
-
+                    // 获取最新的消息内容、时间和新消息数量
+                    val latestMessage = messageList.lastOrNull()?.message ?: ""
                     val latestMessageTime =
-                        newMessage.lastOrNull()?.time ?: getCurrentTimeForChatList()
+                        messageList.lastOrNull()?.sendTime ?: getCurrentTimeForChatList()
+                    val newMessageCount =
+                        messageList.count { it.senderQQ != Global.userQQ && it.sendTime > getCurrentTimeForChatList() }
 
-                    val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
-
+                    // 查找是否有来自我的消息
                     val isMe =
                         messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
 
-                    if (isMe != null) {
-                        if (latestMessage != "" && latestMessage.trim().isNotEmpty()) {
+                    // 处理新的消息
+                    if (isMe == null) {
+                        // 如果有新的消息且不为空，则更新未读消息数
+                        if (latestMessage.trim().isNotEmpty()) {
                             Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
-                            // 创建 ChatGroup 对象
+                            // 创建新的 ChatGroup 对象
                             ChatGroup(
                                 chatItem.qq,
                                 "联系人",
                                 chatItem.username,
                                 latestMessage,
-                                latestMessageTime,
+                                formatTime(latestMessageTime),
                                 chatItem.isPinned,
                                 chatItem.online,
                                 newMessageCount
                             )
                         } else {
-                            // 创建 ChatGroup 对象
                             ChatGroup(
                                 chatItem.qq,
                                 "联系人",
                                 chatItem.username,
-                                messageList.lastOrNull()?.message ?: "",
-                                formatTime(
-                                    messageList.lastOrNull()?.sendTime
-                                        ?: getCurrentTimeForChatList()
-                                ),
+                                "",
+                                "",
                                 chatItem.isPinned,
                                 chatItem.online,
-                                newMessageCount
+                                0
                             )
                         }
                     } else {
@@ -578,19 +555,22 @@ fun Chat(
                             chatItem.qq,
                             "联系人",
                             chatItem.username,
-                            "",
-                            "",
+                            messageList.lastOrNull()?.message ?: "",
+                            formatTime(latestMessageTime),
                             chatItem.isPinned,
                             chatItem.online,
-                            0
+                            newMessageCount
                         )
                     }
                 }
+
+                // 更新状态
                 Global.setIsUpdateChatList(false)
                 isLoading = false
             }
         }
     }
+
 
     Scaffold {
         if (isUpdateChatList.value || isLoading) {
@@ -1344,51 +1324,19 @@ fun ChatUi(navController: NavController) {
     }
 
     LaunchedEffect(Unit, chatMessage.size, isLoading, isSend) {
-        if (readFromFile(
-                context,
-                "isInForeground"
-            ) == "true"
-        ) {
-            if (chatMessage.isNotEmpty()) {
-                withContext(Dispatchers.IO) {
-                    writeToFile(
-                        context,
-                        "/ChatMessage/Count",
-                        personNameBeingChat.value,
-                        chatMessage.size.toString()
-                    )
-                    Log.d("写入问题", "已经写入count: ${chatMessage.size}")
-                    writeToFile(
-                        context,
-                        "/ChatMessage/Message",
-                        personNameBeingChat.value,
-                        chatMessage.toString()
-                    )
-                }
-            }
-        }
-        val newMessage = readChatMessagesFromFile(
-            context,
-            personNameBeingChat.value
-        )
-
-        val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
-
-        if (newMessage.isNotEmpty()) {
-            if (Global.unreadCountInChat.value.toIntOrNull() != null) {
-                if (Global.unreadCountInChat.value.toInt() - newMessageCount >= 0) {
-                    Global.setUnreadCountInChat({ Global.unreadCountInChat.value.toInt() - newMessageCount }.toString())
-                }
-            }
-        }
-        deleteFile(context, "ChatMessage/NewMessage/${personNameBeingChat.value}.json")
         Global.setIsUpdateChatList(true)
     }
 
     LaunchedEffect(Unit) {
         Global.setIsOpenMoreFunction(false)
+
+        // 获取初始的聊天记录，返回类型为 List<ChatMessage>
         val messageList = getMessageFromFile(context, personNameBeingChat.value)
+
+        // 判断本地消息列表是否有来自自己的消息
         val isMe = messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
+
+        // 如果消息列表不为空且有来自自己的消息，则加入已存在消息
         if (messageList.isNotEmpty() && isMe != null) {
             chatMessage.addAll(messageList)
         }
@@ -1396,90 +1344,36 @@ fun ChatUi(navController: NavController) {
         while (true) {
             withContext(Dispatchers.IO) {
                 isLoading = true
-                if (Global.userQQ.trim().isNotEmpty()) {
-                    val getMessageResult =
-                        getMessage(Global.username, Global.password, personNameBeingChat.value)
 
-                    if (getMessageResult.first == "error" && getMessageResult.second.isNotEmpty()) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                "聊天记录获取失败！原因：${getMessageResult.second}",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    } else {
-                        val existingMessages = mutableListOf<Pair<String, String>>()
+                // 每次从本地读取聊天记录
+                val updatedMessageList = getMessageFromFile(context, personNameBeingChat.value)
 
-                        chatMessage.forEach { existingMessages.add(it.message to it.sendTime) }
+                // 检查本地聊天记录是否有更新
+                updatedMessageList.forEach { newMessage ->
+                    // 如果新消息不在现有的消息列表中，说明是新消息
+                    val messageExists =
+                        chatMessage.any { it.message == newMessage.message && it.sendTime == newMessage.sendTime }
 
-                        var lastMessageTimestamp = ""
-
-                        getMessageResult.second.forEachIndexed { index, chatRecord ->
-                            val senderQQ = chatRecord.senderQQ
-                            val message = chatRecord.message
-                            val timestamp = chatRecord.timestamp
-                            val senderType = if (chatRecord.senderUsername != Global.username) {
-                                SenderType.Others
-                            } else {
-                                SenderType.Me
-                            }
-
-                            // 判断当前消息和前一条消息的时间差
-                            val isFirstMessage = index == 0 || calculateTimeDifference(
-                                lastMessageTimestamp,
-                                timestamp
-                            ) > 10
-
-                            // 如果消息不存在于已存在的列表中，则创建新消息
-                            if (!existingMessages.contains(message to timestamp)) {
-                                val newMessage = ChatMessage(
-                                    false,
-                                    isFirstMessage,
-                                    personNameBeingChat.value,
-                                    senderType,
-                                    senderQQ,
-                                    message,
-                                    timestamp
-                                )
-
-                                withContext(Dispatchers.Main) {
-                                    // 添加新消息到 chatMessage
-                                    chatMessage.add(newMessage)
-                                    if (chatMessage.isNotEmpty()) {
-                                        withContext(Dispatchers.IO) {
-                                            writeToFile(
-                                                context,
-                                                "/ChatMessage/Count",
-                                                personNameBeingChat.value,
-                                                chatMessage.size.toString()
-                                            )
-                                            writeToFile(
-                                                context,
-                                                "/ChatMessage/Message",
-                                                personNameBeingChat.value,
-                                                chatMessage.toString()
-                                            )
-                                        }
-                                    }
-                                    existingMessages.add(message to timestamp)
-                                    lastMessageTimestamp = timestamp
-                                    isLoading = false
-                                }
-                            }
-                        }
+                    if (!messageExists) {
+                        // 如果消息是新消息，添加到 chatMessage 列表
+                        chatMessage.add(newMessage)
                     }
                 }
+                isLoading = false
             }
-            delay(3000)
+
+            // 每3秒钟检查一次本地文件的更新
+            delay(500)
         }
     }
+
+
     var isSendSuccessfully by remember { mutableStateOf(true) }
 
 // 发送协程
     LaunchedEffect(isSend) {
         withContext(Dispatchers.IO) {
-            val messageIndex = chatMessage.size
+            chatMessage.size
             if (isSend && isSendSuccessfully && Global.userQQ.trim().isNotEmpty() && text.trim()
                     .isNotEmpty()
             ) {
@@ -1515,7 +1409,6 @@ fun ChatUi(navController: NavController) {
 
                 chatMessage.add(myMessage)
 
-
                 val sendResult =
                     sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
 
@@ -1536,64 +1429,39 @@ fun ChatUi(navController: NavController) {
                     }
                 } else if (sendResult.first == "success") {
                     if (Global.userQQ.trim().isNotEmpty()) {
-                        val getMessageResult =
-                            getMessage(Global.username, Global.password, personNameBeingChat.value)
+                        // 读取本地消息记录
+                        val messageList = getMessageFromFile(context, personNameBeingChat.value).toMutableList()
 
-                        if (getMessageResult.first == "error" && (getMessageResult.second as? List<*>).isNullOrEmpty()) {
-                            chatMessage.removeAt(messageIndex)
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    "聊天记录获取失败！原因：${getMessageResult.second}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        } else {
-                            val existingMessages = mutableListOf<Pair<String, String>>()
-                            chatMessage.removeAll {
-                                it.isFake
-                            }
-                            chatMessage.filter {
-                                !it.isFake
-                            }.forEach { existingMessages.add(it.message to it.sendTime) }
-                            getMessageResult.second.forEach { chatRecord ->
-                                val senderQQ = chatRecord.senderQQ
-                                val message = chatRecord.message
-                                val timestamp = chatRecord.timestamp
-                                val senderType = if (chatRecord.senderUsername != Global.username) {
-                                    SenderType.Others
-                                } else {
-                                    SenderType.Me
-                                }
-                                if (!existingMessages.contains(message to timestamp)) {
-                                    val newMessage = ChatMessage(
-                                        false,
-                                        isShowTime,
-                                        personNameBeingChat.value,
-                                        senderType,
-                                        senderQQ,
-                                        message,
-                                        timestamp
-                                    )
+                        // 将发送的消息添加到本地消息列表
+                        messageList.add(myMessage)
 
-                                    chatMessage.add(newMessage)
-                                    existingMessages.add(message to timestamp)
-                                }
-                            }
+                        // 写回更新后的聊天记录
+                        withContext(Dispatchers.Main) {
+                            // 将更新后的消息数量和内容写入文件
+                            writeToFile(
+                                context,
+                                "/ChatMessage/Count",
+                                personNameBeingChat.value,
+                                messageList.size.toString()
+                            )
+
+                            // 将更新后的聊天消息转为 JSON 字符串写入文件
+                            val chatMessageJson = Gson().toJson(messageList)
+                            writeToFile(
+                                context,
+                                "/ChatMessage/Message",
+                                personNameBeingChat.value,
+                                chatMessageJson
+                            )
                         }
                     }
-                    chatMessage.removeAll {
-                        it.isFake
-                    }
-                }
-                chatMessage.removeAll {
-                    it.isFake
                 }
                 isSend = false
                 isSendSuccessfully = true
             }
         }
     }
+
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
