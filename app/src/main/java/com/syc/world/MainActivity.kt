@@ -314,6 +314,14 @@ object Global {
         _personIsOnlineBeingChat.value = value
     }
 
+    private val _unreadName = MutableStateFlow("")
+    val unreadName: StateFlow<String>
+        get() = _unreadName
+
+    fun setUnreadName(value: String) {
+        _unreadName.value = value
+    }
+
     private val _unreadCountInChat = MutableStateFlow("")
     val unreadCountInChat: StateFlow<String>
         get() = _unreadCountInChat
@@ -1579,21 +1587,7 @@ fun AllHome(
                                                     "qq"
                                                 )
                                             ) {
-                                                val newMessage = readChatMessagesFromFile(
-                                                    context,
-                                                    chatItem.username
-                                                )
-
-                                                val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
-
-                                                if (newMessage.isNotEmpty()) {
-                                                    if (unreadCountInChat.value.toIntOrNull() != null) {
-                                                        if (unreadCountInChat.value.toInt() - newMessageCount >= 0) {
-                                                            Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
-                                                        }
-                                                    }
-                                                }
-                                                deleteFile(context, "ChatMessage/NewM   isJsonessage/${chatItem.username}.json")
+                                                deleteFile(context, "ChatMessage/NewMessage/${chatItem.username}.json")
                                                 Global.setIsUpdateChatList(true)
                                                 navController.navigate("ChatUi")
                                             }

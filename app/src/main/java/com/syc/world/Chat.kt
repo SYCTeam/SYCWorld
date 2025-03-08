@@ -101,7 +101,6 @@ import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.syc.world.ForegroundService.ChatNewMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -115,7 +114,6 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
-import java.util.Date
 import java.util.Locale
 
 data class SelectionGlobal(
@@ -228,16 +226,6 @@ fun formatTime(inputTime: String): String {
     }
 }
 
-fun readChatMessagesFromFile(context: Context, senderName: String): List<ChatNewMessage> {
-    val fileName = "ChatMessage/NewMessage/$senderName.json"
-    val existingData = readFromFile(context, fileName)
-    return if (existingData.isNotEmpty()) {
-        Gson().fromJson(existingData, Array<ChatNewMessage>::class.java).toList()
-    } else {
-        emptyList()
-    }
-}
-
 fun getMessageFromFile(context: Context, senderName: String): List<ChatMessage> {
     val fileName = "ChatMessage/Message/$senderName"
     val existingData = readFromFile(context, fileName)
@@ -297,15 +285,6 @@ fun getChatListFromFile(context: Context): Pair<String, List<User>> {
     }
 }
 
-
-// 判断消息是否为新消息，比较时间
-fun isNewMessage(messageTime: String): Boolean {
-    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-    val messageDate: Date = sdf.parse(messageTime) ?: return false
-    val currentTime = Date()  // 获取当前时间
-    return messageDate.after(currentTime)  // 如果消息时间在当前时间之后，则为新消息
-}
-
 @Composable
 fun Chat(
     topAppBarScrollBehavior: ScrollBehavior,
@@ -320,10 +299,23 @@ fun Chat(
     var userQQ = ""
     var chatList: Pair<String, List<User>> = getChatListFromFile(context)
 
+    val unreadName = Global.unreadName.collectAsState()
+    var unReadMessageCount by remember { mutableIntStateOf(0) }
+
     LaunchedEffect(Unit) {
         while (true) {
             if (chatList.first == "success" && userQQ != "") {
                 chatGroups = chatList.second.map { chatItem ->
+
+                    val readResult =
+                        readFromFile(context, "/ChatMessage/NewMessage/${chatItem.username}")
+
+                    if (readResult != "404" && readResult.toIntOrNull() != null) {
+                        Global.setUnreadName(chatItem.username)
+                        unReadMessageCount = readResult.toInt()
+                        Log.d("未读问题", unreadName.value)
+                    }
+
                     // 读取本地消息列表
                     val messageList = getMessageFromFile(context, chatItem.username)  // 获取本地存储的消息
 
@@ -332,31 +324,40 @@ fun Chat(
                     val latestMessageTime =
                         messageList.lastOrNull()?.sendTime ?: getCurrentTimeForChatList()
 
-
-                    // 计算新消息数量
-                    val newMessageCount =
-                        messageList.count { it.senderQQ != Global.userQQ && isNewMessage(it.sendTime) }
-
                     // 判断是否存在来自“我”的消息
-                    val isMe =
-                        messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
+                    val isMe = messageList.lastOrNull()?.let {
+                        it.sender == SenderType.Me && it.senderQQ == Global.userQQ
+                    } ?: false
 
                     // 处理新的消息
-                    if (isMe == null) {
+                    if (!isMe) {
                         // 如果有新的消息且不为空，则更新未读消息数
                         if (latestMessage.trim().isNotEmpty()) {
-                            Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
-                            // 创建新的 ChatGroup 对象
-                            ChatGroup(
-                                chatItem.qq,
-                                "联系人",
-                                chatItem.username,
-                                latestMessage,
-                                formatTime(latestMessageTime),
-                                chatItem.isPinned,
-                                chatItem.online,
-                                newMessageCount
-                            )
+                            if (chatItem.username == unreadName.value) {
+                                Global.setUnreadCountInChat(unreadCountInChat.value + unReadMessageCount)
+                                // 创建新的 ChatGroup 对象
+                                ChatGroup(
+                                    chatItem.qq,
+                                    "联系人",
+                                    chatItem.username,
+                                    latestMessage,
+                                    formatTime(latestMessageTime),
+                                    chatItem.isPinned,
+                                    chatItem.online,
+                                    unReadMessageCount
+                                )
+                            } else {
+                                ChatGroup(
+                                    chatItem.qq,
+                                    "联系人",
+                                    chatItem.username,
+                                    latestMessage,
+                                    formatTime(latestMessageTime),
+                                    chatItem.isPinned,
+                                    chatItem.online,
+                                    0
+                                )
+                            }
                         } else {
                             ChatGroup(
                                 chatItem.qq,
@@ -378,7 +379,7 @@ fun Chat(
                             formatTime(latestMessageTime),
                             chatItem.isPinned,
                             chatItem.online,
-                            newMessageCount
+                            0
                         )
                     }
                 }
@@ -431,28 +432,40 @@ fun Chat(
                                 val latestMessage = messageList.lastOrNull()?.message ?: ""
                                 val latestMessageTime = messageList.lastOrNull()?.sendTime
                                     ?: getCurrentTimeForChatList()
-                                val newMessageCount =
-                                    messageList.count { it.senderQQ != Global.userQQ && it.sendTime > getCurrentTimeForChatList() }
 
-                                val isMe =
-                                    messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
+                                val isMe = messageList.lastOrNull()?.let {
+                                    it.sender == SenderType.Me && it.senderQQ == Global.userQQ
+                                } ?: false
 
                                 // 处理新的消息
-                                if (isMe == null) {
+                                if (!isMe) {
                                     // 如果有新的消息且不为空，则更新未读消息数
                                     if (latestMessage.trim().isNotEmpty()) {
-                                        Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
-                                        // 创建新的 ChatGroup 对象
-                                        ChatGroup(
-                                            chatItem.qq,
-                                            "联系人",
-                                            chatItem.username,
-                                            latestMessage,
-                                            formatTime(latestMessageTime),
-                                            chatItem.isPinned,
-                                            chatItem.online,
-                                            newMessageCount
-                                        )
+                                        if (chatItem.username == unreadName.value) {
+                                            Global.setUnreadCountInChat(unreadCountInChat.value + unReadMessageCount)
+                                            // 创建新的 ChatGroup 对象
+                                            ChatGroup(
+                                                chatItem.qq,
+                                                "联系人",
+                                                chatItem.username,
+                                                latestMessage,
+                                                formatTime(latestMessageTime),
+                                                chatItem.isPinned,
+                                                chatItem.online,
+                                                unReadMessageCount
+                                            )
+                                        } else {
+                                            ChatGroup(
+                                                chatItem.qq,
+                                                "联系人",
+                                                chatItem.username,
+                                                latestMessage,
+                                                formatTime(latestMessageTime),
+                                                chatItem.isPinned,
+                                                chatItem.online,
+                                                0
+                                            )
+                                        }
                                     } else {
                                         ChatGroup(
                                             chatItem.qq,
@@ -474,7 +487,7 @@ fun Chat(
                                         formatTime(latestMessageTime),
                                         chatItem.isPinned,
                                         chatItem.online,
-                                        newMessageCount
+                                        0
                                     )
                                 }
                             }
@@ -515,29 +528,41 @@ fun Chat(
                     val latestMessage = messageList.lastOrNull()?.message ?: ""
                     val latestMessageTime =
                         messageList.lastOrNull()?.sendTime ?: getCurrentTimeForChatList()
-                    val newMessageCount =
-                        messageList.count { it.senderQQ != Global.userQQ && it.sendTime > getCurrentTimeForChatList() }
 
                     // 查找是否有来自我的消息
-                    val isMe =
-                        messageList.find { it.sender == SenderType.Me && it.senderQQ == Global.userQQ }
+                    val isMe = messageList.lastOrNull()?.let {
+                        it.sender == SenderType.Me && it.senderQQ == Global.userQQ
+                    } ?: false
 
                     // 处理新的消息
-                    if (isMe == null) {
+                    if (!isMe) {
                         // 如果有新的消息且不为空，则更新未读消息数
                         if (latestMessage.trim().isNotEmpty()) {
-                            Global.setUnreadCountInChat(unreadCountInChat.value + newMessageCount)
-                            // 创建新的 ChatGroup 对象
-                            ChatGroup(
-                                chatItem.qq,
-                                "联系人",
-                                chatItem.username,
-                                latestMessage,
-                                formatTime(latestMessageTime),
-                                chatItem.isPinned,
-                                chatItem.online,
-                                newMessageCount
-                            )
+                            if (chatItem.username == unreadName.value) {
+                                Global.setUnreadCountInChat(unreadCountInChat.value + unReadMessageCount)
+                                // 创建新的 ChatGroup 对象
+                                ChatGroup(
+                                    chatItem.qq,
+                                    "联系人",
+                                    chatItem.username,
+                                    latestMessage,
+                                    formatTime(latestMessageTime),
+                                    chatItem.isPinned,
+                                    chatItem.online,
+                                    unReadMessageCount
+                                )
+                            } else {
+                                ChatGroup(
+                                    chatItem.qq,
+                                    "联系人",
+                                    chatItem.username,
+                                    latestMessage,
+                                    formatTime(latestMessageTime),
+                                    chatItem.isPinned,
+                                    chatItem.online,
+                                    0
+                                )
+                            }
                         } else {
                             ChatGroup(
                                 chatItem.qq,
@@ -551,6 +576,7 @@ fun Chat(
                             )
                         }
                     } else {
+                        Log.d("未读问题", "是我")
                         ChatGroup(
                             chatItem.qq,
                             "联系人",
@@ -559,7 +585,7 @@ fun Chat(
                             formatTime(latestMessageTime),
                             chatItem.isPinned,
                             chatItem.online,
-                            newMessageCount
+                            0
                         )
                     }
                 }
@@ -744,7 +770,7 @@ data class ChatGroup(
 // 群组数据类
 data class ChatMessage(
     val isFake: Boolean,
-    val isShowTime: Boolean,
+    var isShowTime: Boolean,
     val chatName: String,
     val sender: SenderType,
     val senderQQ: String,
@@ -765,7 +791,6 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
     val context = LocalContext.current
     val isDarkMode =
         context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-    val unreadCountInChat = Global.unreadCountInChat.collectAsState()
     var isNavigate by remember { mutableStateOf(false) }
 
     var imageChange by remember { mutableStateOf(false) }
@@ -812,18 +837,7 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                         interactionSource = MutableInteractionSource()
                     ) {
                         if (!isNavigate) {
-                            val newMessage = readChatMessagesFromFile(context, group.chatName)
-
-                            val newMessageCount = newMessage.lastOrNull()?.messageCount ?: 0
-
-                            if (newMessage.isNotEmpty()) {
-                                if (unreadCountInChat.value.toIntOrNull() != null) {
-                                    if (unreadCountInChat.value.toInt() - newMessageCount >= 0) {
-                                        Global.setUnreadCountInChat({ unreadCountInChat.value.toInt() - newMessageCount }.toString())
-                                    }
-                                }
-                            }
-                            deleteFile(context, "ChatMessage/NewMessage/${group.chatName}.json")
+                            deleteFile(context, "ChatMessage/NewMessage/${group.chatName}")
                             Global.setPersonNameBeingChat(group.chatName)
                             Global.setPersonQQBeingChat(group.groupQQ)
                             Global.setPersonIsOnlineBeingChat(group.isOnline)
@@ -1289,6 +1303,7 @@ fun ChatUi(navController: NavController) {
     val isOpenMoreFunction = Global.isOpenMoreFunction.collectAsState()
     val isSelectImageSuccessfully = Global.isSelectImageSuccessfully.collectAsState()
     var isShowMoreFunctionAnimation by remember { mutableStateOf(false) }
+    var isAllowClickButton by remember { mutableStateOf(false) }
 
     val chatMessage = remember { mutableStateListOf<ChatMessage>() }
 
@@ -1316,14 +1331,14 @@ fun ChatUi(navController: NavController) {
         }
     }
 
-    LaunchedEffect(chatMessage.size, isLoading, text) {
+    LaunchedEffect(chatMessage.size) {
         if (chatMessage.isNotEmpty() && !isLoading || (chatMessage.isNotEmpty() && isFocusTextField)
         ) {
             listState.scrollToItem(chatMessage.size - 1, Int.MAX_VALUE)
         }
     }
 
-    LaunchedEffect(Unit, chatMessage.size, isLoading, isSend) {
+    LaunchedEffect(Unit, chatMessage.size, isSend) {
         Global.setIsUpdateChatList(true)
     }
 
@@ -1345,24 +1360,39 @@ fun ChatUi(navController: NavController) {
             withContext(Dispatchers.IO) {
                 isLoading = true
 
-                // 每次从本地读取聊天记录
+                // 读取本地聊天记录
                 val updatedMessageList = getMessageFromFile(context, personNameBeingChat.value)
 
-                // 检查本地聊天记录是否有更新
                 updatedMessageList.forEach { newMessage ->
-                    // 如果新消息不在现有的消息列表中，说明是新消息
                     val messageExists =
                         chatMessage.any { it.message == newMessage.message && it.sendTime == newMessage.sendTime }
 
                     if (!messageExists) {
-                        // 如果消息是新消息，添加到 chatMessage 列表
+                        // 计算是否需要显示时间
+                        var shouldShowTime = true
+                        if (chatMessage.isNotEmpty()) {
+                            val lastMessageTime = LocalDateTime.parse(
+                                chatMessage.last().sendTime,
+                                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                            )
+                            val currentMessageTime = LocalDateTime.parse(
+                                newMessage.sendTime,
+                                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                            )
+
+                            val timeDifference =
+                                ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
+                            shouldShowTime = timeDifference > 10
+                        }
+
+                        newMessage.isShowTime = shouldShowTime
                         chatMessage.add(newMessage)
                     }
                 }
                 isLoading = false
             }
 
-            // 每3秒钟检查一次本地文件的更新
+            // 每 500 毫秒检查一次
             delay(500)
         }
     }
@@ -1372,92 +1402,103 @@ fun ChatUi(navController: NavController) {
 
 // 发送协程
     LaunchedEffect(isSend) {
-        withContext(Dispatchers.IO) {
-            chatMessage.size
-            if (isSend && isSendSuccessfully && Global.userQQ.trim().isNotEmpty() && text.trim()
-                    .isNotEmpty()
-            ) {
+        if (isSendSuccessfully) {
+            withContext(Dispatchers.IO) {
+                chatMessage.size
+                if (isSend && isSendSuccessfully && Global.userQQ.trim().isNotEmpty() && text.trim()
+                        .isNotEmpty()
+                ) {
 
-                if (chatMessage.isNotEmpty()) {
-                    // 计算时间差，确保时间格式化无误
-                    val lastMessageTime = LocalDateTime.parse(
-                        chatMessage.last().sendTime,
-                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                    )
-                    val currentMessageTime = LocalDateTime.parse(
-                        myMessage.sendTime,
-                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                    )
+                    if (chatMessage.isNotEmpty()) {
+                        // 计算时间差，确保时间格式化无误
+                        val lastMessageTime = LocalDateTime.parse(
+                            chatMessage.last().sendTime,
+                            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                        )
+                        val currentMessageTime = LocalDateTime.parse(
+                            myMessage.sendTime,
+                            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                        )
 
-                    // 比较时间差，单位为分钟
-                    val timeDifference =
-                        ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
+                        // 比较时间差，单位为分钟
+                        val timeDifference =
+                            ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
 
-                    isShowTime =
-                        timeDifference > 10
-                }
-
-                myMessage = ChatMessage(
-                    true,
-                    isShowTime,
-                    personNameBeingChat.value,
-                    SenderType.Me,
-                    Global.userQQ,
-                    text,
-                    getCurrentTime()
-                )
-
-                chatMessage.add(myMessage)
-
-                val sendResult =
-                    sendMessage(Global.username, Global.password, personNameBeingChat.value, text)
-
-                text = ""
-
-                isSendSuccessfully = false
-
-                if (sendResult.first == "error") {
-                    chatMessage.removeAll {
-                        it.isFake
+                        isShowTime =
+                            timeDifference > 10
                     }
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            context,
-                            "发送失败！原因：${sendResult.second}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                } else if (sendResult.first == "success") {
-                    if (Global.userQQ.trim().isNotEmpty()) {
-                        // 读取本地消息记录
-                        val messageList = getMessageFromFile(context, personNameBeingChat.value).toMutableList()
 
-                        // 将发送的消息添加到本地消息列表
-                        messageList.add(myMessage)
+                    myMessage = ChatMessage(
+                        true,
+                        isShowTime,
+                        personNameBeingChat.value,
+                        SenderType.Me,
+                        Global.userQQ,
+                        text,
+                        getCurrentTime()
+                    )
 
-                        // 写回更新后的聊天记录
+                    chatMessage.add(myMessage)
+
+                    val sendResult =
+                        sendMessage(
+                            Global.username,
+                            Global.password,
+                            personNameBeingChat.value,
+                            text
+                        )
+
+                    text = ""
+
+                    isSendSuccessfully = false
+
+                    if (sendResult.first == "error") {
+                        chatMessage.removeAll {
+                            it.isFake
+                        }
                         withContext(Dispatchers.Main) {
-                            // 将更新后的消息数量和内容写入文件
-                            writeToFile(
+                            Toast.makeText(
                                 context,
-                                "/ChatMessage/Count",
-                                personNameBeingChat.value,
-                                messageList.size.toString()
-                            )
+                                "发送失败！原因：${sendResult.second}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    } else if (sendResult.first == "success") {
+                        if (Global.userQQ.trim().isNotEmpty()) {
+                            // 读取本地消息记录
+                            val messageList =
+                                getMessageFromFile(
+                                    context,
+                                    personNameBeingChat.value
+                                ).toMutableList()
 
-                            // 将更新后的聊天消息转为 JSON 字符串写入文件
-                            val chatMessageJson = Gson().toJson(messageList)
-                            writeToFile(
-                                context,
-                                "/ChatMessage/Message",
-                                personNameBeingChat.value,
-                                chatMessageJson
-                            )
+                            // 将发送的消息添加到本地消息列表
+                            messageList.add(myMessage)
+
+                            // 写回更新后的聊天记录
+                            withContext(Dispatchers.Main) {
+                                // 将更新后的消息数量和内容写入文件
+                                writeToFile(
+                                    context,
+                                    "/ChatMessage/Count",
+                                    personNameBeingChat.value,
+                                    messageList.size.toString()
+                                )
+
+                                // 将更新后的聊天消息转为 JSON 字符串写入文件
+                                val chatMessageJson = Gson().toJson(messageList)
+                                writeToFile(
+                                    context,
+                                    "/ChatMessage/Message",
+                                    personNameBeingChat.value,
+                                    chatMessageJson
+                                )
+                            }
                         }
                     }
+                    isSend = false
+                    isSendSuccessfully = true
                 }
-                isSend = false
-                isSendSuccessfully = true
             }
         }
     }
@@ -1496,12 +1537,11 @@ fun ChatUi(navController: NavController) {
     LaunchedEffect(Unit) {
         delay(200)
         textFieldChange = true
+        delay(800)
+        isAllowClickButton = true
     }
 
     LaunchedEffect(text, isSelectImageSuccessfully.value) {
-        if (chatMessage.isNotEmpty()) {
-            listState.scrollToItem(chatMessage.size - 1, Int.MAX_VALUE)
-        }
         if (text.trim().isNotEmpty() || isSelectImageSuccessfully.value) {
             driveText = true
             delay(200)
@@ -1825,7 +1865,7 @@ fun ChatUi(navController: NavController) {
                     val textFieldWidth by animateDpAsState(
                         targetValue = if (textFieldChange) maxWidth else 0.dp,
                         animationSpec = tween(
-                            durationMillis = 1000,
+                            durationMillis = 300,
                             easing = FastOutSlowInEasing
                         )
                     )
@@ -1935,8 +1975,10 @@ fun ChatUi(navController: NavController) {
                                         indication = null,
                                         interactionSource = MutableInteractionSource()
                                     ) {
-                                        Global.setIsOpenMoreFunction(!isOpenMoreFunction.value)
-                                        Global.setIsSelectImageSuccessfully(false)
+                                        if (isAllowClickButton) {
+                                            Global.setIsOpenMoreFunction(!isOpenMoreFunction.value)
+                                            Global.setIsSelectImageSuccessfully(false)
+                                        }
                                     },
                                 tint = if (isDarkMode) Color.White else Color.Black
                             )
@@ -1946,7 +1988,7 @@ fun ChatUi(navController: NavController) {
                             val buttonSize by animateDpAsState(
                                 targetValue = if (buttonChange) 58.dp else 0.dp,
                                 animationSpec = tween(
-                                    durationMillis = 300,
+                                    durationMillis = 200,
                                 )
                             )
 
@@ -1977,10 +2019,10 @@ fun ChatUi(navController: NavController) {
                                 AnimatedVisibility(
                                     visible = isSendButtonVisible,
                                     enter = fadeIn(
-                                        animationSpec = tween(durationMillis = 300)
+                                        animationSpec = tween(durationMillis = 100)
                                     ),
                                     exit = fadeOut(
-                                        animationSpec = tween(durationMillis = 300)
+                                        animationSpec = tween(durationMillis = 100)
                                     )
                                 ) {
                                     Box(

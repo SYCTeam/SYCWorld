@@ -25,7 +25,6 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
 import com.syc.world.ForegroundService.GlobalForForegroundService.isInForeground
 import com.syc.world.ForegroundService.GlobalForForegroundService.isLogin
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +48,8 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Collections
 import java.util.Date
 import java.util.Locale
@@ -291,46 +292,6 @@ class ForegroundService : Service() {
         }
     }
 
-    private fun readAndSumFileContents(context: Context): Int {
-        val directory = File(context.filesDir, "ChatMessage/Count")  // 改为相对路径
-        var totalSum = 0
-
-        // 确保目录存在且是目录
-        if (directory.exists() && directory.isDirectory) {
-            Log.d("读取问题", "目录存在，开始读取文件")  // 日志记录
-
-            // 获取目录下所有文件
-            val files = directory.listFiles()
-
-            // 遍历所有文件
-            files?.forEach { file ->
-                // 如果文件是普通文件且存在
-                if (file.isFile) {
-                    Log.d("读取问题", "正在读取文件: ${file.name}")  // 日志记录
-
-                    val fileContent = readFromFileForForegroundService(
-                        context,
-                        "ChatMessage/Count/${file.name}"
-                    )  // 更新为相对路径
-
-                    // 尝试将文件内容转换为整数并累加
-                    val fileValue = fileContent.toIntOrNull()
-                    if (fileValue != null) {
-                        Log.d("读取问题", "文件内容转换为整数: $fileValue")  // 日志记录
-                        totalSum += fileValue
-                    } else {
-                        Log.d("读取问题", "文件内容不是有效的整数: $fileContent")  // 日志记录
-                    }
-                }
-            }
-        } else {
-            Log.d("读取问题", "目录不存在或不是一个有效目录")  // 日志记录
-        }
-
-        Log.d("读取问题", "总和: $totalSum")  // 日志记录总和
-        return totalSum
-    }
-
     data class MomentsMessage(
         val name: String,
         val qq: Long,
@@ -338,14 +299,6 @@ class ForegroundService : Service() {
         val time: Long,
         val postId: Int,
         val type: String
-    )
-
-    // 定义消息数据类
-    data class ChatNewMessage(
-        @SerializedName("messageCount") val messageCount: Int,
-        @SerializedName("senderName") val senderName: String,
-        @SerializedName("content") val content: String,
-        @SerializedName("time") val time: String,
     )
 
     private fun getCurrentTimeForChatList(): String {
@@ -396,29 +349,6 @@ class ForegroundService : Service() {
                     val notificationId = 10004
                     notificationManager.cancel(notificationId)
                 }
-                val existingData = readFromFileForForegroundService(
-                    applicationContext,
-                    "ChatMessage/NewMessage/$senderName.json"
-                )
-                val messageList: MutableList<ChatNewMessage> = if (existingData.isNotEmpty()) {
-                    Gson().fromJson(existingData, Array<ChatNewMessage>::class.java).toMutableList()
-                } else {
-                    mutableListOf()
-                }
-                messageList.add(
-                    ChatNewMessage(
-                        count,
-                        senderName,
-                        senderContent,
-                        getCurrentTimeForChatList()
-                    )
-                )
-                writeToFileForegroundService(
-                    applicationContext,
-                    "ChatMessage/NewMessage",
-                    "${senderName}.json",
-                    Gson().toJson(messageList)
-                )
                 delay(2000)
             }
         }
@@ -627,9 +557,8 @@ class ForegroundService : Service() {
                             // 获取所有不同的发送者名字
                             val senderUsernames = chatRecords.map { it.senderUsername }.distinct()
 
-                            // 遍历每个发送者名字
                             senderUsernames.forEach { senderUsername ->
-                                // 读取本地消息，解析为 ChatMessage 对象列表
+                                // 读取本地消息
                                 val localChatMessages = getMessageFromFile(context, senderUsername)
 
                                 // 过滤掉已经存在的消息
@@ -641,6 +570,14 @@ class ForegroundService : Service() {
                                     Log.d("消息问题", "有新消息！")
                                     val sendCount = newMessages.size
 
+                                   val readResult = readFromFileForForegroundService(applicationContext,"ChatMessage/NewMessage/$senderUsername")
+
+                                    if (readResult != "404" && readResult.toIntOrNull() != null) {
+                                        writeToFileForegroundService(applicationContext, "/ChatMessage/NewMessage", senderUsername, (sendCount + readResult.toInt()).toString())
+                                    } else {
+                                        writeToFileForegroundService(applicationContext, "/ChatMessage/NewMessage", senderUsername, sendCount.toString())
+                                    }
+
                                     val lastMessage = newMessages.last() // 获取最后一条新消息
                                     sendChatMessageNotification(
                                         sendCount,
@@ -649,50 +586,51 @@ class ForegroundService : Service() {
                                         lastMessage.message
                                     )
 
-                                    // 🔹 **添加新消息到 chatMessage 列表并写入文件**
+                                    // **添加新消息到 chatMessage 列表并写入文件**
                                     synchronized(chatMessage) {
-                                        // 如果本地消息为空，直接覆盖写入
-                                        val updatedChatMessages = if (localChatMessages.isEmpty()) {
-                                            // 如果本地没有消息，直接将新消息转换为 ChatMessage 对象
-                                            newMessages.map { message ->
-                                                ChatMessage(
-                                                    isFake = false,
-                                                    isShowTime = true,
-                                                    chatName = message.senderUsername,
-                                                    sender = SenderType.Others,
-                                                    senderQQ = message.senderQQ,
-                                                    message = message.message,
-                                                    sendTime = message.timestamp
+                                        val updatedMessages = localChatMessages.toMutableList()
+
+                                        newMessages.forEach { message ->
+                                            // 计算是否需要显示时间戳
+                                            var shouldShowTime = true
+                                            if (updatedMessages.isNotEmpty()) {
+                                                val lastMessageTime = LocalDateTime.parse(
+                                                    updatedMessages.last().sendTime,
+                                                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                                                 )
+                                                val currentMessageTime = LocalDateTime.parse(
+                                                    message.timestamp,
+                                                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                                                )
+
+                                                val timeDifference = ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
+                                                shouldShowTime = timeDifference > 10
                                             }
-                                        } else {
-                                            // 否则，将新消息添加到现有消息列表中
-                                            val updatedMessages = localChatMessages.toMutableList()
-                                            updatedMessages.addAll(newMessages.map { message ->
+
+                                            updatedMessages.add(
                                                 ChatMessage(
                                                     isFake = false,
-                                                    isShowTime = true,
+                                                    isShowTime = shouldShowTime,
                                                     chatName = message.senderUsername,
                                                     sender = SenderType.Others,
                                                     senderQQ = message.senderQQ,
                                                     message = message.message,
                                                     sendTime = message.timestamp
                                                 )
-                                            })
-                                            updatedMessages
+                                            )
                                         }
 
-                                        // 确保只有有新内容时才写入文件
-                                        if (updatedChatMessages.isNotEmpty()) {
+                                        // 确保有新内容时才写入文件
+                                        if (updatedMessages.isNotEmpty()) {
                                             writeToFile(
                                                 context,
                                                 "/ChatMessage/Message",
-                                                senderUsername, // 使用 senderUsername 作为文件名
-                                                Gson().toJson(updatedChatMessages)
+                                                senderUsername,
+                                                Gson().toJson(updatedMessages)
                                             )
                                             // 更新 chatMessage 列表
                                             chatMessage.clear()
-                                            chatMessage.addAll(updatedChatMessages)
+                                            chatMessage.addAll(updatedMessages)
                                         }
                                     }
                                 }
