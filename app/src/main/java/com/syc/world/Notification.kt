@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -18,14 +17,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -40,22 +35,17 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
-import kotlinx.coroutines.delay
-import okhttp3.OkHttpClient
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.LazyColumn
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.icons.ArrowBack
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import kotlin.system.exitProcess
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,7 +106,7 @@ fun Notification(navController: NavController,hazeState: HazeState,hazeStyle: Ha
                 itemsIndexed(notList) { index, content ->
                     notList(
                         qq = content.qq,
-                        content = content.content.replace(Regex("!\\[Image]\\(([^)]+)"),"[图片]"),
+                        content = content.content.replace(Regex("!\\[(.*?)]\\((.*?)(?:\\s+[\"'](.*?)[\"'])?.*"),"[图片]"),
                         timestamp = content.time,
                         name = content.name,
                         type = content.type,
@@ -159,7 +149,13 @@ fun notList(qq: Long, content: String, timestamp: Long, name: String, type: Stri
                         Text(calculateTimeAgo(timestamp),fontSize = 12.sp, color = Color.Gray)
                     }
                     Spacer(modifier = Modifier.size(4.dp))
-                    Text("点赞了你的动态："+content,fontSize = 14.sp,maxLines = 1, color = if (isnew) MiuixTheme.colorScheme.primaryVariant else MiuixTheme.colorScheme.onBackground)
+                    Text("点赞了你的动态：",fontSize = 14.sp,maxLines = 1, color = if (isnew) MiuixTheme.colorScheme.primaryVariant else MiuixTheme.colorScheme.onBackground)
+                    Card(cornerRadius = 8.dp, color = MiuixTheme.colorScheme.background, modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
+                        Column(modifier = Modifier.padding(4.dp)) {
+                            Text("@${Global.username}",fontSize = 15.sp,maxLines = 1, color = MiuixTheme.colorScheme.onBackground)
+                            Text(content,fontSize = 14.sp,maxLines = 1, color = Color.Gray)
+                        }
+                    }
                 }
             }
         }

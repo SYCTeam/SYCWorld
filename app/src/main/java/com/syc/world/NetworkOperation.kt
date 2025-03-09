@@ -6,11 +6,18 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import android.webkit.MimeTypeMap
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.snapshots.SnapshotStateMap
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.Call
@@ -26,7 +33,10 @@ import okhttp3.RequestBody
 import okhttp3.Response
 import okio.Buffer
 import okio.BufferedSink
+import okio.ForwardingSink
+import okio.Sink
 import okio.Source
+import okio.buffer
 import okio.source
 import org.json.JSONObject
 import java.io.File
@@ -1229,4 +1239,192 @@ fun uploadImage(
             }
         }
     })
+}
+class ProgressRequestBody(
+    private val requestBody: RequestBody,
+    private val progressCallback: (percentage: Float) -> Unit
+) : RequestBody() {
+
+    override fun contentType(): MediaType? = requestBody.contentType()
+
+    override fun contentLength(): Long = requestBody.contentLength()
+
+    override fun writeTo(sink: BufferedSink) {
+        val countingSink = CountingSink(sink)
+        val bufferedSink = countingSink.buffer() // 关键修正点
+        requestBody.writeTo(bufferedSink)
+        bufferedSink.flush()
+    }
+
+    inner class CountingSink(sink: Sink) : ForwardingSink(sink) {
+        private var bytesWritten = 0L
+
+        override fun write(source: Buffer, byteCount: Long) {
+            super.write(source, byteCount)
+            bytesWritten += byteCount
+            progressCallback.invoke(bytesWritten.toFloat() / contentLength())
+        }
+    }
+}
+
+class UploadViewModel : ViewModel() {
+    // 使用 mutableStateMap 保持响应式更新
+    private val _uploadStates = mutableStateMapOf<Uri, UploadState>()
+    val uploadStates: SnapshotStateMap<Uri, UploadState> get() = _uploadStates
+
+    // 状态定义
+    sealed class UploadState(
+        val progress: Int = 0,
+        val status: String = "pending",
+        val imageUrl: String = ""
+    ) {
+        object Pending : UploadState()
+        class InProgress(progress: Int) : UploadState(progress, "uploading")
+        class Success(imageUrl: String) : UploadState(100, "success", imageUrl)
+        class Error(message: String) : UploadState(0, "error", message)
+    }
+
+    // 上传任务集合
+    private val uploadJobs = mutableMapOf<Uri, Job>()
+
+    fun uploadImage(
+        context: Context,
+        uri: Uri,
+        username: String,
+        password: String
+    ) {
+        // 避免重复上传
+        if (_uploadStates[uri] is UploadState.InProgress) return
+
+        _uploadStates[uri] = UploadState.InProgress(0)
+
+        val job = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val result = uploadImageInternal(
+                    context = context,
+                    uri = uri,
+                    username = username,
+                    password = password
+                )
+                _uploadStates[uri] = UploadState.Success(result)
+            } catch (e: Exception) {
+                _uploadStates[uri] = UploadState.Error(e.message ?: "未知错误")
+            }
+        }
+
+        uploadJobs[uri] = job
+    }
+
+    fun cancelUpload(uri: Uri) {
+        uploadJobs[uri]?.cancel()
+        _uploadStates.remove(uri)
+    }
+
+    private suspend fun uploadImageInternal(
+        context: Context,
+        uri: Uri,
+        username: String,
+        password: String
+    ): String = withContext(Dispatchers.IO) {
+        val contentResolver = context.contentResolver
+        val parcelFileDescriptor = contentResolver.openFileDescriptor(uri, "r")
+            ?: throw IOException("无法打开文件")
+
+        try {
+            // 1. 准备文件参数
+            val fileSize = parcelFileDescriptor.statSize
+            val fileType = contentResolver.getType(uri) ?: "image/*"
+            val fileName = generateFileName(contentResolver, uri)
+
+            // 2. 构建带进度的 RequestBody
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart(
+                    "image",
+                    fileName,
+                    ProgressRequestBody(
+                        contentResolver = contentResolver,
+                        uri = uri,
+                        mediaType = fileType.toMediaTypeOrNull()!!,
+                        onProgress = { progress ->
+                            _uploadStates[uri] = UploadState.InProgress(progress)
+                        }
+                    )
+                )
+                .addFormDataPart("username", username)
+                .addFormDataPart("password", password)
+                .build()
+
+            // 3. 执行上传
+            OkHttpClient().newCall(
+                Request.Builder()
+                    .url("${Global.url}/syc/uploadImage.php")
+                    .post(requestBody)
+                    .build()
+            ).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("HTTP ${response.code}: ${response.message}")
+                }
+
+                response.body?.string()?.let { jsonString ->
+                    JSONObject(jsonString).run {
+                        when (getString("status")) {
+                            "success" -> getString("message")
+                            else -> throw IOException(getString("message"))
+                        }
+                    }
+                } ?: throw IOException("空响应")
+            }
+        } finally {
+            parcelFileDescriptor.close()
+        }
+    }
+
+    // 生成唯一文件名
+    private fun generateFileName(contentResolver: ContentResolver, uri: Uri): String {
+        val extension = when (contentResolver.getType(uri)) {
+            "image/png" -> "png"
+            "image/jpeg" -> "jpg"
+            "image/gif" -> "gif"
+            else -> "bin"
+        }
+        return "upload_${System.currentTimeMillis()}.$extension"
+    }
+
+    // 带进度跟踪的 RequestBody
+    private class ProgressRequestBody(
+        private val contentResolver: ContentResolver,
+        private val uri: Uri,
+        private val mediaType: MediaType,
+        private val onProgress: (Int) -> Unit
+    ) : RequestBody() {
+        override fun contentType() = mediaType
+
+        override fun writeTo(sink: BufferedSink) {
+            val inputStream = contentResolver.openInputStream(uri)
+                ?: throw IOException("无法读取文件")
+
+            val buffer = ByteArray(8192)
+            var uploaded = 0L
+            val total = contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+
+            inputStream.use { stream ->
+                while (true) {
+                    val read = stream.read(buffer)
+                    if (read == -1) break
+
+                    sink.write(buffer, 0, read)
+                    uploaded += read
+
+                    // 计算进度（避免除零）
+                    val progress = if (total > 0) {
+                        (uploaded * 100 / total).toInt().coerceIn(0..100)
+                    } else {
+                        0
+                    }
+                    onProgress(progress)
+                }
+            }
+        }
+    }
 }
