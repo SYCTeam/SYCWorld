@@ -415,7 +415,7 @@ fun Chat(
             // 使用 isEmpty() 判断，确保 userQQ 为非 null 的空字符串
             while (userQQ.isEmpty()) {
                 // 如果 getUserInformation() 返回 null，则默认赋值为 ""
-                val informationResult = getUserInformation(Global.username) ?: ""
+                val informationResult = getUserInformation(Global.username)
                 if (informationResult.isNotEmpty() && isJson(informationResult)) {
                     val userInfo = parseUserInfo(informationResult)
                     if (userInfo != null && userInfo.qq.isNotEmpty()) {
