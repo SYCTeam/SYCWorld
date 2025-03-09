@@ -1384,7 +1384,7 @@ fun ChatUi(navController: NavController, pagerState: PagerState) {
                 val newMessages = mutableListOf<ChatMessage>()
 
                 updatedMessageList.forEach { newMessage ->
-                    val messageExists = chatMessage.any {
+                    val messageExists = chatMessage.toList().any {
                         it.message == newMessage.message && it.sendTime == newMessage.sendTime
                     }
 
