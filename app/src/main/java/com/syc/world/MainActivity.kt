@@ -98,7 +98,6 @@ import androidx.navigation.compose.rememberNavController
 import com.bumptech.glide.Glide
 import com.google.gson.Gson
 import com.syc.world.ForegroundService.GlobalForForegroundService.isInForeground
-import com.syc.world.Global.unreadCountInChat
 import com.syc.world.ui.theme.AppTheme
 import dev.chrisbanes.haze.HazeEffectScope
 import dev.chrisbanes.haze.HazeProgressive
@@ -1433,7 +1432,7 @@ fun AllHome(
     val password = remember { mutableStateOf("") }
     val pagerState = rememberPagerState(pageCount = { 4 }, initialPage = 0)
 
-    var unReadMessageCount = 0
+    var unReadMessageCount: Int
 
     if (File(appInternalDir, "username").exists() && File(
             appInternalDir,
