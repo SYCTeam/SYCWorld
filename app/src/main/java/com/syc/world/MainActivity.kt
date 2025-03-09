@@ -337,6 +337,10 @@ object Global {
         _processedUsers.value += username
     }
 
+    fun removeProcessedUser(username: String) {
+        _processedUsers.value = _processedUsers.value.filter { it != username }
+    }
+
     private val _chatSelection1 = MutableStateFlow(false)
     val chatSelection1: StateFlow<Boolean>
         get() = _chatSelection1
@@ -1594,6 +1598,9 @@ fun AllHome(
                                     }
                                 }
                                 val chatList = getChatList(Global.username, Global.password)
+                                val unreadName = Global.unreadName.value
+                                val unreadCountInChat = Global.unreadCountInChat.value
+                                val processedUsers = Global.processedUsers.value
 
                                 if (chatList.first == "success") {
                                     withContext(Dispatchers.Main) {
@@ -1604,15 +1611,29 @@ fun AllHome(
                                             ) {
 
                                                 val readResult =
-                                                    readFromFile(context, "/ChatMessage/NewMessage/${chatItem.username}")
+                                                    readFromFile(
+                                                        context,
+                                                        "/ChatMessage/NewMessage/${chatItem.username}"
+                                                    )
 
                                                 if (readResult != "404" && readResult.toIntOrNull() != null) {
+                                                    Global.setUnreadName(chatItem.username)
                                                     unReadMessageCount = readResult.toInt()
+                                                } else {
+                                                    unReadMessageCount = 0
                                                 }
 
-                                                Global.setUnreadCountInChat(unreadCountInChat.value - unReadMessageCount)
-
-                                                deleteFile(context, "ChatMessage/NewMessage/${chatItem.username}")
+                                                // 如果有新的消息且不为空，则更新未读消息数
+                                                if (chatItem.username == unreadName) {
+                                                    if (chatItem.username in processedUsers) {
+                                                        Global.setUnreadCountInChat(unreadCountInChat - unReadMessageCount)
+                                                        deleteFile(
+                                                            context,
+                                                            "ChatMessage/NewMessage/${chatItem.username}"
+                                                        )
+                                                        Global.removeProcessedUser(chatItem.username)
+                                                    }
+                                                }
                                                 Global.setIsUpdateChatList(true)
                                                 navController.navigate("ChatUi")
                                             }

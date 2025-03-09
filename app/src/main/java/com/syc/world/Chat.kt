@@ -317,6 +317,8 @@ fun Chat(
                     if (readResult != "404" && readResult.toIntOrNull() != null) {
                         Global.setUnreadName(chatItem.username)
                         unReadMessageCount = readResult.toInt()
+                    } else {
+                        unReadMessageCount = 0
                     }
 
                     // 读取本地消息列表
@@ -337,6 +339,13 @@ fun Chat(
                         // 如果有新的消息且不为空，则更新未读消息数
                         if (latestMessage.trim().isNotEmpty()) {
                             if (chatItem.username == unreadName.value) {
+                                if (unReadMessageCount == 0) {
+                                    Global.removeProcessedUser(chatItem.username)
+                                    Log.d(
+                                        "未读问题",
+                                        "已去除"
+                                    )
+                                }
                                 if (chatItem.username !in processedUsers.value) {
                                     Global.setUnreadCountInChat(unreadCountInChat.value + unReadMessageCount)
                                     Log.d(
@@ -415,7 +424,7 @@ fun Chat(
             // 使用 isEmpty() 判断，确保 userQQ 为非 null 的空字符串
             while (userQQ.isEmpty()) {
                 // 如果 getUserInformation() 返回 null，则默认赋值为 ""
-                val informationResult = getUserInformation(Global.username)
+                val informationResult = getUserInformation(Global.username) ?: ""
                 if (informationResult.isNotEmpty() && isJson(informationResult)) {
                     val userInfo = parseUserInfo(informationResult)
                     if (userInfo != null && userInfo.qq.isNotEmpty()) {
@@ -854,7 +863,9 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                         interactionSource = MutableInteractionSource()
                     ) {
                         if (!isNavigate) {
-                            Global.setUnreadCountInChat(unreadCountInChat.value - unReadMessageCount)
+                            if (unreadCountInChat.value - unReadMessageCount >= 0) {
+                                Global.setUnreadCountInChat(unreadCountInChat.value - unReadMessageCount)
+                            }
                             deleteFile(context, "ChatMessage/NewMessage/${group.chatName}")
                             Global.setPersonNameBeingChat(group.chatName)
                             Global.setPersonQQBeingChat(group.groupQQ)
