@@ -361,10 +361,15 @@ class ForegroundService : Service() {
                 delay(2000)
             }
         }
-    }
+    } // 要求：必须保证100%用中文帮我写
+
+    private var momentJob: Job? = null
 
     private fun Moments() {
-        CoroutineScope(Dispatchers.IO).launch {
+        // 取消之前的协程
+        momentJob?.cancel()
+        // 启动新的协程
+        momentJob = CoroutineScope(Dispatchers.IO).launch {
             while (true) {
                 if (isLogin.value) {
                     val post = checkMoments(
@@ -549,18 +554,24 @@ class ForegroundService : Service() {
         }
     }
 
+    private var messageJob: Job? = null
+
     private fun chatMessageNotification(context: Context) {
         val chatMessage = Collections.synchronizedList(mutableListOf<ChatMessage>())
 
-        CoroutineScope(Dispatchers.IO).launch {
+        // 取消之前的协程
+        messageJob?.cancel()
+        // 启动新的协程
+        messageJob = CoroutineScope(Dispatchers.IO).launch {
             while (true) {
                 if (isLogin.value) {
-                    val result = getMessageForegroundService(
-                        GlobalForForegroundService.username,
-                        GlobalForForegroundService.password
-                    )
+                        val result = getMessageForegroundService(
+                            GlobalForForegroundService.username,
+                            GlobalForForegroundService.password
+                        )
                     if (result.first == "success" && result.second is List<*>) {
-                        val chatRecords = (result.second as? List<*>)?.filterIsInstance<ChatRecord>()
+                        val chatRecords =
+                            (result.second as? List<*>)?.filterIsInstance<ChatRecord>()
 
                         if (!chatRecords.isNullOrEmpty()) {
                             // 获取所有不同的发送者名字
@@ -583,12 +594,25 @@ class ForegroundService : Service() {
 
                                         val sendCount = newMessages.size
 
-                                        val readResult = readFromFileForForegroundService(applicationContext,"ChatMessage/NewMessage/$senderUsername")
+                                        val readResult = readFromFileForForegroundService(
+                                            applicationContext,
+                                            "ChatMessage/NewMessage/$senderUsername"
+                                        )
 
                                         if (readResult != "404" && readResult.toIntOrNull() != null) {
-                                            writeToFileForegroundService(applicationContext, "/ChatMessage/NewMessage", senderUsername, (sendCount + readResult.toInt()).toString())
+                                            writeToFileForegroundService(
+                                                applicationContext,
+                                                "/ChatMessage/NewMessage",
+                                                senderUsername,
+                                                (sendCount + readResult.toInt()).toString()
+                                            )
                                         } else {
-                                            writeToFileForegroundService(applicationContext, "/ChatMessage/NewMessage", senderUsername, sendCount.toString())
+                                            writeToFileForegroundService(
+                                                applicationContext,
+                                                "/ChatMessage/NewMessage",
+                                                senderUsername,
+                                                sendCount.toString()
+                                            )
                                         }
 
                                         val lastMessage = newMessages.last() // 获取最后一条新消息
@@ -624,7 +648,10 @@ class ForegroundService : Service() {
                                                     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                                                 )
 
-                                                val timeDifference = ChronoUnit.MINUTES.between(lastMessageTime, currentMessageTime)
+                                                val timeDifference = ChronoUnit.MINUTES.between(
+                                                    lastMessageTime,
+                                                    currentMessageTime
+                                                )
                                                 shouldShowTime = timeDifference > 10
                                             }
 
@@ -728,6 +755,8 @@ class ForegroundService : Service() {
         startService(intent)
         Log.d("进程问题", "已尝试启动RescueProcessService")
     }
+
+    private var aliveJob: Job? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
@@ -897,84 +926,70 @@ class ForegroundService : Service() {
         }
 
         // 启动后台任务进行心跳检测
-        CoroutineScope(Dispatchers.IO).launch {
-            while (GlobalForForegroundService.url == "") {
-                withContext(Dispatchers.IO) {
-                    GlobalForForegroundService.url = getUrlForForegroundService()
-                }
-                if (GlobalForForegroundService.url != "" && GlobalForForegroundService.url.contains(
-                        "http"
-                    )
-                ) {
-                    break
-                }
+        // 取消之前的协程
+        aliveJob?.cancel()
+        // 启动新的协程
+        aliveJob = CoroutineScope(Dispatchers.IO).launch {
+            // 先等待 URL 获取成功
+            while (GlobalForForegroundService.url.isEmpty() ||
+                !GlobalForForegroundService.url.contains("http")) {
+                GlobalForForegroundService.url = getUrlForForegroundService()
                 delay(2000)
             }
+
             while (true) {
+                // 显示步数通知（始终在 IO 中调用，不影响网络请求）
                 createStepCountNotification(
                     applicationContext,
                     "步数：${GlobalForForegroundService.stepCount}",
                     "距离下次提交步数还有:${nextExecutionTime / 60 / 1000}分钟。"
                 )
-                if (isLogin.value && GlobalForForegroundService.url != "" && GlobalForForegroundService.url.contains(
-                        "http"
-                    )
+
+                if (isLogin.value &&
+                    GlobalForForegroundService.url.isNotEmpty() &&
+                    GlobalForForegroundService.url.contains("http") &&
+                    GlobalForForegroundService.username.trim().isNotEmpty()
                 ) {
-                    if (GlobalForForegroundService.username.trim().isNotEmpty()) {
-                        withContext(Dispatchers.IO) {
-                            if (checkUserOnlineForForegroundService(username = GlobalForForegroundService.username).contains(
-                                    "success"
-                                )
-                            ) {
-                                /*withContext(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        applicationContext,
-                                        "后台：心跳成功！\n步数：${GlobalForForegroundService.stepCount}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }*/
+                    // 检查用户在线状态
+                    val onlineStatus = checkUserOnlineForForegroundService(username = GlobalForForegroundService.username)
+                    if (!onlineStatus.contains("success")) {
+                        // 离线时进行重新登录
+                        acquireWakeLock()
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                applicationContext,
+                                "后台：心跳失败！\n正在尝试重新登录...",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        val loginResponse = loginForForegroundService(
+                            GlobalForForegroundService.username,
+                            GlobalForForegroundService.password
+                        )
+                        withContext(Dispatchers.Main) {
+                            if (loginResponse.contains("success")) {
+                                Toast.makeText(
+                                    applicationContext,
+                                    "登录成功！",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             } else {
-                                withContext(Dispatchers.IO) {
-                                    acquireWakeLock()
-                                    val loginResponse = loginForForegroundService(
-                                        GlobalForForegroundService.username,
-                                        GlobalForForegroundService.password
-                                    )
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            applicationContext,
-                                            "后台：心跳失败！\n正在尝试重新登录...",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                    if (loginResponse.contains("success")) {
-                                        withContext(Dispatchers.Main) {
-                                            Toast.makeText(
-                                                applicationContext,
-                                                "登录成功！",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    } else {
-                                        withContext(Dispatchers.Main) {
-                                            Toast.makeText(
-                                                applicationContext,
-                                                "登录失败，请让我再试N次！",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    }
-                                    releaseWakeLock()
-                                }
+                                Toast.makeText(
+                                    applicationContext,
+                                    "登录失败，请让我再试N次！",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
+                        releaseWakeLock()
                     }
                 } else {
                     Log.d(
                         "在线状态",
-                        "未登录或域名不完整, isLogin.value: ${isLogin.value}, GlobalForForegroundService.url: ${GlobalForForegroundService.url}"
+                        "未登录或域名不完整, isLogin.value: $isLogin.value, GlobalForForegroundService.url: ${GlobalForForegroundService.url}"
                     )
                 }
+                // 本次循环结束后延迟10秒，再进入下一次
                 delay(10000)
             }
         }

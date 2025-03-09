@@ -9,7 +9,6 @@ import android.webkit.MimeTypeMap
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
-import com.syc.world.ForegroundService.GlobalForForegroundService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
@@ -1057,65 +1056,6 @@ fun sendMessage(
     } catch (e: IOException) {
         e.printStackTrace()
         Pair("error", e.message ?: "Unknown error")
-    }
-}
-
-fun getMessage(
-    username: String,
-    password: String
-): Pair<String, Any> {
-    val url = "${GlobalForForegroundService.url}/syc/getChatMessage.php".toHttpUrlOrNull()
-        ?: return Pair("error", "Invalid URL")
-
-    val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build()
-
-    // 创建请求体，包含用户名、密码
-    val formBody = FormBody.Builder()
-        .add("username", username)
-        .add("password", password)
-        .build()
-
-    Log.d("聊天信息获取", "请求 URL: $url")
-
-    // 构建请求
-    val request = Request.Builder()
-        .url(url)
-        .post(formBody)
-        .build()
-
-    return try {
-        val response = client.newCall(request).execute()
-
-        if (response.isSuccessful) {
-            val responseBody = response.body?.string() ?: ""
-            Log.d("聊天信息获取", "响应: $responseBody")
-
-            return try {
-                val chatMessageInfo: ChatMessageResponse =
-                    Gson().fromJson(responseBody, ChatMessageResponse::class.java)
-
-                if (chatMessageInfo.status == "success" && !chatMessageInfo.chatRecords.isNullOrEmpty()) {
-                    Pair(chatMessageInfo.status, chatMessageInfo.chatRecords)
-                } else {
-                    Pair("error", chatMessageInfo.message ?: "未知错误")
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Log.e("聊天信息解析", "解析错误: ${e.message}")
-                Pair("error", "JSON解析错误")
-            }
-
-        } else {
-            Log.e("网络请求失败", "响应失败: ${response.message}")
-            Pair("error", response.message)
-        }
-    } catch (e: IOException) {
-        e.printStackTrace()
-        Log.e("网络请求失败", "IO异常: ${e.message}")
-        Pair("error", "网络连接失败")
     }
 }
 
