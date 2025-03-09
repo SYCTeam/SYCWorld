@@ -25,6 +25,7 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.gson.Gson
+import com.syc.world.ForegroundService.GlobalForForegroundService.isInChat
 import com.syc.world.ForegroundService.GlobalForForegroundService.isInForeground
 import com.syc.world.ForegroundService.GlobalForForegroundService.isLogin
 import kotlinx.coroutines.CoroutineScope
@@ -81,6 +82,14 @@ class ForegroundService : Service() {
 
         fun setIsInForeground(value: Boolean) {
             _isInForeground.value = value
+        }
+
+        private val _isInChat = MutableStateFlow(false)
+        val isInChat: StateFlow<Boolean>
+            get() = _isInChat
+
+        fun setIsInChat(value: Boolean) {
+            _isInChat.value = value
         }
 
     }
@@ -567,24 +576,36 @@ class ForegroundService : Service() {
                                 }
 
                                 if (newMessages.isNotEmpty()) {
+
                                     Log.d("消息问题", "有新消息！")
-                                    val sendCount = newMessages.size
 
-                                   val readResult = readFromFileForForegroundService(applicationContext,"ChatMessage/NewMessage/$senderUsername")
+                                    if (!isInChat.value) {
 
-                                    if (readResult != "404" && readResult.toIntOrNull() != null) {
-                                        writeToFileForegroundService(applicationContext, "/ChatMessage/NewMessage", senderUsername, (sendCount + readResult.toInt()).toString())
+                                        val sendCount = newMessages.size
+
+                                        val readResult = readFromFileForForegroundService(applicationContext,"ChatMessage/NewMessage/$senderUsername")
+
+                                        if (readResult != "404" && readResult.toIntOrNull() != null) {
+                                            writeToFileForegroundService(applicationContext, "/ChatMessage/NewMessage", senderUsername, (sendCount + readResult.toInt()).toString())
+                                        } else {
+                                            writeToFileForegroundService(applicationContext, "/ChatMessage/NewMessage", senderUsername, sendCount.toString())
+                                        }
+
+                                        val lastMessage = newMessages.last() // 获取最后一条新消息
+
+                                        sendChatMessageNotification(
+                                            sendCount,
+                                            lastMessage.senderUsername,
+                                            lastMessage.senderQQ,
+                                            lastMessage.message
+                                        )
+
                                     } else {
-                                        writeToFileForegroundService(applicationContext, "/ChatMessage/NewMessage", senderUsername, sendCount.toString())
+                                        val notificationManager =
+                                            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                        val notificationId = 10004
+                                        notificationManager.cancel(notificationId)
                                     }
-
-                                    val lastMessage = newMessages.last() // 获取最后一条新消息
-                                    sendChatMessageNotification(
-                                        sendCount,
-                                        lastMessage.senderUsername,
-                                        lastMessage.senderQQ,
-                                        lastMessage.message
-                                    )
 
                                     // **添加新消息到 chatMessage 列表并写入文件**
                                     synchronized(chatMessage) {
@@ -741,6 +762,26 @@ class ForegroundService : Service() {
                         readFromFileForForegroundService(
                             applicationContext,
                             "isLogin"
+                        ).toBoolean()
+                    )
+                }
+
+                if (readFromFileForForegroundService(applicationContext, "isInChat") == "true") {
+                    GlobalForForegroundService.setIsInChat(
+                        readFromFileForForegroundService(
+                            applicationContext,
+                            "isInChat"
+                        ).toBoolean()
+                    )
+                } else if (readFromFileForForegroundService(
+                        applicationContext,
+                        "isInChat"
+                    ) == "false"
+                ) {
+                    GlobalForForegroundService.setIsInChat(
+                        readFromFileForForegroundService(
+                            applicationContext,
+                            "isInChat"
                         ).toBoolean()
                     )
                 }

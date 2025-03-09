@@ -46,6 +46,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -302,8 +303,11 @@ fun Chat(
     val unreadName = Global.unreadName.collectAsState()
     var unReadMessageCount by remember { mutableIntStateOf(0) }
 
+    val processedUsers = Global.processedUsers.collectAsState()
+
     LaunchedEffect(Unit) {
         while (true) {
+            Global.setIsInChat(false)
             if (chatList.first == "success" && userQQ != "") {
                 chatGroups = chatList.second.map { chatItem ->
 
@@ -313,7 +317,6 @@ fun Chat(
                     if (readResult != "404" && readResult.toIntOrNull() != null) {
                         Global.setUnreadName(chatItem.username)
                         unReadMessageCount = readResult.toInt()
-                        Log.d("未读问题", unreadName.value)
                     }
 
                     // 读取本地消息列表
@@ -334,7 +337,14 @@ fun Chat(
                         // 如果有新的消息且不为空，则更新未读消息数
                         if (latestMessage.trim().isNotEmpty()) {
                             if (chatItem.username == unreadName.value) {
-                                Global.setUnreadCountInChat(unreadCountInChat.value + unReadMessageCount)
+                                if (chatItem.username !in processedUsers.value) {
+                                    Global.setUnreadCountInChat(unreadCountInChat.value + unReadMessageCount)
+                                    Log.d(
+                                        "未读问题",
+                                        "已写入: ${unreadCountInChat.value}, unReadMessageCount: $unReadMessageCount"
+                                    )
+                                    Global.addProcessedUser(chatItem.username)
+                                }
                                 // 创建新的 ChatGroup 对象
                                 ChatGroup(
                                     chatItem.qq,
@@ -442,7 +452,6 @@ fun Chat(
                                     // 如果有新的消息且不为空，则更新未读消息数
                                     if (latestMessage.trim().isNotEmpty()) {
                                         if (chatItem.username == unreadName.value) {
-                                            Global.setUnreadCountInChat(unreadCountInChat.value + unReadMessageCount)
                                             // 创建新的 ChatGroup 对象
                                             ChatGroup(
                                                 chatItem.qq,
@@ -539,7 +548,6 @@ fun Chat(
                         // 如果有新的消息且不为空，则更新未读消息数
                         if (latestMessage.trim().isNotEmpty()) {
                             if (chatItem.username == unreadName.value) {
-                                Global.setUnreadCountInChat(unreadCountInChat.value + unReadMessageCount)
                                 // 创建新的 ChatGroup 对象
                                 ChatGroup(
                                     chatItem.qq,
@@ -576,7 +584,6 @@ fun Chat(
                             )
                         }
                     } else {
-                        Log.d("未读问题", "是我")
                         ChatGroup(
                             chatItem.qq,
                             "联系人",
@@ -718,7 +725,6 @@ fun ImageUploadScreen() {
                             } ?: run {
                                 Log.d("上传问题", "选中的图片为空")
                             }
-
                         }) {
                             Text("上传图片")
                         }
@@ -802,6 +808,16 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
         ),
         label = ""
     )
+    val unreadCountInChat = Global.unreadCountInChat.collectAsState()
+
+    var unReadMessageCount by remember { mutableIntStateOf(0) }
+
+    val readResult =
+        readFromFile(context, "/ChatMessage/NewMessage/${group.chatName}")
+
+    if (readResult != "404" && readResult.toIntOrNull() != null) {
+        unReadMessageCount = readResult.toInt()
+    }
 
     if (imageSize == 60.dp) {
         imageChange = false
@@ -837,6 +853,7 @@ fun ChatGroupItem(navController: NavController, group: ChatGroup) {
                         interactionSource = MutableInteractionSource()
                     ) {
                         if (!isNavigate) {
+                            Global.setUnreadCountInChat(unreadCountInChat.value - unReadMessageCount)
                             deleteFile(context, "ChatMessage/NewMessage/${group.chatName}")
                             Global.setPersonNameBeingChat(group.chatName)
                             Global.setPersonQQBeingChat(group.groupQQ)
@@ -1283,7 +1300,7 @@ fun ChatMessage(message: ChatMessage) {
 // 聊天界面
 @SuppressLint("UnrememberedMutableInteractionSource")
 @Composable
-fun ChatUi(navController: NavController) {
+fun ChatUi(navController: NavController, pagerState: PagerState) {
     val context = LocalContext.current
     var text by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
@@ -1358,17 +1375,20 @@ fun ChatUi(navController: NavController) {
 
         while (true) {
             withContext(Dispatchers.IO) {
+                Global.setIsInChat(true)
                 isLoading = true
 
                 // 读取本地聊天记录
                 val updatedMessageList = getMessageFromFile(context, personNameBeingChat.value)
 
+                val newMessages = mutableListOf<ChatMessage>()
+
                 updatedMessageList.forEach { newMessage ->
-                    val messageExists =
-                        chatMessage.any { it.message == newMessage.message && it.sendTime == newMessage.sendTime }
+                    val messageExists = chatMessage.any {
+                        it.message == newMessage.message && it.sendTime == newMessage.sendTime
+                    }
 
                     if (!messageExists) {
-                        // 计算是否需要显示时间
                         var shouldShowTime = true
                         if (chatMessage.isNotEmpty()) {
                             val lastMessageTime = LocalDateTime.parse(
@@ -1386,9 +1406,12 @@ fun ChatUi(navController: NavController) {
                         }
 
                         newMessage.isShowTime = shouldShowTime
-                        chatMessage.add(newMessage)
+                        newMessages.add(newMessage) // 先存到临时列表
                     }
                 }
+
+                chatMessage.addAll(newMessages) // 一次性更新 chatMessage
+
                 isLoading = false
             }
 
@@ -1562,7 +1585,12 @@ fun ChatUi(navController: NavController) {
     LaunchedEffect(isBack) {
         if (!isBack) {
             navController.popBackStack()
+            pagerState.animateScrollToPage(1)
         }
+    }
+
+    BackHandler {
+       isBack = false
     }
 
     Scaffold {
@@ -1614,30 +1642,28 @@ fun ChatUi(navController: NavController) {
                                 tint = if (isDarkMode) Color.White else Color.Black
                             )
 
-                            if (unreadCountInChat.value.toIntOrNull() != null) {
-                                if (unreadCountInChat.value.toInt() > 0) {
-                                    Surface(
+                            if (unreadCountInChat.value > 0) {
+                                Surface(
+                                    modifier = Modifier
+                                        .width(25.dp)
+                                        .height(25.dp)
+                                        .clip(CircleShape),
+                                    color = if (isDarkMode) Color(0xFF242424) else Color.LightGray
+                                ) {
+                                    Box(
                                         modifier = Modifier
-                                            .width(25.dp)
-                                            .height(25.dp)
-                                            .clip(CircleShape),
-                                        color = if (isDarkMode) Color(0xFF242424) else Color.LightGray
+                                            .fillMaxSize(),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Box(
+                                        Text(
+                                            text = unreadCountInChat.value.toString(),
+                                            style = MaterialTheme.typography.bodyLarge,
                                             modifier = Modifier
-                                                .fillMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = unreadCountInChat.value,
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                modifier = Modifier
-                                                    .fillMaxHeight()
-                                                    .fillMaxWidth(),
-                                                textAlign = TextAlign.Center,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
+                                                .fillMaxHeight()
+                                                .fillMaxWidth(),
+                                            textAlign = TextAlign.Center,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                 }
                             }
@@ -1647,7 +1673,7 @@ fun ChatUi(navController: NavController) {
 
                 Box(
                     modifier = when {
-                        unreadCountInChat.value.toIntOrNull() != null && unreadCountInChat.value.toInt() > 0 -> {
+                        unreadCountInChat.value > 0 -> {
                             Modifier
                                 .fillMaxHeight()
                                 .width(200.dp)
@@ -1959,6 +1985,14 @@ fun ChatUi(navController: NavController) {
                             )
                         }
 
+                        var isClick by remember { mutableStateOf(false) }
+
+                        LaunchedEffect(isClick) {
+                            if (isClick) {
+                                delay(1000)
+                                isClick = false
+                            }
+                        }
 
                         Surface(
                             modifier = Modifier
@@ -1975,7 +2009,8 @@ fun ChatUi(navController: NavController) {
                                         indication = null,
                                         interactionSource = MutableInteractionSource()
                                     ) {
-                                        if (isAllowClickButton) {
+                                        if (isAllowClickButton && !isClick) {
+                                            isClick = true
                                             Global.setIsOpenMoreFunction(!isOpenMoreFunction.value)
                                             Global.setIsSelectImageSuccessfully(false)
                                         }

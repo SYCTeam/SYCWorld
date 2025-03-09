@@ -322,12 +322,19 @@ object Global {
         _unreadName.value = value
     }
 
-    private val _unreadCountInChat = MutableStateFlow("")
-    val unreadCountInChat: StateFlow<String>
+    private val _unreadCountInChat = MutableStateFlow(0)
+    val unreadCountInChat: StateFlow<Int>
         get() = _unreadCountInChat
 
-    fun setUnreadCountInChat(value: String) {
+    fun setUnreadCountInChat(value: Int) {
         _unreadCountInChat.value = value
+    }
+
+    private val _processedUsers = MutableStateFlow<List<String>>(emptyList())
+    val processedUsers: StateFlow<List<String>> get() = _processedUsers
+
+    fun addProcessedUser(username: String) {
+        _processedUsers.value += username
     }
 
     private val _chatSelection1 = MutableStateFlow(false)
@@ -394,6 +401,14 @@ object Global {
         _isSelectImageSuccessfully.value = value
     }
 
+    private val _isInChat = MutableStateFlow(false)
+    val isInChat: StateFlow<Boolean>
+        get() = _isInChat
+
+    fun setIsInChat(value: Boolean) {
+        _isInChat.value = value
+    }
+
 }
 
 class AppLifecycleObserver : LifecycleObserver {
@@ -433,40 +448,15 @@ class MainActivity : ComponentActivity() {
             // 注册生命周期观察者
             lifecycle.addObserver(appLifecycleObserver)
 
-            CoroutineScope(Dispatchers.IO).launch {
-                while (true) {
-                    // 调用 isAppInForeground 方法
-                    val isInForeground = appLifecycleObserver.isAppInForeground()
-
-                    writeToFile(applicationContext, "", "isInForeground", isInForeground.toString())
-
-                    delay(100)
-                }
-            }
-
             val isLogin = Global.isLogin.collectAsState()
+            val isInChat = Global.isInChat.collectAsState()
+
             var showBodySensorsPermissionDialog by remember { mutableStateOf(false) }
             var showActivityRecognitionPermissionDialog by remember { mutableStateOf(false) }
             var showNotificationPermissionDialog by remember { mutableStateOf(false) }
             var showManageFilePermissionDialog by remember { mutableStateOf(false) }
 
             val context = LocalContext.current
-
-            // 循环写入登录状态
-            LaunchedEffect(Unit) {
-                withContext(Dispatchers.IO) {
-                    while (true) {
-                        writeToFile(context, "", "isLogin", isLogin.value.toString())
-                        if (!isProcessRunning(context, "com.syc.world.RescueProcessService")) {
-                            restartRescueProcess(context)
-                        }
-                        if (!isProcessRunning(context, "com.syc.world.ForegroundService")) {
-                            restartForegroundServiceProcess(context)
-                        }
-                        delay(500)
-                    }
-                }
-            }
 
             val isDeleteChatMessageOpen = Global.isDeleteChatMessageOpen.collectAsState()
 
@@ -614,6 +604,27 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            CoroutineScope(Dispatchers.IO).launch {
+                while (true) {
+                    // 调用 isAppInForeground 方法
+                    val isInForeground = appLifecycleObserver.isAppInForeground()
+
+                    writeToFile(applicationContext, "", "isInForeground", isInForeground.toString())
+
+                    writeToFile(context, "", "isLogin", isLogin.value.toString())
+
+                    writeToFile(context, "", "isInChat", isInChat.value.toString())
+
+                    if (!isProcessRunning(context, "com.syc.world.RescueProcessService")) {
+                        restartRescueProcess(context)
+                    }
+                    if (!isProcessRunning(context, "com.syc.world.ForegroundService")) {
+                        restartForegroundServiceProcess(context)
+                    }
+
+                    delay(100)
+                }
+            }
 
             // 申请电池白名单
             requestIgnoreBatteryOptimizations(context)
@@ -644,7 +655,7 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
             AppTheme(colorMode = colorMode.intValue) {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(modifier = Modifier.fillMaxSize()) {
                     AllHome(
                         colorMode = colorMode,
                         modifier = Modifier.padding(),
@@ -1416,6 +1427,7 @@ fun AllHome(
     val appInternalDir = context.filesDir
     val name = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
+    val pagerState = rememberPagerState(pageCount = { 4 }, initialPage = 0)
     if (File(appInternalDir, "username").exists() && File(
             appInternalDir,
             "username"
@@ -1646,13 +1658,14 @@ fun AllHome(
                     postId = postId,
                     isReply = isReply,
                     postList = postlist,
-                    notidifference
+                    notidifference,
+                    pagerState = pagerState
                 )
             }
             composable("Regin") { Regin(hazeStyle, hazeState, navController) }
             composable("PersonInfo") { PersonInfo(navController) }
             composable("Publish_Dynamic") { Publist_Dynamic(navController, hazeStyle, hazeState) }
-            composable("ChatUi") { ChatUi(navController) }
+            composable("ChatUi") { ChatUi(navController, pagerState) }
             composable("ChatSettings") { ChatSettings(navController) }
             composable("Dynamic") {
                 Dynamic(
@@ -1716,7 +1729,8 @@ fun Main(
     postId: MutableState<Int>,
     isReply: MutableState<Boolean>,
     postList: SnapshotStateList<List<Post>>,
-    notidifference: MutableState<Int>
+    notidifference: MutableState<Int>,
+    pagerState: PagerState
 ) {
     val topAppBarScrollBehavior0 =
         MiuixScrollBehavior(rememberTopAppBarState())
@@ -1733,7 +1747,6 @@ fun Main(
         topAppBarScrollBehavior2,
         topAppBarScrollBehavior3
     )
-    val pagerState = rememberPagerState(pageCount = { 4 }, initialPage = 0)
     var targetPage by remember { mutableIntStateOf(pagerState.currentPage) }
     val coroutineScope = rememberCoroutineScope()
     val currentScrollBehavior = when (pagerState.currentPage) {
