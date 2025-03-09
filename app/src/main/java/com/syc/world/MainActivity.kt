@@ -1428,6 +1428,9 @@ fun AllHome(
     val name = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
     val pagerState = rememberPagerState(pageCount = { 4 }, initialPage = 0)
+
+    var unReadMessageCount = 0
+
     if (File(appInternalDir, "username").exists() && File(
             appInternalDir,
             "username"
@@ -1599,7 +1602,17 @@ fun AllHome(
                                                     "qq"
                                                 )
                                             ) {
-                                                deleteFile(context, "ChatMessage/NewMessage/${chatItem.username}.json")
+
+                                                val readResult =
+                                                    readFromFile(context, "/ChatMessage/NewMessage/${chatItem.username}")
+
+                                                if (readResult != "404" && readResult.toIntOrNull() != null) {
+                                                    unReadMessageCount = readResult.toInt()
+                                                }
+
+                                                Global.setUnreadCountInChat(unreadCountInChat.value - unReadMessageCount)
+
+                                                deleteFile(context, "ChatMessage/NewMessage/${chatItem.username}")
                                                 Global.setIsUpdateChatList(true)
                                                 navController.navigate("ChatUi")
                                             }
