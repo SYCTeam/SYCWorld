@@ -361,7 +361,7 @@ class ForegroundService : Service() {
                 delay(2000)
             }
         }
-    } // 要求：必须保证100%用中文帮我写
+    }
 
     private var momentJob: Job? = null
 
