@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ProgressIndicatorDefaults
@@ -499,35 +500,37 @@ object ProgressIndicatorDefaults {
 fun Markdown(content: String) {
     val highlightsBuilder =
         Highlights.Builder().theme(SyntaxThemes.atom(darkMode = isSystemInDarkTheme()))
-    Markdown(
-        content.replace(Regex("(?<!\\n\\n)(!\\[(.*?)]\\((.*?)(?:\\s+[\"'](.*?)[\"'])?\\))"),"\n\n$1"),
-        colors = markdownColor(),
-        extendedSpans = markdownExtendedSpans {
-            val animator = rememberSquigglyUnderlineAnimator()
-            remember {
-                ExtendedSpans(
-                    RoundedCornerSpanPainter(),
-                    SquigglyUnderlineSpanPainter(animator = animator)
-                )
-            }
-        },
-        components = markdownComponents(
-            codeBlock = {
-                MarkdownHighlightedCodeBlock(
-                    it.content,
-                    it.node,
-                    highlightsBuilder
-                )
+    SelectionContainer {
+        Markdown(
+            content.replace(Regex("(?<!\\n\\n)(!\\[(.*?)]\\((.*?)(?:\\s+[\"'](.*?)[\"'])?\\))"),"\n\n$1"),
+            colors = markdownColor(),
+            extendedSpans = markdownExtendedSpans {
+                val animator = rememberSquigglyUnderlineAnimator()
+                remember {
+                    ExtendedSpans(
+                        RoundedCornerSpanPainter(),
+                        SquigglyUnderlineSpanPainter(animator = animator)
+                    )
+                }
             },
-            codeFence = {
-                MarkdownHighlightedCodeFence(
-                    it.content,
-                    it.node,
-                    highlightsBuilder
-                )
-            },
-        ),
-        imageTransformer = Coil3ImageTransformerImpl,
-        typography = markdownTypography1()
-    )
+            components = markdownComponents(
+                codeBlock = {
+                    MarkdownHighlightedCodeBlock(
+                        it.content,
+                        it.node,
+                        highlightsBuilder
+                    )
+                },
+                codeFence = {
+                    MarkdownHighlightedCodeFence(
+                        it.content,
+                        it.node,
+                        highlightsBuilder
+                    )
+                },
+            ),
+            imageTransformer = Coil3ImageTransformerImpl,
+            typography = markdownTypography1()
+        )
+    }
 }
