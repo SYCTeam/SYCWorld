@@ -724,7 +724,7 @@ fun postMoment(username: String, password: String, content: String): Pair<String
     }
 }
 
-fun getPost(sort: String = "random",postId: String = "0",username: String,password: String): Pair<String, List<Post>> {
+fun getPost(sort: String = "random",postId: String = "0",username: String,password: String, page: Int = 1): Pair<String, List<Post>> {
     val url =
         "${Global.url}/syc/checkPost.php".toHttpUrlOrNull() ?: return Pair("Error", emptyList())
 
@@ -736,6 +736,7 @@ fun getPost(sort: String = "random",postId: String = "0",username: String,passwo
         .add("postId",postId)
         .add("username",username)
         .add("password",password)
+        .add("page",page.toString())
         .build()
 
     // 构建请求

@@ -4,17 +4,18 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,17 +40,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
@@ -69,38 +66,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import coil3.compose.AsyncImage
-import com.mikepenz.markdown.coil3.Coil3ImageTransformerImpl
-import com.mikepenz.markdown.compose.Markdown
-import com.mikepenz.markdown.compose.components.markdownComponents
-import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeBlock
-import com.mikepenz.markdown.compose.elements.MarkdownHighlightedCodeFence
-import com.mikepenz.markdown.compose.extendedspans.ExtendedSpans
-import com.mikepenz.markdown.compose.extendedspans.RoundedCornerSpanPainter
-import com.mikepenz.markdown.compose.extendedspans.SquigglyUnderlineSpanPainter
-import com.mikepenz.markdown.compose.extendedspans.rememberSquigglyUnderlineAnimator
 import com.mikepenz.markdown.model.DefaultMarkdownColors
 import com.mikepenz.markdown.model.DefaultMarkdownTypography
 import com.mikepenz.markdown.model.MarkdownColors
 import com.mikepenz.markdown.model.MarkdownTypography
-import com.mikepenz.markdown.model.markdownExtendedSpans
-import dev.snipme.highlights.Highlights
-import dev.snipme.highlights.model.SyntaxThemes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.LazyColumn
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import java.util.concurrent.TimeUnit
+import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlin.math.min
 
 @SuppressLint("Range")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,92 +103,140 @@ fun Moments(
     postlist: SnapshotStateList<List<Post>>,
     isTab: MutableState<Boolean>
 ) {
-    Scaffold() {
-        Column(modifier = Modifier.padding(PaddingValues(top = 0.dp))) {
-            LaunchedEffect(isTab.value) {
-                if (isTab.value || postlist.size == 0) {
-                    isTab.value = true
-                    withContext(Dispatchers.IO) {
-                        postlist.clear()
-                        val post = getPost(when (selectedTab.value) {
-                            0 -> "random"
-                            1 -> "latest"
-                            2 -> "hot"
-                            else -> "random"
-                        }, username = Global.username, password = Global.password).second
-                        if (post.size != 0) {
-                            postlist.add(post)
-                        }
+    val context = LocalContext.current
+    val listState = rememberLazyListState()
+    val nestedScrollConnection = remember { topAppBarScrollBehavior.nestedScrollConnection }
+    val coroutineScope = rememberCoroutineScope()
+
+    var currentPage by rememberSaveable { mutableStateOf(1) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    // **📌 监听 Tab 变化，重新加载第一页**
+    LaunchedEffect(isTab.value) {
+        if (isTab.value) {
+            currentPage = 1
+            isLoading = true
+            withContext(Dispatchers.IO) {
+                postlist.clear()
+                val newPosts = getPost(
+                    when (selectedTab.value) {
+                        0 -> "random"
+                        1 -> "latest"
+                        2 -> "hot"
+                        else -> "random"
+                    },
+                    username = Global.username,
+                    password = Global.password,
+                    page = 1
+                ).second
+                withContext(Dispatchers.Main) {
+                    if (newPosts.isNotEmpty()) {
+                        postlist.add(newPosts)
                     }
+                    isLoading = false
                     isTab.value = false
                 }
             }
-            if (isTab.value) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center) // 内容居中
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally // 水平居中
-                    ) {
-                        // 圆形进度条
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(50.dp), // 设置进度条的大小
-                            color = MiuixTheme.colorScheme.primary, // 进度条颜色
-                            strokeWidth = 6.dp // 进度条宽度
-                        )
+        }
+    }
 
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "加载中...",
-                        )
-                    }
-                }
-            } else {
-                val context = LocalContext.current
-                val listState = rememberLazyListState()
-                val nestedScrollConnection = remember { topAppBarScrollBehavior.nestedScrollConnection }
-
-                LazyColumn(
-                    state = listState, modifier = Modifier.nestedScroll(nestedScrollConnection)
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
-                    }
-                    items(postlist.size) {
-                        for (post in postlist[it]) {
-                            val ipAddress = remember { mutableStateOf(post.ip) }
-
-                            LaunchedEffect(post.ip) {
-                                withContext(Dispatchers.IO) {
-                                    ipAddress.value = getIpaddress(context,post.ip).second
+    // **📌 监听列表滚动，快滑到底部时加载更多**
+    LaunchedEffect(listState) {
+        if (!isTab.value) {
+            snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+                .collect { lastVisibleItemIndex ->
+                    val totalItems = postlist.flatten().size
+                    if (!isLoading && lastVisibleItemIndex >= totalItems - 5) { // **快到底部**
+                        isLoading = true
+                        coroutineScope.launch(Dispatchers.IO) {
+                            val newPosts = getPost(
+                                when (selectedTab.value) {
+                                    0 -> "random"
+                                    1 -> "latest"
+                                    2 -> "hot"
+                                    else -> "random"
+                                },
+                                username = Global.username,
+                                password = Global.password,
+                                page = currentPage + 1
+                            ).second
+                            withContext(Dispatchers.Main) {
+                                if (newPosts.isNotEmpty()) {
+                                    postlist.add(newPosts)
+                                    currentPage++
                                 }
+                                isLoading = false
                             }
-                            MomentsItem(
-                                time = (post.timestamp.toString()+"000").toLong(),
-                                author = post.username,
-                                ipAddress = ipAddress.value,
-                                elements = post.content,
-                                zan = post.likes,
-                                message = post.commentsCount,
-                                share = post.shares,
-                                authorQQ = post.qq,
-                                postId = post.postId,
-                                morepostId = postId,
-                                navController = navController,
-                                islike = post.islike,
-                                online = post.online,
-                                isReply = isReply
-                            )
                         }
                     }
-                    item {
-                        Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 65.dp))
+                }
+        }
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.nestedScroll(nestedScrollConnection)
+    ) {
+        item { Spacer(modifier = Modifier.height(padding.calculateTopPadding())) }
+
+        items(postlist.flatten()) { post ->
+            var visible by rememberSaveable { mutableStateOf(false) }
+            val ipAddress = remember { mutableStateOf(post.ip) }
+
+            LaunchedEffect(post.ip) {
+                withContext(Dispatchers.IO) {
+                    val resolvedIp = getIpaddress(context, post.ip).second
+                    withContext(Dispatchers.Main) {
+                        ipAddress.value = resolvedIp
                     }
                 }
             }
+
+            LaunchedEffect(post.postId) {
+                if (!visible) visible = true
+            }
+
+            AnimatedVisibility(
+                visible = visible,
+                enter = slideInVertically(
+                    initialOffsetY = { it / 10 },
+                    animationSpec = tween(durationMillis = 200)
+                ) + fadeIn(animationSpec = tween(durationMillis = 200))
+            ) {
+                MomentsItem(
+                    time = (post.timestamp.toString() + "000").toLong(),
+                    author = post.username,
+                    ipAddress = ipAddress.value,
+                    elements = post.content,
+                    zan = post.likes,
+                    message = post.commentsCount,
+                    share = post.shares,
+                    authorQQ = post.qq,
+                    postId = post.postId,
+                    morepostId = postId,
+                    navController = navController,
+                    islike = post.islike,
+                    online = post.online,
+                    isReply = isReply
+                )
+            }
+        }
+
+        if (!postlist.isNotEmpty()) {
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth().wrapContentSize(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("加载中...")
+                }
+            }
+        }
+
+        item {
+            Spacer(Modifier.height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 65.dp))
         }
     }
 }
